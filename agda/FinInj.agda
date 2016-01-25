@@ -1,5 +1,6 @@
 {-# OPTIONS --without-K #-}
 
+-- without K it's the relatively hard way
 -- the easy way is effectfully's brilliant heterogeneous equality solution:
 -- https://github.com/effectfully/random-stuff/blob/master/Fin-injective.agda
 
