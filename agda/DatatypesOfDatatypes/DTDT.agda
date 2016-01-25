@@ -274,23 +274,36 @@ module Chapter01 where
       endoFunctorId : ∀ {X} → map {{FF}} {X} id ≐ id
       endoFunctorCo : ∀ {R S T}(f : S → T)(g : R → S) → map {{FF}} f ∘ map g ≐ map (f ∘ g)
 
-  record ApplicativeOKP F ⦃ AF : Applicative F ⦄ : Set₁ where
+  record ApplicativeOKP F ⦃ AF' : Applicative F ⦄ : Set₁ where
+    open module AF = Applicative AF' -- or else I'm going blind by the record noise
     field
-      lawId : ∀ {X}(x : F X) → (pure {{AF}} id ⊛ x) ≡ x
+      lawId : ∀ {X}(x : F X) → (AF.pure id AF.⊛ x) ≡ x
       lawCo : ∀ {R S T} (f : F (S → T))(g : F (R → S))(r : F R) →
-        (pure {{AF}} (λ f g → f ∘ g) ⊛ f ⊛ g ⊛ r) ≡ (f ⊛ (g ⊛ r))
-      lawHom : ∀ {S T}(f : S → T)(s : S) → (pure {{AF}} f ⊛ pure s) ≡ pure (f s)
-      lawCom : ∀ {S T}(f : F (S → T))(s : S) → (f ⊛ pure s) ≡ (pure {{AF}} (λ f → f s) ⊛ f)
+        (AF.pure  (λ f g → f ∘ g) AF.⊛ f AF.⊛ g AF.⊛ r) ≡ (f AF.⊛ (g AF.⊛ r))
+      lawHom : ∀ {S T}(f : S → T)(s : S) → (AF.pure f AF.⊛ AF.pure s) ≡ AF.pure (f s)
+      lawCom : ∀ {S T}(f : F (S → T))(s : S) → (f AF.⊛ AF.pure s) ≡ (AF.pure (λ f → f s) AF.⊛ f)
 
-    applicativeEndoFunctorOKP : EndoFunctorOKP F {{applicativeEndoFunctor}}
-    applicativeEndoFunctorOKP = record {
-      endoFunctorId = lawId ;
-      endoFunctorCo = λ f g r →
-        {!trans {i = pure {{AF}} f ⊛ (pure {{AF}} g ⊛ r)}
+    applicativeEndoFunctorOKP : EndoFunctorOKP F {{AF.applicativeEndoFunctor}}
+    applicativeEndoFunctorOKP = 
+      record {
+        endoFunctorId = lawId ;
+        endoFunctorCo = co
+      } where
+      open module FF = EndoFunctor (AF.applicativeEndoFunctor)
+      open ≡-Reasoning
+
+      -- I'm crying right now. Fuck you Agda.
+      co : ∀ {R S T}(f : S → T) (g : R → S) r → FF.map f (FF.map g r) ≡ FF.map (f ∘ g) r
+      co f g r =
+        begin
+          FF.map f (FF.map g r)
+        ≡⟨ sym (lawCo (AF.pure f) (AF.pure g) r) ⟩
+         AF._⊛_ (AF._⊛_ (FF.map (λ f₁ → _∘_ f₁) (AF.pure f)) (AF.pure g)) r
+        ≡⟨ cong (λ x → AF._⊛_ (AF._⊛_ x (AF.pure g)) r) (lawHom (λ f₁ g₁ → f₁ ∘ g₁) f) ⟩
+          (AF.pure (λ g₁ → f ∘ g₁) AF.⊛ AF.pure g AF.⊛ r)
+        ≡⟨ cong (λ x → AF._⊛_ x r) (lawHom (_∘_ f) g) ⟩
+          (AF.pure (f ∘ g) AF.⊛ r)
+        ∎
         
-         
 
-        !}
-
-      }
       
