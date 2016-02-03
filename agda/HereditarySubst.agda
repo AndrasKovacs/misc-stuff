@@ -1,1 +1,145 @@
 
+module HereditarySubst where
+
+data Ty : Set where
+  ∙   : Ty
+  _⇒_ : Ty → Ty → Ty
+infixr 5 _⇒_   
+
+data Con : Set where
+  ε   : Con
+  _,_ : Con → Ty → Con
+infixl 4 _,_
+
+data _∈_ : Ty → Con → Set where
+  zero : ∀ {Γ σ} → σ ∈ (Γ , σ)
+  suc  : ∀ {Γ σ σ'} → σ ∈ Γ → σ ∈ Γ , σ'
+infix 4 _∈_ 
+
+data _⊢_ (Γ : Con) : Ty → Set where
+  var : ∀ {σ} → σ ∈ Γ → Γ ⊢ σ
+  lam : ∀ {σ τ} → Γ , σ ⊢ τ → Γ ⊢ σ ⇒ τ
+  app : ∀ {σ τ} → Γ ⊢ (σ ⇒ τ) → Γ ⊢ σ → Γ ⊢ τ
+infix 3 _⊢_
+
+_-_ : ∀ {σ} Γ → σ ∈ Γ → Con
+ε       - ()
+(Γ , σ) - zero  = Γ
+(Γ , σ) - suc x = Γ - x , σ
+infixl 6 _-_
+
+wkv : ∀ {Γ σ τ} (x : σ ∈ Γ) → τ ∈ Γ - x → τ ∈ Γ
+wkv zero    y       = suc y
+wkv (suc x) zero    = zero
+wkv (suc x) (suc y) = suc (wkv x y)
+
+data EqV {Γ}{σ} : ∀ {τ} → σ ∈ Γ → τ ∈ Γ → Set where
+  same : ∀ {x} → EqV x x
+  diff : ∀ {τ} x (y : τ ∈ Γ - x) → EqV x (wkv x y)
+
+eqv : ∀ {Γ σ τ} (x : σ ∈ Γ)(y : τ ∈ Γ) → EqV x y
+eqv zero zero = same
+eqv zero (suc y) = diff zero y
+eqv (suc x) zero = diff (suc x) zero
+eqv (suc x) (suc y) with eqv x y
+eqv (suc x) (suc .x)         | same      = same
+eqv (suc x) (suc .(wkv x y)) | diff .x y = diff (suc x) (suc y)
+
+wkTm : ∀ {Γ σ τ} (x : σ ∈ Γ) → Γ - x ⊢ τ → Γ ⊢ τ
+wkTm x (var y)   = var (wkv x y)
+wkTm x (lam t)   = lam (wkTm (suc x) t)
+wkTm x (app f t) = app (wkTm x f) (wkTm x t)
+
+subst : ∀ {Γ σ τ} (x : σ ∈ Γ) → Γ - x ⊢ σ → Γ ⊢ τ → Γ - x ⊢ τ
+subst x s (var y) with eqv x y
+subst x s (var .x)         | same = s
+subst x s (var .(wkv x y)) | diff .x y = var y
+subst x s (lam t)   = lam (subst (suc x) (wkTm zero s) t)
+subst x s (app f t) = app (subst x s f) (subst x s t)
+
+mutual
+  _∋_~_ : ∀ {Γ} σ → Γ ⊢ σ → Γ ⊢ σ → Set
+  σ ∋ s ~ t = s ~ t
+  infix 3 _∋_~_
+  
+  data _~_ {Γ} : ∀ {σ} → Γ ⊢ σ → Γ ⊢ σ → Set where
+    refl    : ∀ {σ t} → σ ∋ t ~ t
+    sym     : ∀ {σ t s} → t ~ s → σ ∋ s ~ t
+    trans   : ∀ {σ t s u} → t ~ s → s ~ u → σ ∋ t ~ u
+    congΛ   : ∀ {τ σ} {t s : Γ , τ ⊢ σ} → t ~ s → lam t ~ lam s
+    congApp : ∀ {σ τ t s u p} → (τ ⇒ σ) ∋ s ~ t → u ~ p → app s u ~ app t p
+    beta    : ∀ {σ τ}{t : Γ , σ ⊢ τ}{s} → app (lam t) s ~ subst zero s t
+    eta     : ∀ {σ τ t} → σ ⇒ τ ∋ lam (app (wkTm zero t) (var zero)) ~ t
+  infix 3 _~_
+
+-- TODO : try to do proofs with DTDT-style spines!
+mutual 
+  data _⊨_ Γ : Ty → Set where
+    lam : ∀ {σ τ} → Γ , σ ⊨ τ → Γ ⊨ σ ⇒ τ
+    ne  : Ne Γ ∙ → Γ ⊨ ∙
+  infix 3 _⊨_
+
+  data Ne Γ : Ty → Set where
+    _,_ : ∀ {σ τ} → σ ∈ Γ → Γ ⊨* σ , τ → Ne Γ τ 
+
+  data _⊨*_,_ Γ : Ty → Ty → Set where
+    ε   : ∀ {σ} → Γ ⊨* σ , σ 
+    _,_ : ∀ {σ τ ρ} → Γ ⊨ σ → Γ ⊨* τ , ρ → Γ ⊨* σ ⇒ τ , ρ
+  infix 3 _⊨*_,_
+
+mutual
+  ⌈_⌉ : ∀ {Γ σ} → Γ ⊨ σ → Γ ⊢ σ
+  ⌈ lam t      ⌉ = lam ⌈ t ⌉
+  ⌈ ne (f , s) ⌉ = embedSp (var f) s
+
+  embedSp : ∀ {Γ σ τ} → Γ ⊢ σ → Γ ⊨* σ , τ → Γ ⊢ τ
+  embedSp t ε        = t
+  embedSp t (x , sp) = embedSp (app t ⌈ x ⌉) sp
+
+mutual
+  wkNf : ∀ {Γ σ τ} (x : τ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨ σ
+  wkNf x (lam t)      = lam (wkNf (suc x) t)
+  wkNf x (ne (f , s)) = ne (wkv x f , wkSp x s)
+
+  wkSp : ∀ {Γ σ τ ρ} (x : τ ∈ Γ) → Γ - x ⊨* σ , ρ → Γ ⊨* σ , ρ
+  wkSp x ε       = ε
+  wkSp x (t , s) = wkNf x t , wkSp x s
+
+appSp : ∀ {Γ σ τ ρ} → Γ ⊨* σ , τ ⇒ ρ → Γ ⊨ τ → Γ ⊨* σ , ρ
+appSp ε       t = t , ε
+appSp (x , s) t = x , appSp s t
+
+mutual
+  η : ∀ {Γ σ} → σ ∈ Γ → Γ ⊨ σ
+  η x = η-Ne (x , ε)
+
+  η-Ne : ∀ {σ Γ} → Ne Γ σ → Γ ⊨ σ
+  η-Ne {∙}     n       = ne n
+  η-Ne {σ ⇒ τ} (x , s) = lam (η-Ne (suc x , appSp (wkSp zero s) (η zero)))
+
+mutual
+  ⟨_⟶_⟩_ : ∀ {Γ σ τ} → (x : σ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨ τ → Γ - x ⊨ τ
+  ⟨ x ⟶ s ⟩ lam t = lam (⟨ suc x ⟶ wkNf zero s ⟩ t)
+  ⟨ x ⟶ s ⟩ ne (y , sp) with eqv x y
+  ⟨ x ⟶ s ⟩ ne (.x , sp)         | same      = s ◇ ⟨ x ⟶ s ⟩* sp
+  ⟨ x ⟶ s ⟩ ne (.(wkv x y) , sp) | diff .x y = ne (y , ⟨ x ⟶ s ⟩* sp)
+  infix 2 ⟨_⟶_⟩_
+
+  ⟨_⟶_⟩*_ : ∀ {Γ σ τ ρ}(x : σ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨* τ , ρ → Γ - x ⊨* τ , ρ
+  ⟨ x ⟶ s ⟩* ε        = ε
+  ⟨ x ⟶ s ⟩* (t , sp) = (⟨ x ⟶ s ⟩ t) , ⟨ x ⟶ s ⟩* sp
+
+  _◇_ : ∀ {Γ σ τ} → Γ ⊨ σ → Γ ⊨* σ , τ → Γ ⊨ τ
+  t ◇ ε      = t
+  f ◇ s , sp = nfapp f s ◇ sp
+
+  nfapp : ∀ {Γ σ τ} → Γ ⊨ σ ⇒ τ  → Γ ⊨ σ → Γ ⊨ τ
+  nfapp (lam t) s = ⟨ zero ⟶ s ⟩ t
+  infix 3 _◇_
+
+nf : ∀ {Γ σ} → Γ ⊢ σ → Γ ⊨ σ
+nf (var x)   = η x
+nf (lam t)   = lam (nf t)
+nf (app f x) = nfapp (nf f) (nf x)
+
+
