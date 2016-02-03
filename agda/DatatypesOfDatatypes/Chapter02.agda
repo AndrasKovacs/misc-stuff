@@ -83,6 +83,10 @@ wkr : ∀ {Γ Δ σ} → Ren Γ Δ → Ren (Γ , σ) (Δ , σ)
 wkr r zero    = zero
 wkr r (suc i) = suc (r i)
 
+shiftr : ∀ {Γ Δ} Ξ → Ren Γ Δ → Ren (Γ <>< Ξ) (Δ <>< Ξ)
+shiftr []      ren = ren
+shiftr (_ ∷ Ξ) ren = shiftr Ξ (wkr ren)
+
 ren : ∀ {Γ Δ} → Ren Γ Δ → Shub Γ Δ
 ren r []      = var ∘ r
 ren r (_ ∷ Ξ) = ren (wkr r) Ξ
@@ -103,12 +107,6 @@ _<>>_ : ∀ {A} → Cx A → List A → List A
 𝓔        <>> ys = ys
 (xs , x) <>> ys = xs <>> (x ∷ ys)
 infixl 4 _<>>_
-
--- lambda :
---   ∀ {Γ σ τ}
---   → ((∀ {Ξ} → Γ , σ <>< Ξ ⊢ σ) → Γ , σ ⊢ τ)
---   → Γ ⊢ σ ▷ τ
--- lambda f = lam (f λ {Ξ} → var (weak Ξ zero))
 
 rev-lem : ∀ {A} Γ (xs : List A) → (𝓔 <>< (Γ <>> xs)) ≡  ((𝓔 <>< (Γ <>> [])) <>< xs)
 rev-lem 𝓔       xs = refl
@@ -199,20 +197,28 @@ mutual
   lam s $$ (t , sp) = (⟨ zero ⟶ t ⟩ s) $$ sp
   infix 3 _$$_
 
+intros : Cx ⋆ → ⋆ → Cx ⋆
+intros Γ ι       = Γ
+intros Γ (τ ▷ σ) = intros (Γ , τ) σ
 
-η-expand : ∀ {τ Γ} → τ ∈ Γ → Γ ⊨ τ
-η-expand {ι} i = i $ []
-η-expand {τ ▷ ι} i = lam (suc i $ η-expand zero , [])
-η-expand {τ ▷ σ ▷ σ₁} i = {!!}
+renIntros : ∀ Γ τ → Ren Γ (intros Γ τ)
+renIntros Γ ι       = id
+renIntros Γ (τ ▷ σ) = renIntros (Γ , τ) σ ∘ suc
 
--- η-expand {τ ▷ ι} i = lam (suc i $ η-expand zero , [])
--- η-expand {τ ▷ τ₁ ▷ ι} i =
---   lam (lam (suc (suc i) $ η-expand (suc zero) , (η-expand zero , [])))
--- η-expand {τ ▷ τ₁ ▷ τ₂ ▷ τ₃} i = {!!}
+expand : ∀ {Γ} τ → intros Γ τ ⊨ ι → Γ ⊨ τ
+expand ι       t = t
+expand (τ ▷ σ) t = lam (expand σ t)
 
+mutual 
+  η : ∀ {Γ τ} → τ ∈ Γ → Γ ⊨ τ
+  η {Γ}{τ} i = expand τ (renIntros Γ τ i $ mkSpine Γ τ)
+  
+  mkSpine : ∀ Γ τ → intros Γ τ ⊨⋆ τ
+  mkSpine Γ ι       = []
+  mkSpine Γ (τ ▷ σ) = η (renIntros (Γ , τ) σ zero) , mkSpine (Γ , τ) σ
 
 normalize : ∀ {Γ τ} → Γ ⊢ τ → Γ ⊨ τ
-normalize (var x) = {!!}
+normalize (var i) = η i
 normalize (lam t) = lam (normalize t)
 normalize (app f s) with normalize f | normalize s
 ... | lam t | s' = ⟨ zero ⟶ s' ⟩ t
