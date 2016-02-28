@@ -127,13 +127,30 @@ call s = ⟨ inj₂ s , (λ p → ⟨ inj₁ p , (λ ()) ⟩) ⟩
 open import Data.Nat
 open import Data.Maybe
 
--- First take a look at Free Turing Completenes paper
-gas : ∀ {S T} → ℕ → Π⊥ S T → (s : S) → Maybe (T s)
-gas zero    f s = nothing
-gas (suc n) f s with f s
-... | ⟨ inj₁ x  , next ⟩ = just x
-... | ⟨ inj₂ s' , next ⟩ = {!!}
+-- See "Totally Free Turing Completeness" for reference and alternative implementation
+-- https://personal.cis.strath.ac.uk/conor.mcbride/TotallyFree.pdf
+-- The version below is from
+-- https://github.com/effectfully/DataData/blob/master/Container/W.agda
+gas : {A : Set} {B : A -> Set} -> ℕ -> Π⊥ A B -> ∀ x -> Maybe (B x)
+gas         zero    f x = nothing
+gas {A} {B} (suc n) f x = run (f x) where
+  run : ∀ {x} -> (A ◃ B) ⋆ B x -> Maybe (B x)
+  run ⟨ inj₁ y  , r ⟩ = just y
+  run ⟨ inj₂ x' , r ⟩ = maybe (λ x → run (r x)) nothing (gas n f x')
 
+open import Relation.Binary.PropositionalEquality
+open import Relation.Nullary
+open import Relation.Binary
 
+_-_ : (X : Set)(x : X) → Set
+X - x = ∃ λ x' → x' ≢ x
+
+∂ : Con → Con
+∂ (S ◃ P ) = Σ S P ◃ λ {(s , p) → P s - p}
+
+plug : ∀ {C} → (∀ s (p p' : Po C s) → p ≡ p' ⊎ p ≢ p') → (∂ C ×ᶜ Iᶜ) →ᶜ C
+plug {C} poeq? =
+  proj₁ ∘ proj₁ ,
+  (λ {((s , p) , _) p' → [ (λ _ → inj₂ tt) , (λ eq → inj₁ (p' , eq)) ]′ (poeq? s p' p)})
 
 
