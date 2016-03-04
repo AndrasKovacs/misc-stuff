@@ -1,5 +1,5 @@
 
--- Binary trees are unambiguously identifies by their preorder and inorder traversals
+-- Binary trees are unambiguously identified by their preorder and inorder traversals
 
 module _ {α}(A : Set α) where
 
