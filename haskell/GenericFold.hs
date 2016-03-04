@@ -1,10 +1,9 @@
--- Works (GHC 8.0)
---------------------------------------------------------------------------------
+-- Requires GHC 8.0
 
 {-# language
-  TypeApplications, TypeOperators, DataKinds, PolyKinds,
-  RankNTypes, LambdaCase, EmptyCase, ScopedTypeVariables,
-  DeriveFunctor, StandaloneDeriving, GADTs,
+  TypeApplications, TypeOperators, RankNTypes,
+  LambdaCase, EmptyCase, ScopedTypeVariables, PolyKinds,
+  DeriveFunctor, StandaloneDeriving, GADTs, DataKinds,
   TypeFamilies, FlexibleContexts, FlexibleInstances #-}
 
 data SList xs where
@@ -33,29 +32,31 @@ type family CurryNP (ts :: [Maybe *]) (r :: *) :: * where
   CurryNP (Just t  ': ts) r = t -> CurryNP ts r
   CurryNP (Nothing ': ts) r = r -> CurryNP ts r
 
-type family Fold code a r where
-  Fold '[]         a r = r
-  Fold (ts ': tss) a r = CurryNP ts a -> Fold tss a r
+type family Fold' code a r where
+  Fold' '[]         a r = r
+  Fold' (ts ': tss) a r = CurryNP ts a -> Fold' tss a r
+
+type Fold a r = Fold' (Code a) r (a -> r)
   
 uncurryNP :: CurryNP code a -> NP code a -> a
 uncurryNP f Nil        = f
 uncurryNP f (x :> xs)  = uncurryNP (f x) xs
 uncurryNP f (Rec k xs) = uncurryNP (f k) xs
 
-switchFold :: forall a r code.  SList code -> (a -> Fold code r r) -> Fold code r (a -> r)
+switchFold :: forall a r code.  SList code -> (a -> Fold' code r r) -> Fold' code r (a -> r)
 switchFold SNil         f = f
 switchFold (SCons code) f = \x -> switchFold @a @r code (\a -> f a x)
 
-toFold :: forall a code. SList code -> ((SOP code a -> a) -> a) -> Fold code a a
+toFold :: forall a code. SList code -> ((SOP code a -> a) -> a) -> Fold' code a a
 toFold SNil         fsop = fsop (\case {})
 toFold (SCons code) fsop =
   \fnp -> toFold code (\f -> fsop (\case Z np -> uncurryNP fnp np; S sop -> f sop))
 
-gcata :: forall a r. Generic a => Fold (Code a) r (a -> r)
+gcata :: forall a r. Generic a => Fold a r
 gcata = switchFold @a @r code (toFold @r code . flip cata . to)
   where code = sing @_ @(Code a)
 
-gcata1 :: forall f a r. Generic (f a) => Fold (Code (f a)) r (f a -> r)
+gcata1 :: forall f a r. Generic (f a) => Fold (f a) r
 gcata1 = gcata @(f a) @r
 
 newtype Fix f = In {out :: f (Fix f)}
