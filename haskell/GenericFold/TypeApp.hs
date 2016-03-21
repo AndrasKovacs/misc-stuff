@@ -18,7 +18,7 @@ data NP (ts :: [Maybe *]) (k :: *) where
   Nil  :: NP '[] k
   (:>) :: t -> NP ts k -> NP (Just t ': ts) k
   Rec  :: k -> NP ts k -> NP (Nothing ': ts) k
-infixr 5 :>  
+infixr 5 :>
 
 data SOP (code :: [[Maybe *]]) (k :: *) where
   Z :: NP ts k -> SOP (ts ': code) k
@@ -37,7 +37,7 @@ type family Fold' code a r where
   Fold' (ts ': tss) a r = CurryNP ts a -> Fold' tss a r
 
 type Fold a r = Fold' (Code a) r (a -> r)
-  
+
 uncurryNP :: CurryNP code a -> NP code a -> a
 uncurryNP f Nil        = f
 uncurryNP f (x :> xs)  = uncurryNP (f x) xs
@@ -79,9 +79,9 @@ instance Generic (Maybe a) where
 instance SListI code => Generic (Fix (SOP code)) where
   type Code (Fix (SOP code)) = code
   to   = id
-  from = id  
+  from = id
 
 instance Generic [a] where
-  type Code [a] = ['[], [Just a, Nothing]]  
+  type Code [a] = ['[], [Just a, Nothing]]
   to   = foldr (\x xs -> In (S (Z (x :> Rec xs Nil)))) (In (Z Nil))
   from = gcata @(Rep [a]) [] (:)
