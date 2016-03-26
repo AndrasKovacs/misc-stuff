@@ -1,10 +1,9 @@
 
 import Control.Monad
-import Debug.Trace
 
 data Term
   = Var !Int
-  | App !Term Term
+  | App Term Term
   | Lam Term Term
   | Pi Term Term
   | Star
@@ -12,136 +11,87 @@ data Term
 
 data Val
   = VVar !Int
-  | VApp !Val Val
-  | VLam Type (Val -> Val)
-  | VPi  Type (Val -> Val)
+  | VApp Val Val
+  | VLam Val (Val -> Val)
+  | VPi  Val (Val -> Val)
   | VStar
+ 
 
-type Type = Val
+type Type  = Val
+type Type' = [Val] -> Int -> Type
+type Val'  = Type'
+
+data Cxt = Cxt {types :: [Type'], vars :: [Val], size :: Int}
+
+peek :: Cxt -> Type' -> Type
+peek Cxt{..} val = val vars size
+
+(<:) :: Type' -> Cxt -> Cxt
+(<:) ty cxt@Cxt{..} = Cxt (ty : types) (VVar size : vars) (size + 1)
 
 ($$) :: Val -> Val -> Val
 ($$) (VLam _ f) x = f x
 ($$) f          x = VApp f x
 infixl 9 $$
 
-quote :: Val -> Term
-quote = flip go 0 where
-  go :: Val -> Int -> Term
+eval :: Term -> Val'
+eval (Var i)   env !d = env !! (d - i - 1)
+eval Star      _    _ = VStar
+eval (App f x) env  d = eval f env d $$ eval x env d
+eval (Lam a t) env  d = VLam (eval a env d) $ \v -> eval t (v:env) (d + 1)
+eval (Pi  a t) env  d = VPi  (eval a env d) $ \v -> eval t (v:env) (d + 1)
+
+quote :: Cxt -> Val -> Term
+quote cxt val = go val (size cxt) where
   go (VVar i)   !d = Var i
   go VStar       d = Star
   go (VApp f x)  d = App (go f d) (go x d)
   go (VLam ty f) d = Lam (go ty d) (go (f (VVar d)) (d + 1))
   go (VPi ty f)  d = Pi  (go ty d) (go (f (VVar d)) (d + 1))
 
-eval :: Term -> [Val] -> Int -> Val
-eval = go where
-  go :: Term -> [Val] -> Int -> Val
-  go (Var i)    env !d = env !! (d - i - 1)
-  go Star       env  d = VStar
-  go (App f x)  env  d = go f env d $$ go x env d
-  go (Lam ty t) env  d = VLam (go ty env d) $ \t' -> go t (t':env) (d + 1)
-  go (Pi  ty t) env  d = VPi  (go ty env d) $ \t' -> go t (t':env) (d + 1)
+check :: Cxt -> Term -> Type -> Maybe ()
+check cxt t ty = do
+  tt <- infer cxt t
+  guard $ quote cxt (peek cxt tt) == quote cxt ty
 
-type TC      = Either String
-type Closure = [Val] -> Int -> Type
-type Cxt     = (Int, [Closure])
+infer :: Cxt -> Term -> Maybe Type'
+infer cxt@Cxt{..}  = \case  
+  Var i ->
+    pure $ \env d -> (types !! (d - i - 1)) env d
 
-(<:) :: Closure -> Cxt -> Cxt
-c <: (len, cxt) = (len + 1, c:cxt)
+  Star ->
+    pure $ \_ _ -> VStar
 
-(!) :: Cxt -> Int -> Closure
-(!) (_, cxt) i = cxt !! i
-
-cxtLen :: Cxt -> Int
-cxtLen = fst
-
-emptyCxt :: Cxt
-emptyCxt = (0, [])
-
-check :: Cxt -> Term -> Type -> TC ()
-check cxt t want = do
-  has <- infer cxt t
-  when (quote (has [] (cxtLen cxt)) /= quote want) $ -- is this right?
-    Left "type mismatch"
-
-infer :: Cxt -> Term -> TC Closure
-infer cxt@(!_, _) t = case t of
-  Var i   -> pure (\vs d -> (cxt ! (d - i - 1)) vs d)
-  Star    -> pure (\_ _ -> VStar)
+  Pi a b -> do
+    check cxt a VStar
+    let a' = eval a
+    check (a' <: cxt) b VStar
+    pure $ \_ _ -> VStar
+  
   Lam a t -> do
     check cxt a VStar
     let a' = eval a
     b <- infer (a' <: cxt) t
-    pure $ \vs d -> VPi (a' vs d) $ \v -> b (v : vs) (d + 1)
-
-infer0 t = (quote . ($0) . ($[])) <$> infer emptyCxt t
-
-
--- infer :: [[Val] -> Int -> Type] -> Term -> TC ([Val] -> Int -> Type)
--- infer ts t = case t of
---   Var i   -> pure (\vs d -> (ts !! (d - i - 1)) vs d)
---   Star    -> pure (\_ _ -> Star)
---   Lam a t -> do
---     check ts a Star
---     let a' = eval a
---     b <- infer (a' : ts) t
---     pure $ \vs d -> VPi (a' vs d) $ \v -> b (v : vs) (d + 1)
+    pure $ \env d -> VPi (a' env d) $ \v -> b (v:env) (d + 1)
+    
+  App f x -> do
+    tf <- infer cxt f
+    case peek cxt tf of
+      VPi a b -> do
+        check cxt x a
+        pure $ \env d ->
+          case tf env d of VPi _ b -> b (eval x env d)
+      _ -> Nothing
 
 
 
+cxt0 = Cxt [] [] 0
 
-    -- let a' = eval a vs d
-    -- b <- infer (a':ts) (Var d:vs) (d + 1) t
+infer0 :: Term -> Maybe Term
+infer0 = fmap (quote cxt0 . peek cxt0) . infer cxt0
 
-  --   _
+id'    = Lam Star $ Lam (Var 0) $ Var 1
+const' = Lam Star $ Lam Star $ Lam (Var 0) $ Lam (Var 1) $ Var 2
+apId   = Lam (Pi Star (Var 0)) (Var 0)
 
 
-
-
-
--- type TC    = Either String
--- type Cxt a = a -> TC (Type a)
-
--- consCxt :: Type a -> Cxt a -> Cxt (Var () a)
--- consCxt ty cxt (B ()) = pure (F <$> ty)
--- consCxt ty cxt (F a)  = (F <$>) <$> cxt a
-
--- check :: Eq a => Cxt a -> Type a -> Term a -> TC ()
--- check cxt want t = do
---   have <- infer cxt t
---   when (have /= want) $ Left "type mismatch"
-
--- infer :: Eq a => Cxt a -> Term a -> TC (Type a)
--- infer cxt = \case
---   Var a -> cxt a
---   Star  -> pure Star
---   Lam ty t -> do
---     check cxt Star ty
---     let ty' = rnf ty
---     Pi ty' . toScope <$> infer (consCxt ty' cxt) (fromScope t)
---   Pi ty t -> do
---     check cxt Star ty
---     check (consCxt (rnf ty) cxt) Star (fromScope t)
---     pure Star
---   App f x ->
---     infer cxt f >>= \case
---       Pi ty t -> do
---         check cxt ty x
---         pure $ rnf (instantiate1 x t)
---       _ -> Left "can't apply non-function"
-
--- -- infer in the empty context
--- infer0 :: Eq a => Term a -> TC (Type a)
--- infer0 = infer (const $ Left "variable not in scope")
-
--- -- smart constructors
-
--- lam :: Eq a => a -> Type a -> Term a -> Term a
--- lam v ty t = Lam ty (abstract1 v t)
-
--- pi :: Eq a => a -> Type a -> Term a -> Term a
--- pi v ty t = Pi ty (abstract1 v t)
-
--- (==>) :: Type a -> Type a -> Type a -- non-dependent function type
--- a ==> b = Pi a (Scope $ fmap (F . pure) b)
--- infixr 5 ==>
