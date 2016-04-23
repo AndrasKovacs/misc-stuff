@@ -270,7 +270,7 @@ levelof {l} _ = l
 
 -- Λ a. λ (x : a). x
 ID : Term [] _
-pID = Λ (λ' (free zero) (var here))
+ID = Λ (λ' (free zero) (var here))
 
 -- Λ a b. λ (x : a) (y : b). x
 CONST : Term [] _

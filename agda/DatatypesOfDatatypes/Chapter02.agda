@@ -1,7 +1,7 @@
 
 open import Data.List
 open import Data.Nat
-open import Data.Product
+open import Data.Product hiding (,_)
 open import Data.Unit
 open import Function hiding (_$_)
 open import Data.Empty
@@ -14,9 +14,9 @@ data ⋆ : Set where
 infixr 5 _▷_
 
 data Cx (A : Set) : Set where
-  𝓔   : Cx A
+  𝓔  : Cx A
   _,_ : Cx A → A → Cx A
-infixl 4 _,_
+infix 6 _,_
 
 data _∈_ (τ : ⋆) : Cx ⋆ → Set where
   zero : ∀ {Γ}           → τ ∈ Γ , τ
@@ -68,7 +68,7 @@ Sub Γ Δ = ∀ {τ} → τ ∈ Γ → Δ ⊢ τ
 _<><_ : ∀ {A} → Cx A → List A → Cx A
 xz <>< []       = xz
 xz <>< (a ∷ as) = (xz , a) <>< as
-infixl 4 _<><_
+infixl 5 _<><_
 
 Shub : Cx ⋆ → Cx ⋆ → Set
 Shub Γ Δ = ∀ Ξ → Sub (Γ <>< Ξ) (Δ <>< Ξ)
@@ -105,7 +105,7 @@ weak (_ ∷ Ξ) = weak Ξ ∘ suc
 _<>>_ : ∀ {A} → Cx A → List A → List A
 𝓔        <>> ys = ys
 (xs , x) <>> ys = xs <>> (x ∷ ys)
-infixl 4 _<>>_
+infixl 5 _<>>_
 
 rev-lem : ∀ {A} Γ (xs : List A) → (𝓔 <>< (Γ <>> xs)) ≡  ((𝓔 <>< (Γ <>> [])) <>< xs)
 rev-lem 𝓔       xs = refl
