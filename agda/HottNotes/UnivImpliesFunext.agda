@@ -40,13 +40,13 @@ idtoeqv p = (coe (sym p) , coe p) , coe-inv-r p , coe-inv-l p
 ⟵ : ∀ {α β A B} → _~_ {α}{β} A B → (B → A)
 ⟵ = proj₁ ∘ proj₁
 
-backwards-too :
+backwards-preserves₁ :
   ∀ {α β γ}{A : Set α}{B : A → Set β}{B' : A → Set γ}
   → (eq : Σ A B ~ Σ A B')
   → (∀ p → proj₁ (⟶ eq p) ≡ proj₁ p)
   → (∀ p → proj₁ (⟵ eq p) ≡ proj₁ p)
-backwards-too ((f , _) , _ , gf) preserve p
-  = sym (trans (cong proj₁ (sym (gf p))) (preserve (f p)))
+backwards-preserves₁ ((f , _) , _ , gf) preserves₁ p
+  = sym (trans (cong proj₁ (sym (gf p))) (preserves₁ (f p)))
 
 Paths : ∀ {α} → Set α → Set α
 Paths A = ∃ λ (p : A × A) → proj₁ p ≡ proj₂ p
@@ -57,22 +57,22 @@ Homotopies A B = ∃ λ (p : (A → B) × (A → B)) → ∀ a → proj₁ p a �
 contract : ∀ {α} (A : Set α) → Paths A ~ A
 contract A = ((λ a → (a , a) , refl) , proj₁ ∘ proj₁) , (λ {((_ , _) , refl) → refl}) , (λ _ → refl)
 
-J :
-  ∀ {α β}{A : Set α}(C : {x y : A} → x ≡ y → Set β)
-  → (∀ {a} → C {a} refl) → ∀ {a a'} p → C {a}{a'} p
-J C refl* refl = refl*
-
 postulate
   ua   : ∀ {α}{A B : Set α} → A ~ B → A ≡ B
   ua-β : ∀ {α A B} eqv      → idtoeqv {α}{A}{B} (ua eqv) ≡ eqv
   ua-η : ∀ {α A B} p        → ua (idtoeqv {α}{A}{B} p)   ≡ p
+
+J :
+  ∀ {α β}{A : Set α}(C : {x y : A} → x ≡ y → Set β)
+  → (∀ {a} → C {a} refl) → ∀ {a a'} p → C {a}{a'} p
+J C refl* refl = refl*
 
 coe-∘ :
   ∀ {α β}{A : Set α}{B B' : Set β} (eqv : B ~ B')
   → coe (cong (λ x → A → x) (ua eqv)) ≡ (⟶ eqv ∘_)
 coe-∘ {A = A} eqv =
   trans
-    (J (λ p → coe (cong (λ x → A → x) p) ≡ (⟶ (idtoeqv p) ∘_)) refl (ua eqv))
+    (J (λ p → coe (cong (λ x → A → x) p) ≡ (coe p ∘_)) refl (ua eqv))
     (cong (λ x → ⟶ x ∘_) (ua-β eqv))
 
 Σ-lem :
@@ -106,5 +106,6 @@ module _ {α β}{A : Set α}{B : Set β} where
     = refl
 
   funext : ∀ {f g : A → B} → (∀ a → f a ≡ g a) → f ≡ g
-  funext {f}{g} p = Σ-lem (⟵ eq4 ((f , g) , p)) (f , g) (backwards-too eq4 eq4-preserves₁ _)
+  funext {f}{g} p =
+    Σ-lem (⟵ eq4 ((f , g) , p)) (f , g) (backwards-preserves₁ eq4 eq4-preserves₁ _)
   
