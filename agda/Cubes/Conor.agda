@@ -64,14 +64,18 @@ postulate
 -- in cubicaltt there's no J reduction for paths. Why/how is the thing below dodgy?
 -- I think that this is sort of the analogue of the stuck coercion erasure hack from
 -- OTT, except I find this nicer
+
+-- question : what's the difference between checking whether:
+--   a .) the path is constant in the sense of the I parameter not occurring inside
+--   b .) the path is constant in the sense of Q $ ₀ and Q $ ₁ being definitionally equal
+
 postulate
   coerce-const : ∀ ℓ (A : Set ℓ) a p q → a [ p ∣ ⟨ _ ⟩ A ∣ q ⟩ ↦ a
-
 {-# REWRITE coerce-const #-}
 
+
+
 postulate
-  -- is this even needed, along with composition?
-  -- can we just inline this into coerce-≡ ?
   coerce-∙   :
     ∀ ℓ (S T U : Set ℓ) (Q : S ≡ T) (Q' : T ≡ U) (a : S)
     → a [ ₀ ∣ Q ∙ Q' ∣ ₁ ⟩ ↦ ((a [ ₀ ∣ Q ∣ ₁ ⟩) [ ₀ ∣ Q' ∣ ₁ ⟩)
