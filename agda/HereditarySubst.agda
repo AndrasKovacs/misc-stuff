@@ -9,12 +9,12 @@ infixr 5 _⇒_
 data Con : Set where
   ε   : Con
   _,_ : Con → Ty → Con
-infixl 4 _,_
+infixl 5 _,_
 
 data _∈_ : Ty → Con → Set where
   zero : ∀ {Γ σ} → σ ∈ (Γ , σ)
   suc  : ∀ {Γ σ σ'} → σ ∈ Γ → σ ∈ Γ , σ'
-infix 4 _∈_ 
+infixr 4 _∈_ 
 
 data _⊢_ (Γ : Con) : Ty → Set where
   var : ∀ {σ} → σ ∈ Γ → Γ ⊢ σ

@@ -39,7 +39,7 @@ tvar = embed
 ⟦ a ⇒ b ⟧ᵘ = ⟦ a ⟧ᵘ → ⟦ b ⟧ᵘ
 ⟦ ∀' t  ⟧ᵘ = ∀ x → ⟦ t x ⟧ᵘ
 
-infixl 5 _,ᵛ_
+infixl 6 _,ᵛ_
 data Cxt : ℕ → ℕ → Set where
   []    : Cxt 0 0
   _,ᵗ   : ∀ {t v} → Cxt t v → Cxt (suc t) v
@@ -52,7 +52,7 @@ data Cxt : ℕ → ℕ → Set where
 
 data _∈_ : ∀ {t v} → (Vec U0 t → U) → Cxt t v → Set where
   []   : ∀ {t v x}{Γ : Cxt t v} → x ∈ (Γ ,ᵛ x)
-  _,ᵗ  : ∀ {t v x}{Γ : Cxt t v} → x ∈ Γ → (x ∘ tail) ∈ Γ ,ᵗ 
+  _,ᵗ  : ∀ {t v x}{Γ : Cxt t v} → x ∈ Γ → (x ∘ tail) ∈ (Γ ,ᵗ)
   _,ᵛ  : ∀ {t v x y}{Γ : Cxt t v} → x ∈ Γ → x ∈ (Γ ,ᵛ y)
 
 lookupVar : ∀ {t v σ ts}{Γ : Cxt t v} → σ ∈ Γ → ⟦ Γ ⟧ᶜ ts → ⟦ σ ts ⟧ᵘ 
