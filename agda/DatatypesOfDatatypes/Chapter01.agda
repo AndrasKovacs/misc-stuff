@@ -245,9 +245,9 @@ drop' F G (sha , shb) =
 record MonoidOK X ⦃ M : Monoid X ⦄ : Set where
   constructor rec
   field
-    absorbL : (x : X) → ε ∙ x ≡ x
-    absorbR : (x : X) → x ∙ ε ≡ x
-    assoc   : (x y z : X) → (x ∙ y) ∙ z ≡ x ∙ (y ∙ z)
+    absorbL : (x : X) → (ε ∙ x) ≡ x
+    absorbR : (x : X) → (x ∙ ε) ≡ x
+    assoc   : (x y z : X) → ((x ∙ y) ∙ z) ≡ (x ∙ (y ∙ z))
 
 ++-[] : ∀ {α}{A : Set α} {n} (xs : Vec A n) → [ Vec A ] (xs ++ []) ≅ xs
 ++-[] []       = HI.refl
@@ -269,7 +269,7 @@ listNMonoidOK {X} = record {
 record MonoidHom {X} ⦃ MX : Monoid X ⦄{Y}⦃ MY : Monoid Y ⦄ (f : X → Y) : Set where
   field
     resp-ε : f ε ≡ ε
-    resp-∙ : ∀ x x' → f (x ∙ x') ≡ f x ∙ f x'
+    resp-∙ : ∀ x x' → (f (x ∙ x')) ≡ (f x ∙ f x')
 
 fst : ∀ {X} → ⟦ ListN ⟧ₙ X → ℕ
 fst (n , xs) = n
@@ -332,15 +332,15 @@ vecApplicativeOK = record {
 
     lawCo :
       ∀ {n R S T}(fs : Vec (S → T) n)(gs : Vec (R → S) n)(r : Vec R n)
-      → (replicate (λ f g → f ∘ g) ⊛ fs) ⊛ gs ⊛ r ≡ fs ⊛ (gs ⊛ r)
+      → ((replicate (λ f g → f ∘ g) ⊛ fs) ⊛ gs ⊛ r) ≡ (fs ⊛ (gs ⊛ r))
     lawCo [] gs r = refl
     lawCo (f ∷ fs) (g ∷ gs) (r ∷ rs) = cong (_∷_ (f (g r))) (lawCo fs gs rs)
 
-    lawHom : ∀ {n}{S T}(f : S → T) s → replicate {n = n} f ⊛ replicate s ≡ replicate (f s)
+    lawHom : ∀ {n}{S T}(f : S → T) s → (replicate {n = n} f ⊛ replicate s) ≡ replicate (f s)
     lawHom {zero}   f s = refl
     lawHom {suc n₁} f s = cong (_∷_ (f s)) (lawHom {n₁} f s)
 
-    lawCom : ∀ {n S T}(fs : Vec (S → T) n) s → fs ⊛ replicate s ≡ replicate (λ f → f s) ⊛ fs
+    lawCom : ∀ {n S T}(fs : Vec (S → T) n) s → (fs ⊛ replicate s) ≡ (replicate (λ f → f s) ⊛ fs)
     lawCom []       s = refl
     lawCom (f ∷ fs) s = cong (_∷_ (f s)) (lawCom fs s)
 
@@ -351,7 +351,7 @@ record AppHom {F}{{AF : Applicative F}}{G}{{ AG : Applicative G}}(k : F ~> G) : 
   constructor rec
   field
     respPure : ∀ {X} (x : X) → k (pure x) ≡ pure x
-    resp-⊛   : ∀ {S T}(f : F (S → T))(s : F S) → k (f ⊛ s) ≡ k f ⊛ k s
+    resp-⊛   : ∀ {S T}(f : F (S → T))(s : F S) → k (f ⊛ s) ≡ (k f ⊛ k s)
 
 monoidApplicativeHom :
   ∀ {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X → Y){{hf : MonoidHom f}}
@@ -384,7 +384,7 @@ homSumOKP {F}{G}{{AF}}{{AG}}
    open module AG = Applicative AG
    open module AF = Applicative AF
 
-   lawCom' : ∀ {S T}(f : F (S → T) + G (S → T)) s → f HS.⊛ HS.pure s ≡ HS.pure (λ f → f s) HS.⊛ f
+   lawCom' : ∀ {S T}(f : F (S → T) + G (S → T)) s → (f HS.⊛ HS.pure s) ≡ (HS.pure (λ f → f s) HS.⊛ f)
    lawCom' (true  , ff) s = cong (_,_ true) (lawCom ff s)
    lawCom' {S}{T}(false , gf) s
        rewrite
@@ -393,17 +393,17 @@ homSumOKP {F}{G}{{AF}}{{AG}}
      | lawCom₁ gf s
      = refl
 
-   lawHom' : ∀ {S T}(f : S → T) s → HS.pure f HS.⊛ HS.pure s ≡ HS.pure (f s)
+   lawHom' : ∀ {S T}(f : S → T) s → (HS.pure f HS.⊛ HS.pure s) ≡ HS.pure (f s)
    lawHom' f s = cong (_,_ true) (lawHom f s)
 
-   lawId' : ∀ {X} (x : F X + G X) → HS.pure id HS.⊛ x ≡ x
+   lawId' : ∀ {X} (x : F X + G X) → (HS.pure id HS.⊛ x) ≡ x
    lawId' (true  , fx) = cong (_,_ true) (lawId fx)
    lawId' {X}(false , gx) rewrite respPure {X → X} id | lawId₁ gx = refl
 
    lawCo' :
      ∀ {R S T}(f : F (S → T) + G (S → T))
      (g : F (R → S) + G (R → S)) (r : F R + G R)
-     → HS.pure (λ f g → f ∘ g) HS.⊛ f HS.⊛ g HS.⊛ r ≡ f HS.⊛ (g HS.⊛ r)
+     → (HS.pure (λ f g → f ∘ g) HS.⊛ f HS.⊛ g HS.⊛ r) ≡ (f HS.⊛ (g HS.⊛ r))
      
    lawCo' (true  , f') (true  , g') (true  , r) =
      cong (_,_ true) (lawCo f' g' r)

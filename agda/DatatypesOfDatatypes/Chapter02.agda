@@ -290,7 +290,7 @@ quo {Γ} τ   (inj₂ s) = expand _ (stopSp (renSt (renIntros Γ τ) s) (mkSpine
 
 apply : ∀ {Γ σ τ} → Val Γ (σ ⇒ τ) → Val Γ σ → Val Γ τ
 apply (inj₁ f) s = f id s
-apply (inj₂ x) s = inj₂ (x $ quo _ s)
+apply (inj₂ x) s = inj₂ (x $ quo _ s) -- inj₂ (x $ quo _ s)
 
 eval : ∀ {Γ Δ τ} → Γ ⊢ τ → ⟦ Γ ⟧c (Val Δ) → Val Δ τ
 eval (var i)   γ = ⟦ i ⟧∈ γ
