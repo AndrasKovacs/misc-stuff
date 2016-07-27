@@ -98,7 +98,7 @@ ND++ (_ ∷ xs) ys (px , pxs) pys disj =
 NDSplit : ∀ xs {ys} → NoDupList (xs ++ ys) → NoDupList xs × NoDupList ys × DisjLists xs ys
 NDSplit [] p = L.lift tt , p , (λ ())
 NDSplit (x ∷ xs) {ys} (px , pxs) with NDSplit xs pxs
-... | ndxs , ndys , disj = (px ∘ flip _++^_ ys , ndxs) , ndys , disj' 
+... | ndxs , ndys , disj = (px ∘ (_++^ ys) , ndxs) , ndys , disj'
   where
   disj' : DisjLists (x ∷ xs) ys
   disj' here      e' = px (xs ^++ e')
