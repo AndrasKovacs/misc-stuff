@@ -39,7 +39,11 @@ _×ᶜ_ : Con → Con → Con
 Σᶜ : (A : Set) (C : A → Con) → Con
 Σᶜ A C = ∃ (Sh ∘ C) ◃ λ {(a , s) → Po (C a) s}
 
--- skip exercises 3.1, 3.2
+Πᶜ : (A : Set) (C : A → Con) → Con
+Πᶜ A C = (∀ a → Sh (C a)) ◃ (λ f → ∃ λ a → Po (C a) (f a))
+
+-- _∘ᶜ_ : Con → Con → Con
+-- (S ◃ P) ∘ᶜ (S' ◃ P') = (∃ λ s → P s → S') ◃ (λ {(s , ps') → ∃ (P' ∘ ps')})
 
 _→ᶜ_ : Con → Con → Set
 (S ◃ P) →ᶜ (S' ◃ P') = ∃ λ (f : S → S') → ∀ s → P' (f s) → P s

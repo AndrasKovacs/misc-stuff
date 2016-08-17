@@ -36,7 +36,7 @@ test4 = run $ runState ('a', 0) $ runState (True, 0) $
 
 -- This fails for the same reason
 test5 = run $ runState (0, 'a') $ runState (0, True) $ do
-  -- put (0, False) -- error
+  -- put (0, False) -- error, or a unusable type if we have NoMonomorphismRestriction
   pure ()
 
 -- Multiple writer with type applications
