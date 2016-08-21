@@ -2,42 +2,6 @@
 
 module BoundDependentLC where
 
-{- TODO:
-   - make Cxt first-order GADT
-   - parser
-
-   - error messages:
-     - src pos
-     - original names carried by bound vars
-     - pretty printing eta-short normal forms
-
-   - representations:
-     - front:
-         with all the sugar and src pos
-     - desugared:
-         with src pos, implicits + annotations, TC elaborates to core
-     - core:
-         No implicits, no src pos, decorated (but not annotated) with some types
-         purepose: easy TC and checking for def. equality
-         optionally: coreValue:
-            - NBE for core with beta/eta normalization
-            - May be used during elab.
-     - value:
-         NBE, types and annotations erased
-         used for interpreted running
-
-  - Faster, more flexible Bound, fast context with strongly typed API
-    - Should be enough for "top-level" names for now
-    - sane hereditary subst
-      - investigate NBE too
-
-  - fixpoints, dependent case, inductive data
-    - termination checking
-
-  - holes
--}
-
-
 import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
@@ -76,24 +40,15 @@ type TC = Either String
 type Cxt a = a -> TC (Type a)
 
 -- Context extension.
-(<:) :: Type a -> Cxt a -> Cxt (Var () a) 
+(<:) :: Type a -> Cxt a -> Cxt (Var () a)
 (<:) ty cxt (B ()) = pure (F <$> ty)
 (<:) ty cxt (F a)  = (F <$>) <$> cxt a
 infixr 5 <:
 
--- Eta reduce term. 
-etaReduce :: Eq a => Term a -> Term a
-etaReduce = undefined
-
--- Eta expand variable.
-etaExpand :: Eq a => Type a -> a -> Term a
-etaExpand (Pi a b) v = _ -- this ain't simple
-  -- Lam Nothing (Scope (App (Var (F (Var v))) (Var (B ()))))
-
--- Reduce term to eta-beta nf. Also remove annotations from terms and lambda args.
+-- Reduce term to beta nf. Also remove annotations from terms and lambda args.
 rnf :: Eq a => Cxt a -> Type a -> Term a -> Term a
 rnf cxt ty = \case
-  Var a   -> etaExpand ty a
+  Var a   -> Var a
   Star    -> Star
   Ann t _ -> rnf cxt ty t
   Lam _ t -> case ty of
@@ -104,8 +59,8 @@ rnf cxt ty = \case
     (Right tf, Right tx) -> case (rnf cxt tf f, rnf cxt tx x) of
       (Lam _ t, x') -> rnf cxt ty (instantiate1 x' t)
       (f'     , x') -> App f' x'
-    _ -> error "impossible: type error in rnf"        
-            
+    _ -> error "impossible: type error in rnf"
+
 -- Check type of term, return term in nf.
 checkNf :: Eq a => Cxt a -> Type a -> Term a -> TC (Term a)
 checkNf cxt ty t = rnf cxt ty t <$ check cxt ty t
@@ -118,7 +73,7 @@ check cxt ty = \case
     _      -> Left "type mismatch"
   t -> do
     ty' <- infer cxt t
-    when (ty /= ty') $ Left "type mismatch"    
+    when (ty /= ty') $ Left "type mismatch"
 
 -- Infer type and return it in nf.
 infer :: Eq a => Cxt a -> Term a -> TC (Type a)
