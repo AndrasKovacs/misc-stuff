@@ -12,6 +12,8 @@ import Data.Type.Bool
 import Control.Monad
 import Control.Arrow
 import Data.Word
+import GHC.TypeLits (Symbol)
+import Data.Monoid
 
 -- Examples
 --------------------------------------------------------------------------------
@@ -54,6 +56,15 @@ test8 = run $ runWriter @String $ runWriter @String $
   -- tell "foo" -- error
   pure ()
 
+-- Labelled state: works the same if there's only one State, but needs mandatory labels
+-- if there are more
+test9 = run $ lrunState 0 $
+  lmodify (+100)
+
+-- But has full type inference if we do specify labels
+test10 = run $ lrunState @"x" 0 $ lrunState @"y" 0 $ do
+  lmodify @"x" (+100)
+  lmodify @"y" (+20)
 
 -- Untyped preorder traversal of types
 --------------------------------------------------------------------------------
@@ -159,20 +170,20 @@ run (Pure a) = a
 liftEff :: (Functor f, Elem f fs) => f a -> Eff fs a
 liftEff fa = Free (inj (Pure <$> fa))
 
-handleRelay ::
-     Functor (NS fs)
-  => (a -> Eff fs b)
-  -> (f (Eff (f ': fs) a) -> Eff fs b)
+cata :: Functor (NS fs) => (a -> r) -> (NS fs r -> r) -> Eff fs a -> r
+cata pure free = go where
+  go (Pure a)  = pure a
+  go (Free ns) = free (go <$> ns)
+
+handle ::
+     (Functor f, Functor (NS fs))
+  => (a -> b) -> (f (Eff fs b) -> Eff fs b)
   -> Eff (f ': fs) a -> Eff fs b
-handleRelay p f = go where
-  go (Pure x)          = p x
-  go (Free (Here fx))  = f fx
-  go (Free (There ns)) = Free (go <$> ns)
+handle pure free = cata (Pure . pure) (\case Here fa -> free fa; There ns -> Free ns)
 
 interpose ::
      Elem f fs
-  => (a -> Eff fs b)
-  -> (f (Eff fs a) -> Eff fs b)
+  => (a -> Eff fs b) -> (f (Eff fs a) -> Eff fs b)
   -> Eff fs a -> Eff fs b
 interpose p f = go where
   go (Pure x)  = p x
@@ -183,10 +194,13 @@ interpose p f = go where
 
 data State s k = Put s k | Get (s -> k) deriving Functor
 
-runState :: forall s fs a. Functor (NS fs) => s -> Eff (State s ': fs) a -> Eff fs (a, s)
-runState s = handleRelay (Pure . (,s)) $ \case
-  Put s' k -> runState s' k
-  Get k    -> runState s (k s)
+runState :: forall s fs a. Functor (NS fs) => s -> Eff (State  s ': fs) a -> Eff fs (a, s)
+runState = flip $ cata
+  (\a s -> Pure (a, s))
+  (\case
+      Here (Get k) -> \s -> k s s
+      Here (Put s' k) -> \_ -> k s'
+      There ns -> \s -> Free (($ s) <$> ns))
 
 get :: forall s fs. Elem (State s) fs => Eff fs s
 get = liftEff (Get id)
@@ -197,17 +211,41 @@ put s = liftEff (Put s ())
 modify :: forall s fs. Elem (State s) fs => (s -> s) -> Eff fs ()
 modify f = put =<< f <$> get
 
+-- Labelled state
+--------------------------------------------------------------------------------
+
+data LState l s k = LPut s k | LGet (s -> k) deriving Functor
+
+lrunState :: forall l s fs a. Functor (NS fs) => s -> Eff (LState l s ': fs) a -> Eff fs (a, s)
+lrunState = flip $ cata
+  (\a s -> Pure (a, s))
+  (\case
+      Here (LGet k) -> \s -> k s s
+      Here (LPut s' k) -> \_ -> k s'
+      There ns -> \s -> Free (($ s) <$> ns))
+
+lget :: forall l s fs. Elem (LState l s) fs => Eff fs s
+lget = liftEff (LGet @l id)
+
+lput :: forall l s fs. Elem (LState l s) fs => s -> Eff fs ()
+lput s = liftEff (LPut @l s ())
+
+lmodify :: forall l s fs. Elem (LState l s) fs => (s -> s) -> Eff fs ()
+lmodify f = lput @l =<< f <$> lget @l
+
 -- Reader
 --------------------------------------------------------------------------------
 
 newtype Reader r k = Ask (r -> k) deriving Functor
 
 runReader :: forall r fs a. Functor (NS fs) => r -> Eff (Reader r ': fs) a -> Eff fs a
-runReader r = handleRelay Pure (\(Ask k) -> runReader r (k r))
+runReader r = handle id (\(Ask k) -> k r)
 
 ask :: forall r fs. Elem (Reader r) fs => Eff fs r
 ask = liftEff (Ask id)
 
+-- The only thing we can't implement efficiently using cata
+-- Remorseless reflection plz
 local :: forall r fs a. Elem (Reader r) fs => (r -> r) -> Eff fs a -> Eff fs a
 local f e = do
   r <- f <$> ask
@@ -222,10 +260,10 @@ throw :: forall e fs a. Elem (Exc e) fs => e -> Eff fs a
 throw e = liftEff (Throw e)
 
 runExc :: forall e fs a. Functor (NS fs) => Eff (Exc e ': fs) a -> Eff fs (Either e a)
-runExc = handleRelay (Pure . Right) (\(Throw e) -> Pure (Left e))
+runExc = handle Right (\(Throw e) -> Pure (Left e))
 
 catch :: Elem (Exc e) fs => Eff fs a -> (e -> Eff fs a) -> Eff fs a
-catch eff h = interpose Pure (\(Throw e) -> h e) eff
+catch eff h = cata Pure (\ns -> maybe (Free ns) (\(Throw e) -> h e) (prj ns)) eff
 
 -- Lift
 --------------------------------------------------------------------------------
@@ -250,8 +288,5 @@ tell m = liftEff (Tell m ())
 
 runWriter :: forall m fs a.
   (Monoid m, Functor (NS fs)) => Eff (Writer m ': fs) a -> Eff fs (a, m)
-runWriter = handleRelay
-  (Pure . (,mempty))
-  (\(Tell m k) -> second (`mappend` m) <$> runWriter k)
-
+runWriter = handle (,mempty) (\(Tell m k) -> second (<> m) <$> k)
 
