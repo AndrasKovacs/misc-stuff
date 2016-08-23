@@ -98,37 +98,86 @@ instance
 
 open import Data.Unit
 open import Data.Empty
+open import Data.Product
 
--- open import Data.Unit
--- open import Data.Empty
--- open import Data.Product
+get : ∀ {S} → Free (State S) S
+get = free (Get pure)
 
--- ask : ∀ {R S} → Free (Reader R ⊎ State S) R
--- ask = free $ inl $ Ask pure
+put : ∀ {S} → S → Free (State S) ⊤
+put s = free (Put s (pure tt))
 
--- get : ∀ {R S} → Free (Reader R ⊎ State S) S
--- get = free $ inr $ Get pure
+inc : Free (State ℕ) ⊤
+inc = get >>= λ n → put (suc n)
 
--- put : ∀  {R S} → S → Free (Reader R ⊎ State S) ⊤
--- put n = free $ inr $ Put n (pure tt)
+Nat : Set
+Nat = ∀ N → (N → N) → N → N
 
--- iter : ∀ {A} → (A → A) → A → ℕ → A
--- iter s z zero    = z
--- iter s z (suc n) = s (iter s z n)
+times : ∀ {M}{{_ : Monad M}} → Nat → M ⊤ → M ⊤
+times n m = n _ (m >>_) (pure tt)
 
--- times : ∀ {M A}{{_ : Monad M}} → ℕ → M A → M ⊤
--- times n ma = iter (ma >>_) (pure tt) n
+fromℕ : ℕ → Nat
+fromℕ zero    N s z = z
+fromℕ (suc n) N s z = s (fromℕ n N s z)
 
--- foo : Free (Reader ℕ ⊎ State ℕ) ⊤
--- foo =
---   ask >>= λ r →
---   get >>= λ n →
---   put $ r + n
+run : ∀ {S A} → Free (State S) A → S → A × S
+run (val x)           s = x , s
+run (free (Get k))    s = run (k s) s
+run (free (Put s' k)) s = run k s'
 
--- run : ∀ {R S A} → Free (Reader R ⊎ State S) A → R → S → A × S
--- run (val a)                 r s = a , s
--- run (free (inl (Ask k)))    r s = run (k r) r s
--- run (free (inr (Get k)))    r s = run (k s) r s
--- run (free (inr (Put s' k))) r s = run k r s'
+-- we can't normalize past "times" - we'd need supercompilation for that
+test = λ n → run $ times n inc
 
+--------------------------------------------------------------------------------
+
+-- inlined church state
+
+CS : Set → Set → Set
+CS S A = ∀ R → (A → R) → ((S → R) → R) → (S → R → R) → R
+
+instance
+  FunctorCS : ∀ {S} → Functor (CS S)
+  FunctorCS = rec λ f ma R pure → ma R (pure ∘ f)
+    
+  MonadCS : ∀ {S} → Monad (CS S)
+  MonadCS = rec
+    (λ a _ pure _ _ → pure a)
+    (λ ma f _ pure get put → ma _ (λ a → f a _ pure get put) get put )
+
+get' : ∀ {S} → CS S S
+get' = λ _ p get put → get p
+
+put' : ∀ {S} → S → CS S ⊤
+put' s = λ _ p get put → put s (p tt)
+
+inc' : CS ℕ ⊤ 
+inc' = get' >>= λ n → put' (suc n)
+
+run' : ∀ {S A} → CS S A → S → A × S
+run' ma = ma _ _,_ (λ got s → got s s) (λ s' put _ → put s')
+
+test' = λ n → run' $ times n inc'
+
+-- Plain state
+--------------------------------------------------------------------------------
+
+ST : Set → Set → Set
+ST S A = S → A × S
+
+instance
+  FunctorST : ∀ {S} → Functor (ST S)
+  FunctorST = rec (λ f ma s → let (a , s') = ma s in f a , s')
+
+  MonadST : ∀ {S} → Monad (ST S)
+  MonadST = rec _,_ (λ ma f → uncurry f ∘ ma)
+
+get'' : ∀ {S} → ST S S
+get'' = λ s → s , s
+
+put'' : ∀ {S} → S → ST S ⊤
+put'' s = λ _ → tt , s
+
+inc'' : ST ℕ ⊤ 
+inc'' = get'' >>= λ n → put'' (suc n)
+
+test'' = λ n → times n inc''
 
