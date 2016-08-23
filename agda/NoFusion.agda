@@ -90,11 +90,11 @@ concat as = as _ _++'_ []  -- foldr (++) []
 -- nor is it immediately transparent why it is the correct definition.
 
 concat' : ∀ {A} → List (List A) → List A
-concat' as r c n = as _ (λ xs acc → xs r c acc) n
+concat' as = λ r c n → as _ (λ xs acc → xs r c acc) n
 
 -- In general, a fusing definition should be of the form
 
--- f a_1 a_2 ... a_n elim_1 elim_2 ... elim_n = t
+-- f a_1 a_2 ... a_n = (λ elim_1 elim_2 ... elim_n → t)
 
 -- where elim_i are the eliminators of the return type
 
