@@ -6,6 +6,7 @@ open import Data.List renaming (map to lmap)
 open import Data.Unit hiding (_≤_)
 open import Data.Empty
 open import Data.Product
+open import Relation.Binary.PropositionalEquality
 
 -- insertion sort
 --------------------------------------------------------------------------------
@@ -49,9 +50,9 @@ data _▶_≡_ {A : Set}(x : A) : List A → List A → Set where
   here  : ∀ {xs} → x ▶ xs ≡ (x ∷ xs)
   there : ∀ {y xs ys} → x ▶ xs ≡ ys → x ▶ (y ∷ xs) ≡ (y ∷ ys)
 
-data Perm {A : Set} : List A → List A → Set where
-  empty : Perm [] []
-  ins   : ∀ {x xs ys zs} → Perm xs ys → x ▶ ys ≡ zs → Perm (x ∷ xs) zs
+Perm : {A : Set} → List A → List A → Set
+Perm []       ys = ys ≡ []
+Perm (x ∷ xs) ys = ∃₂ λ ys' (p : x ▶ ys' ≡ ys) → Perm xs ys'
 
 ins-lem : ∀ x xs → x ▶ xs ≡ insert x xs
 ins-lem x []       = here
@@ -60,5 +61,6 @@ ins-lem x (y ∷ ys) with cmpℕ x y
 ... | inj₂ _ = there (ins-lem x ys)
 
 sort-perm : ∀ xs → Perm xs (sort xs)
-sort-perm []       = empty
-sort-perm (x ∷ xs) = ins (sort-perm xs) (ins-lem x (sort xs))
+sort-perm []       = refl
+sort-perm (x ∷ xs) = , ins-lem x (sort xs) , sort-perm xs
+
