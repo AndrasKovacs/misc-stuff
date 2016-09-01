@@ -165,11 +165,15 @@ instance Functor (NS fs) => Applicative (Eff fs) where
   pure          = Pure
   Pure f  <*> b = f <$> b
   Free fs <*> b = Free ((<*> b) <$> fs)
+  {-# inline pure #-}
+  {-# inline (<*>) #-}
 
 instance Functor (NS fs) => Monad (Eff fs) where
   return = Pure
   Pure a  >>= f = f a
   Free fs >>= f = Free ((>>= f) <$> fs)
+  {-# inline return #-}
+  {-# inline (>>=) #-}
 
 run :: Eff '[] a -> a
 run (Pure a) = a
@@ -205,20 +209,28 @@ interpose p f = go where
 
 data State s k = Put s k | Get (s -> k) deriving Functor
 
+-- runState :: forall s fs a. Functor (NS fs) => s -> Eff (State  s ': fs) a -> Eff fs (a, s)
+-- runState = flip $ cata
+--   (\a s -> Pure (a, s))
+--   (\case
+--       Here (Get k) -> \s -> k s s
+--       Here (Put s' k) -> \_ -> k s'
+--       There ns -> \s -> Free (($ s) <$> ns))
+
 runState :: forall s fs a. Functor (NS fs) => s -> Eff (State  s ': fs) a -> Eff fs (a, s)
-runState = flip $ cata
-  (\a s -> Pure (a, s))
-  (\case
-      Here (Get k) -> \s -> k s s
-      Here (Put s' k) -> \_ -> k s'
-      There ns -> \s -> Free (($ s) <$> ns))
+runState s (Pure a)                 = Pure (a, s)
+runState s (Free (Here (Get k)))    = runState s (k s)
+runState s (Free (Here (Put s' k))) = runState s' k
+runState s (Free (There ns))        = Free (fmap (runState s) ns)
 
 get :: forall s fs. Elem (State s) fs => Eff fs s
-get = liftEff (Get id)
+-- get = liftEff (Get id)
+get = Free (inj (Get Pure))
 {-# inline get #-}
 
 put :: forall s fs. Elem (State s) fs => s -> Eff fs ()
-put s = liftEff (Put s ())
+-- put s = liftEff (Put s ())
+put s = Free (inj (Put s (Pure ())))
 {-# inline put #-}
 
 modify :: forall s fs. Elem (State s) fs => (s -> s) -> Eff fs ()
@@ -255,9 +267,14 @@ lmodify f = lput @l =<< f <$> lget @l
 
 newtype Reader r k = Ask (r -> k) deriving Functor
 
+-- runReader :: forall r fs a. Functor (NS fs) => r -> Eff (Reader r ': fs) a -> Eff fs a
+-- runReader r = handle id (\(Ask k) -> k r)
+-- {-# inline runReader #-}
+
 runReader :: forall r fs a. Functor (NS fs) => r -> Eff (Reader r ': fs) a -> Eff fs a
-runReader r = handle id (\(Ask k) -> k r)
-{-# inline runReader #-}
+runReader r (Pure a)              = Pure a
+runReader r (Free (Here (Ask k))) = runReader r (k r)
+runReader r (Free (There ns))     = Free (fmap (runReader r) ns)
 
 ask :: forall r fs. Elem (Reader r) fs => Eff fs r
 ask = liftEff (Ask id)

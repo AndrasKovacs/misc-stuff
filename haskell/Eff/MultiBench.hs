@@ -1,6 +1,6 @@
 {-# language FlexibleContexts, BangPatterns, TypeApplications, GADTs, TypeFamilies,
     NoMonoLocalBinds, GeneralizedNewtypeDeriving, DeriveFunctor,
-    DataKinds, NoMonomorphismRestriction #-}
+    DataKinds, NoMonomorphismRestriction, LambdaCase #-}
 
 import Control.Monad
 import Data.Monoid
@@ -28,6 +28,55 @@ import qualified Control.Eff.Writer.Strict as E
 import qualified Control.Eff.Exception as E
 
 import qualified EffInference as I
+
+
+-- inlined free state
+--------------------------------------------------------------------------------
+
+data FS s a = Pure a | Get (s -> FS s a) | Put !s (FS s a)
+
+instance Functor (FS s) where
+  fmap f = go where
+    go = \case
+      Pure a  -> Pure (f a)
+      Get k   -> Get (fmap f . k)
+      Put s k -> Put s (fmap f k)
+  {-#  inline fmap #-}
+
+instance Applicative (FS s) where
+  pure = Pure
+  Pure f  <*> ma = fmap f ma
+  Get k   <*> ma = Get ((<*> ma) . k)
+  Put s k <*> ma = Put s (k <*> ma)
+  {-# inline pure #-}
+  {-# inline (<*>) #-}
+
+instance Monad (FS s) where
+  return = Pure
+  Pure a  >>= f = f a
+  Get k   >>= f = Get ((>>= f) . k)
+  Put s k >>= f = Put s (k >>= f)
+  {-# inline return #-}
+  {-# inline (>>=) #-}
+
+fmodify :: (s -> s) -> FS s ()
+fmodify f =
+  Get $ \s ->
+  Put (f s) $
+  Pure ()
+{-# inline fmodify #-}
+
+frunState :: FS s a -> s -> (a, s)
+frunState (Pure a)   s = (a, s)
+frunState (Get k)    s = frunState (k s) s
+frunState (Put s' k) s = frunState k s'
+
+times :: Monad m => Int -> m a -> m ()
+times n ma = go n where
+  go 0 = pure ()
+  go n = ma >> go (n - 1)
+{-# inline times #-}
+
 
 {- bench TODO
   - multihandler for Freer
@@ -158,30 +207,44 @@ main = do
     --   ],
 
 
-    -- Freer slower than mtl by about 10x, but doesn't slow much for large stack
-    bgroup "Freer" [
-      bench "SR"    $ whnf (F.run . runSF . runRF . test1F) n,
-      bench "SRR"   $ whnf (F.run . runSF . runRF . runRF . test1F) n,
-      bench "SRRR"  $ whnf (F.run . runSF . runRF . runRF . runRF . test1F) n,
-      bench "SRRRR" $ whnf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
-      bench "RS"    $ whnf (F.run . runRF . runSF . test1F) n,
-      bench "RRS"   $ whnf (F.run . runRF . runRF . runSF . test1F) n,
-      bench "RRRS"  $ whnf (F.run . runRF . runRF . runRF . runSF . test1F) n,
-      bench "RRRRS" $ whnf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
-      bench "S"     $ whnf (F.run . runSF . test1F) n
-      ],
+    -- -- Freer slower than mtl by about 10x, but doesn't slow much for large stack
+    -- bgroup "Freer" [
+    --   bench "SR"    $ nf (F.run . runSF . runRF . test1F) n,
+    --   bench "SRR"   $ nf (F.run . runSF . runRF . runRF . test1F) n,
+    --   bench "SRRR"  $ nf (F.run . runSF . runRF . runRF . runRF . test1F) n,
+    --   bench "SRRRR" $ nf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
+    --   bench "RS"    $ nf (F.run . runRF . runSF . test1F) n,
+    --   bench "RRS"   $ nf (F.run . runRF . runRF . runSF . test1F) n,
+    --   bench "RRRS"  $ nf (F.run . runRF . runRF . runRF . runSF . test1F) n,
+    --   bench "RRRRS" $ nf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
+    --   bench "S"     $ nf (F.run . runSF . test1F) n
+    --   ],
 
-    bgroup "EffInference" [
-      bench "SR"    $ whnf (I.run . runSI . runRI . test1I) n,
-      bench "SRR"   $ whnf (I.run . runSI . runRI . runRI . test1I) n,
-      bench "SRRR"  $ whnf (I.run . runSI . runRI . runRI . runRI . test1I) n,
-      bench "SRRRR" $ whnf (I.run . runSI . runRI . runRI . runRI . runRI . test1I) n,
-      bench "RS"    $ whnf (I.run . runRI . runSI . test1I) n,
-      bench "RRS"   $ whnf (I.run . runRI . runRI . runSI . test1I) n,
-      bench "RRRS"  $ whnf (I.run . runRI . runRI . runRI . runSI . test1I) n,
-      bench "RRRRS" $ whnf (I.run . runRI . runRI . runRI . runRI . runSI . test1I) n,
-      bench "S"     $ whnf (I.run . runSI . test1I) n
-      ]
+    -- -- Freer faster than plain old Free monad Eff!
+    -- bgroup "EffInference" [
+    --   bench "SR"    $ nf (I.run . runSI . runRI . test1I) n,
+    --   bench "SRR"   $ nf (I.run . runSI . runRI . runRI . test1I) n,
+    --   bench "SRRR"  $ nf (I.run . runSI . runRI . runRI . runRI . test1I) n,
+    --   bench "SRRRR" $ nf (I.run . runSI . runRI . runRI . runRI . runRI . test1I) n,
+    --   bench "RS"    $ nf (I.run . runRI . runSI . test1I) n,
+    --   bench "RRS"   $ nf (I.run . runRI . runRI . runSI . test1I) n,
+    --   bench "RRRS"  $ nf (I.run . runRI . runRI . runRI . runSI . test1I) n,
+    --   bench "RRRRS" $ nf (I.run . runRI . runRI . runRI . runRI . runSI . test1I) n,
+    --   bench "S"     $ nf (I.run . runSI . test1I) n
+    --   ]
+
+
+    -- bgroup "Freer" [
+    --     bench "Count" $ nf (\n -> F.run $ runSF $ times n $ F.modify @Int (+1)) n
+    --     ],
+
+    -- bgroup "FS" [
+    --     bench "Count" $ nf (\n -> frunState (times n $ fmodify @Int (+1)) 0) n
+    --     ],
+
+    -- bgroup "MTL" [
+    --     bench "Count" $ nf (\n -> runState (times n $ modify @Int (+1)) 0) n
+    --     ]
 
     -- bgroup "MTL" [
     --   bench "SANDWICH" $
@@ -231,41 +294,41 @@ main = do
     --   bench "S"      $ whnf (F.run . runSF . test1F) n
     --   ],
 
-    -- bgroup "Freer" [
-    --   bench "SR"    $ whnf (F.run . runSF . runRF . test1F) n,
-    --   bench "SRR"   $ whnf (F.run . runSF . runRF . runRF . test1F) n,
-    --   bench "SRRR"  $ whnf (F.run . runSF . runRF . runRF . runRF . test1F) n,
-    --   bench "SRRRR" $ whnf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
-    --   bench "RS"    $ whnf (F.run . runRF . runSF . test1F) n,
-    --   bench "RRS"   $ whnf (F.run . runRF . runRF . runSF . test1F) n,
-    --   bench "RRRS"  $ whnf (F.run . runRF . runRF . runRF . runSF . test1F) n,
-    --   bench "RRRRS" $ whnf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
-    --   bench "S"     $ whnf (F.run . runSF . test1F) n
-    --   ],
+    bgroup "Freer" [
+      bench "SR"    $ nf (F.run . runSF . runRF . test1F) n,
+      bench "SRR"   $ nf (F.run . runSF . runRF . runRF . test1F) n,
+      bench "SRRR"  $ nf (F.run . runSF . runRF . runRF . runRF . test1F) n,
+      bench "SRRRR" $ nf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
+      bench "RS"    $ nf (F.run . runRF . runSF . test1F) n,
+      bench "RRS"   $ nf (F.run . runRF . runRF . runSF . test1F) n,
+      bench "RRRS"  $ nf (F.run . runRF . runRF . runRF . runSF . test1F) n,
+      bench "RRRRS" $ nf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
+      bench "S"     $ nf (F.run . runSF . test1F) n
+      ],
 
     -- bgroup "Eff" [
-    --   bench "SW"     $ whnf (E.run . runSE . runWE . test1E) n,
-    --   bench "SWW"    $ whnf (E.run . runSE . runWE . runWE . test1E) n,
-    --   bench "SWWW"   $ whnf (E.run . runSE . runWE . runWE . runWE . test1E) n,
-    --   bench "SWWWW"  $ whnf (E.run . runSE . runWE . runWE . runWE . runWE . test1E) n,
-    --   bench "WS"     $ whnf (E.run . runWE . runSE . test1E) n,
-    --   bench "WWS"    $ whnf (E.run . runWE . runWE . runSE . test1E) n,
-    --   bench "WWWS"   $ whnf (E.run . runWE . runWE . runWE . runSE . test1E) n,
-    --   bench "WWWWS"  $ whnf (E.run . runWE . runWE . runWE . runWE . runSE . test1E) n,
-    --   bench "S"      $ whnf (E.run . runSE . test1E) n
-    --   ],
-
-    -- bgroup "Eff" [
-    --   bench "SR"    $ whnf (E.run . runSE . runRE . test1E) n,
-    --   bench "SRR"   $ whnf (E.run . runSE . runRE . runRE . test1E) n,
-    --   bench "SRRR"  $ whnf (E.run . runSE . runRE . runRE . runRE . test1E) n,
-    --   bench "SRRRR" $ whnf (E.run . runSE . runRE . runRE . runRE . runRE . test1E) n,
-    --   bench "RS"    $ whnf (E.run . runRE . runSE . test1E) n,
-    --   bench "RRS"   $ whnf (E.run . runRE . runRE . runSE . test1E) n,
-    --   bench "RRRS"  $ whnf (E.run . runRE . runRE . runRE . runSE . test1E) n,
-    --   bench "RRRRS" $ whnf (E.run . runRE . runRE . runRE . runRE . runSE . test1E) n,
-    --   bench "S"     $ whnf (E.run . runSE . test1E) n
+    --   bench "SW"     $ nf (E.run . runSE . runWE . test1E) n,
+    --   bench "SWW"    $ nf (E.run . runSE . runWE . runWE . test1E) n,
+    --   bench "SWWW"   $ nf (E.run . runSE . runWE . runWE . runWE . test1E) n,
+    --   bench "SWWWW"  $ nf (E.run . runSE . runWE . runWE . runWE . runWE . test1E) n,
+    --   bench "WS"     $ nf (E.run . runWE . runSE . test1E) n,
+    --   bench "WWS"    $ nf (E.run . runWE . runWE . runSE . test1E) n,
+    --   bench "WWWS"   $ nf (E.run . runWE . runWE . runWE . runSE . test1E) n,
+    --   bench "WWWWS"  $ nf (E.run . runWE . runWE . runWE . runWE . runSE . test1E) n,
+    --   bench "S"      $ nf (E.run . runSE . test1E) n
     --   ]
+
+    bgroup "Eff" [
+      bench "SR"    $ nf (E.run . runSE . runRE . test1E) n,
+      bench "SRR"   $ nf (E.run . runSE . runRE . runRE . test1E) n,
+      bench "SRRR"  $ nf (E.run . runSE . runRE . runRE . runRE . test1E) n,
+      bench "SRRRR" $ nf (E.run . runSE . runRE . runRE . runRE . runRE . test1E) n,
+      bench "RS"    $ nf (E.run . runRE . runSE . test1E) n,
+      bench "RRS"   $ nf (E.run . runRE . runRE . runSE . test1E) n,
+      bench "RRRS"  $ nf (E.run . runRE . runRE . runRE . runSE . test1E) n,
+      bench "RRRRS" $ nf (E.run . runRE . runRE . runRE . runRE . runSE . test1E) n,
+      bench "S"     $ nf (E.run . runSE . test1E) n
+      ]
 
 
     ]
