@@ -132,9 +132,6 @@ data _⊢ₙ_∋_ {n}(Γ : Con n) where
 -- -- data Ne {n} Γ where
 
 
-
-
-
 -- data Ne' n where
 --   var : Var n → Ne' n
 --   _∙_ : Ne' n → Tm' n → Ne' n
