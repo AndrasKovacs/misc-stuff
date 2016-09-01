@@ -7,6 +7,8 @@
   FlexibleInstances, DeriveFunctor, UndecidableInstances,
   NoMonomorphismRestriction #-}
 
+module EffInference where
+
 import Data.Kind
 import Data.Type.Bool
 import Control.Monad
@@ -117,6 +119,7 @@ instance Functor (NS '[]) where
 instance (Functor f, Functor (NS fs)) => Functor (NS (f ': fs)) where
   fmap f (Here fx)  = Here  (fmap f fx)
   fmap f (There ns) = There (fmap f ns)
+  {-# inline fmap #-}
 
 class Elem' (n :: Nat) (f :: * -> *) (fs :: [* -> *]) where
   inj' :: forall x. f x -> NS fs x
@@ -126,6 +129,8 @@ instance (gs ~ (f ': gs')) => Elem' Z f gs where
   inj'           = Here
   prj' (Here fx) = Just fx
   prj' _         = Nothing
+  {-# inline inj' #-}
+  {-# inline prj' #-}
 
 instance (Elem' n f gs', (gs ~ (g ': gs'))) => Elem' (S n) f gs where
   inj'            = There . inj' @n
@@ -141,9 +146,11 @@ type Elems fs gs = (Functor (NS gs), Elems_ fs gs)
 
 inj :: forall fs f x. Elem f fs => f x -> NS fs x
 inj = inj' @(Find f fs)
+{-# inline inj #-}
 
 prj :: forall f x fs. Elem f fs => NS fs x -> Maybe (f x)
 prj = prj' @(Find f fs)
+{-# inline prj #-}
 
 -- Eff monad
 --------------------------------------------------------------------------------
@@ -169,17 +176,20 @@ run (Pure a) = a
 
 liftEff :: (Functor f, Elem f fs) => f a -> Eff fs a
 liftEff fa = Free (inj (Pure <$> fa))
+{-# inline liftEff #-}
 
 cata :: Functor (NS fs) => (a -> r) -> (NS fs r -> r) -> Eff fs a -> r
 cata pure free = go where
   go (Pure a)  = pure a
   go (Free ns) = free (go <$> ns)
+{-# inline cata #-}
 
 handle ::
      (Functor f, Functor (NS fs))
   => (a -> b) -> (f (Eff fs b) -> Eff fs b)
   -> Eff (f ': fs) a -> Eff fs b
 handle pure free = cata (Pure . pure) (\case Here fa -> free fa; There ns -> Free ns)
+{-# inlinable handle #-}
 
 interpose ::
      Elem f fs
@@ -188,6 +198,7 @@ interpose ::
 interpose p f = go where
   go (Pure x)  = p x
   go (Free ns) = maybe (Free (go <$> ns)) f (prj ns)
+{-# inline interpose #-}
 
 -- State
 --------------------------------------------------------------------------------
@@ -204,12 +215,15 @@ runState = flip $ cata
 
 get :: forall s fs. Elem (State s) fs => Eff fs s
 get = liftEff (Get id)
+{-# inline get #-}
 
 put :: forall s fs. Elem (State s) fs => s -> Eff fs ()
 put s = liftEff (Put s ())
+{-# inline put #-}
 
 modify :: forall s fs. Elem (State s) fs => (s -> s) -> Eff fs ()
 modify f = put =<< f <$> get
+{-# inline modify #-}
 
 -- Labelled state
 --------------------------------------------------------------------------------
@@ -226,12 +240,15 @@ lrunState = flip $ cata
 
 lget :: forall l s fs. Elem (LState l s) fs => Eff fs s
 lget = liftEff (LGet @l id)
+{-# inline lget #-}
 
 lput :: forall l s fs. Elem (LState l s) fs => s -> Eff fs ()
 lput s = liftEff (LPut @l s ())
+{-# inline lput #-}
 
 lmodify :: forall l s fs. Elem (LState l s) fs => (s -> s) -> Eff fs ()
 lmodify f = lput @l =<< f <$> lget @l
+{-# inline lmodify #-}
 
 -- Reader
 --------------------------------------------------------------------------------
@@ -240,9 +257,11 @@ newtype Reader r k = Ask (r -> k) deriving Functor
 
 runReader :: forall r fs a. Functor (NS fs) => r -> Eff (Reader r ': fs) a -> Eff fs a
 runReader r = handle id (\(Ask k) -> k r)
+{-# inline runReader #-}
 
 ask :: forall r fs. Elem (Reader r) fs => Eff fs r
 ask = liftEff (Ask id)
+{-# inline ask #-}
 
 -- The only thing we can't implement efficiently using cata
 -- Remorseless reflection plz
@@ -250,6 +269,7 @@ local :: forall r fs a. Elem (Reader r) fs => (r -> r) -> Eff fs a -> Eff fs a
 local f e = do
   r <- f <$> ask
   interpose Pure (\(Ask k) -> k r) e
+{-# inline local #-}
 
 -- Exception
 --------------------------------------------------------------------------------
@@ -258,12 +278,15 @@ newtype Exc e k = Throw e deriving Functor
 
 throw :: forall e fs a. Elem (Exc e) fs => e -> Eff fs a
 throw e = liftEff (Throw e)
+{-# inline throw #-}
 
 runExc :: forall e fs a. Functor (NS fs) => Eff (Exc e ': fs) a -> Eff fs (Either e a)
 runExc = handle Right (\(Throw e) -> Pure (Left e))
+{-# inline runExc #-}
 
 catch :: Elem (Exc e) fs => Eff fs a -> (e -> Eff fs a) -> Eff fs a
 catch eff h = cata Pure (\ns -> maybe (Free ns) (\(Throw e) -> h e) (prj ns)) eff
+{-# inline catch #-}
 
 -- Lift
 --------------------------------------------------------------------------------
@@ -285,8 +308,10 @@ data Writer m k = Tell m k deriving (Functor)
 
 tell :: (Monoid m, Elem (Writer m) fs) => m -> Eff fs ()
 tell m = liftEff (Tell m ())
+{-# inline tell #-}
 
 runWriter :: forall m fs a.
   (Monoid m, Functor (NS fs)) => Eff (Writer m ': fs) a -> Eff fs (a, m)
 runWriter = handle (,mempty) (\(Tell m k) -> second (<> m) <$> k)
+{-# inline runWriter #-}
 
