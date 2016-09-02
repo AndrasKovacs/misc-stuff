@@ -2,6 +2,8 @@
     NoMonoLocalBinds, GeneralizedNewtypeDeriving, DeriveFunctor,
     DataKinds, NoMonomorphismRestriction, LambdaCase #-}
 
+-- | Benchmarks for various effect system implementations
+
 import Control.Monad
 import Data.Monoid
 import Criterion.Main
@@ -12,6 +14,8 @@ import Control.Monad.Reader
 import Control.Monad.Writer.Strict
 import Control.Monad.Except
 import Control.Monad.Identity
+
+import qualified MultiBenchModule as Mod
 
 import qualified Control.Monad.Freer as F
 import qualified Control.Monad.Freer.State as F
@@ -28,48 +32,8 @@ import qualified Control.Eff.Writer.Strict as E
 import qualified Control.Eff.Exception as E
 
 import qualified EffInference as I
+import qualified FreeState as FS
 
-
--- inlined free state
---------------------------------------------------------------------------------
-
-data FS s a = Pure a | Get (s -> FS s a) | Put !s (FS s a)
-
-instance Functor (FS s) where
-  fmap f = go where
-    go = \case
-      Pure a  -> Pure (f a)
-      Get k   -> Get (fmap f . k)
-      Put s k -> Put s (fmap f k)
-  {-#  inline fmap #-}
-
-instance Applicative (FS s) where
-  pure = Pure
-  Pure f  <*> ma = fmap f ma
-  Get k   <*> ma = Get ((<*> ma) . k)
-  Put s k <*> ma = Put s (k <*> ma)
-  {-# inline pure #-}
-  {-# inline (<*>) #-}
-
-instance Monad (FS s) where
-  return = Pure
-  Pure a  >>= f = f a
-  Get k   >>= f = Get ((>>= f) . k)
-  Put s k >>= f = Put s (k >>= f)
-  {-# inline return #-}
-  {-# inline (>>=) #-}
-
-fmodify :: (s -> s) -> FS s ()
-fmodify f =
-  Get $ \s ->
-  Put (f s) $
-  Pure ()
-{-# inline fmodify #-}
-
-frunState :: FS s a -> s -> (a, s)
-frunState (Pure a)   s = (a, s)
-frunState (Get k)    s = frunState (k s) s
-frunState (Put s' k) s = frunState k s'
 
 times :: Monad m => Int -> m a -> m ()
 times n ma = go n where
@@ -78,24 +42,16 @@ times n ma = go n where
 {-# inline times #-}
 
 
-{- bench TODO
-  - multihandler for Freer
--}
+-- Use only state, lift variable number of effects over/under
+--------------------------------------------------------------------------------
 
-{-  notes :
-  - Oleg freer bench almost certainly without any optimization (LOL)
-  - existing benchmarks are pretty shit
--}
-
-
-test1 :: MonadState Int m => Int -> m Int
-test1 n = foldM f 1 [0..n] where
+test1mtl :: MonadState Int m => Int -> m Int
+test1mtl n = foldM f 1 [0..n] where
   f acc x | x `rem` 5 == 0 = do
               s <- get
               put $! (s + 1)
               pure $! max acc x
           | otherwise = pure $! max acc x
-
 
 test1F :: F.Member (F.State Int) fs => Int -> F.Eff fs Int
 test1F n = foldM f 1 [0..n] where
@@ -121,9 +77,11 @@ test1I n = foldM f 1 [0..n] where
               pure $! max acc x
           | otherwise = pure $! max acc x
 
--- monomorphic stack that uses all effects
-test2 :: Int -> StateT Int (ReaderT Int (StateT Bool (Reader Bool))) ()
-test2 n = replicateM_ n $ do
+-- Monomorphic stack that uses all effects
+--------------------------------------------------------------------------------
+
+test2mtl :: Int -> StateT Int (ReaderT Int (StateT Bool (Reader Bool))) ()
+test2mtl n = replicateM_ n $ do
   rint  <- lift $ ask
   rbool <- lift $ lift $ lift ask
   modify' $ \n -> if n < rint && rbool then n + 10 else n + 20
@@ -135,6 +93,10 @@ test2F n = replicateM_ n $ do
   rbool <- F.ask @Bool
   F.modify @Int $ \n -> if n < rint && rbool then n + 10 else n + 20
   F.modify @Bool $ \b -> if b then b && rbool else rint < 20
+
+
+-- Manually fused handler for monomorphic Freer stack
+--------------------------------------------------------------------------------
 
 bigHandler ::
   Int -> Int -> Bool -> Bool
@@ -154,21 +116,12 @@ bigHandler si ri sb rb = F.run . go si sb where
     F.UNext (F.UNext (F.UNext (F.UNow F.Reader))) -> go si  sb  (F.qApp k rb)
 
 
--- -- monomorphic stack that uses all effects
--- test2 :: Int -> (ReaderT Int (StateT Bool (Reader Bool))) ()
--- test2 n = replicateM_ n $ do
---   rint  <- ask
---   rbool <- lift $ lift $ ask
---   lift $ modify' $ \b -> if b then b && rbool else rint < 20
-
--- test2F :: Int -> F.Eff [F.Reader Int, F.State Bool, F.Reader Bool] ()
--- test2F n = replicateM_ n $ do
---   rint <- F.ask @Int
---   rbool <- F.ask @Bool
---   F.modify @Bool $ \b -> if b then b && rbool else rint < 20
+--------------------------------------------------------------------------------
 
 
 main = do
+
+  -- Used to definitively disable bench argument inlining
   !n <- randomRIO (1000000, 1000000) :: IO Int
   !m <- randomRIO (0, 0) :: IO Int
 
@@ -193,142 +146,109 @@ main = do
 
   defaultMain [
 
-    -- literally no overhead, no slowdown for large stack
-    -- bgroup "MTL" [
-    --   bench "SR"    $ whnf (runS . runRT . test1) n,
-    --   bench "SRR"   $ whnf (runS . runRT . runRT . test1) n,
-    --   bench "SRRR"  $ whnf (runS . runRT . runRT . runRT . test1) n,
-    --   bench "SRRRR" $ whnf (runS . runRT . runRT . runRT . runRT . test1) n,
-    --   bench "RS"    $ whnf (runR . runST . test1) n,
-    --   bench "RRS"   $ whnf (runR . runRT . runST . test1) n,
-    --   bench "RRRS"  $ whnf (runR . runRT . runRT . runST . test1) n,
-    --   bench "RRRRS" $ whnf (runR . runRT . runRT . runRT . runST . test1) n,
-    --   bench "S"     $ whnf (runS . test1) n
-    --   ],
-
-
-    -- -- Freer slower than mtl by about 10x, but doesn't slow much for large stack
-    -- bgroup "Freer" [
-    --   bench "SR"    $ nf (F.run . runSF . runRF . test1F) n,
-    --   bench "SRR"   $ nf (F.run . runSF . runRF . runRF . test1F) n,
-    --   bench "SRRR"  $ nf (F.run . runSF . runRF . runRF . runRF . test1F) n,
-    --   bench "SRRRR" $ nf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
-    --   bench "RS"    $ nf (F.run . runRF . runSF . test1F) n,
-    --   bench "RRS"   $ nf (F.run . runRF . runRF . runSF . test1F) n,
-    --   bench "RRRS"  $ nf (F.run . runRF . runRF . runRF . runSF . test1F) n,
-    --   bench "RRRRS" $ nf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
-    --   bench "S"     $ nf (F.run . runSF . test1F) n
-    --   ],
-
-    -- -- Freer faster than plain old Free monad Eff!
-    -- bgroup "EffInference" [
-    --   bench "SR"    $ nf (I.run . runSI . runRI . test1I) n,
-    --   bench "SRR"   $ nf (I.run . runSI . runRI . runRI . test1I) n,
-    --   bench "SRRR"  $ nf (I.run . runSI . runRI . runRI . runRI . test1I) n,
-    --   bench "SRRRR" $ nf (I.run . runSI . runRI . runRI . runRI . runRI . test1I) n,
-    --   bench "RS"    $ nf (I.run . runRI . runSI . test1I) n,
-    --   bench "RRS"   $ nf (I.run . runRI . runRI . runSI . test1I) n,
-    --   bench "RRRS"  $ nf (I.run . runRI . runRI . runRI . runSI . test1I) n,
-    --   bench "RRRRS" $ nf (I.run . runRI . runRI . runRI . runRI . runSI . test1I) n,
-    --   bench "S"     $ nf (I.run . runSI . test1I) n
-    --   ]
-
-
-    -- bgroup "Freer" [
-    --     bench "Count" $ nf (\n -> F.run $ runSF $ times n $ F.modify @Int (+1)) n
-    --     ],
-
-    -- bgroup "FS" [
-    --     bench "Count" $ nf (\n -> frunState (times n $ fmodify @Int (+1)) 0) n
-    --     ],
-
-    -- bgroup "MTL" [
-    --     bench "Count" $ nf (\n -> runState (times n $ modify @Int (+1)) 0) n
-    --     ]
-
-    -- bgroup "MTL" [
-    --   bench "SANDWICH" $
-    --     whnf ((`runReader` False) . (`runStateT` True) .
-    --           (`runReaderT` 0) . (`runStateT` 0) . test2) n
-    --   ]
-
-    -- -- Only ~ 15% gains on bighandler!!!
-    -- bgroup "Freer" [
-    --   bench "SANDWICH" $
-    --     whnf (F.run . (`F.runReader` False) . (`F.runState` True) .
-    --           (`F.runReader` 0) . (`F.runState` 0) . test2F) n,
-    --   bench "Bighandler" $
-    --     whnf (bigHandler 0 0 True False . test2F) n
-    -- ]
-
-    -- bgroup "MTL" [
-    --   bench "SANDWICH" $
-    --     whnf ((`runReader` False) . (`runStateT` True) .
-    --           (`runReaderT` 0) . test2) n
-    --   ],
-
-    -- -- Freer slower than mtl by about 10x, but doesn't slow much for large stack
-    -- bgroup "Freer" [
-    --   bench "SANDWICH" $
-    --     whnf (F.run . (`F.runReader` False) . (`F.runState` True) .
-    --           (`F.runReader` 0)  . test2F) n
-    -- ]
-
-
-
-
-    -- Writer is shit as we've all known, also slower when stacked
-    -- state = fast writer with very little stack overhead
-
-
-    -- You don't pay for what you don't use -- 220 ms for all sizes
-    -- bgroup "Freer" [
-    --   bench "SW"     $ whnf (F.run . runSF . runWF . test1F) n,
-    --   bench "SWW"    $ whnf (F.run . runSF . runWF . runWF . test1F) n,
-    --   bench "SWWW"   $ whnf (F.run . runSF . runWF . runWF . runWF . test1F) n,
-    --   bench "SWWWW"  $ whnf (F.run . runSF . runWF . runWF . runWF . runWF . test1F) n,
-    --   bench "WS"     $ whnf (F.run . runWF . runSF . test1F) n,
-    --   bench "WWS"    $ whnf (F.run . runWF . runWF . runSF . test1F) n,
-    --   bench "WWWS"   $ whnf (F.run . runWF . runWF . runWF . runSF . test1F) n,
-    --   bench "WWWWS"  $ whnf (F.run . runWF . runWF . runWF . runWF . runSF . test1F) n,
-    --   bench "S"      $ whnf (F.run . runSF . test1F) n
-    --   ],
-
-    bgroup "Freer" [
-      bench "SR"    $ nf (F.run . runSF . runRF . test1F) n,
-      bench "SRR"   $ nf (F.run . runSF . runRF . runRF . test1F) n,
-      bench "SRRR"  $ nf (F.run . runSF . runRF . runRF . runRF . test1F) n,
-      bench "SRRRR" $ nf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
-      bench "RS"    $ nf (F.run . runRF . runSF . test1F) n,
-      bench "RRS"   $ nf (F.run . runRF . runRF . runSF . test1F) n,
-      bench "RRRS"  $ nf (F.run . runRF . runRF . runRF . runSF . test1F) n,
-      bench "RRRRS" $ nf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
-      bench "S"     $ nf (F.run . runSF . test1F) n
-      ],
-
-    -- bgroup "Eff" [
-    --   bench "SW"     $ nf (E.run . runSE . runWE . test1E) n,
-    --   bench "SWW"    $ nf (E.run . runSE . runWE . runWE . test1E) n,
-    --   bench "SWWW"   $ nf (E.run . runSE . runWE . runWE . runWE . test1E) n,
-    --   bench "SWWWW"  $ nf (E.run . runSE . runWE . runWE . runWE . runWE . test1E) n,
-    --   bench "WS"     $ nf (E.run . runWE . runSE . test1E) n,
-    --   bench "WWS"    $ nf (E.run . runWE . runWE . runSE . test1E) n,
-    --   bench "WWWS"   $ nf (E.run . runWE . runWE . runWE . runSE . test1E) n,
-    --   bench "WWWWS"  $ nf (E.run . runWE . runWE . runWE . runWE . runSE . test1E) n,
-    --   bench "S"      $ nf (E.run . runSE . test1E) n
-    --   ]
-
-    bgroup "Eff" [
-      bench "SR"    $ nf (E.run . runSE . runRE . test1E) n,
-      bench "SRR"   $ nf (E.run . runSE . runRE . runRE . test1E) n,
-      bench "SRRR"  $ nf (E.run . runSE . runRE . runRE . runRE . test1E) n,
-      bench "SRRRR" $ nf (E.run . runSE . runRE . runRE . runRE . runRE . test1E) n,
-      bench "RS"    $ nf (E.run . runRE . runSE . test1E) n,
-      bench "RRS"   $ nf (E.run . runRE . runRE . runSE . test1E) n,
-      bench "RRRS"  $ nf (E.run . runRE . runRE . runRE . runSE . test1E) n,
-      bench "RRRRS" $ nf (E.run . runRE . runRE . runRE . runRE . runSE . test1E) n,
-      bench "S"     $ nf (E.run . runSE . test1E) n
+    -- Specialization always seem to work, but with only inlinable
+    -- we don't get unboxing (which matters hugely for Int operations,
+    -- not so much for less "numeric" data)
+    bgroup "mtlSpec" [
+      bgroup "no_inline" [
+        bench "RRRRS" $ whnf (runR . runRT . runRT . runRT . runST . Mod.test1mtl) n
+        ],
+      bgroup "inlinable" [
+        bench "RRRRS" $ whnf (runR . runRT . runRT . runRT . runST . Mod.test1mtl_inlinable) n
+        ],
+      bgroup "inline" [
+        bench "RRRRS" $ whnf (runR . runRT . runRT . runRT . runST . Mod.test1mtl_inline) n
+        ],
+      bgroup "home module" [
+        bench "RRRRS" $ whnf (runR . runRT . runRT . runRT . runST . test1mtl) n
+        ]
       ]
+
+    -- bgroup "test1" [
+    -- -- literally no overhead, no slowdown for large stack
+    --   bgroup "MTL" [
+    --     bench "SR"    $ whnf (runS . runRT . test1mtl) n,
+    --     bench "SRR"   $ whnf (runS . runRT . runRT . test1mtl) n,
+    --     bench "SRRR"  $ whnf (runS . runRT . runRT . runRT . test1mtl) n,
+    --     bench "SRRRR" $ whnf (runS . runRT . runRT . runRT . runRT . test1mtl) n,
+    --     bench "RS"    $ whnf (runR . runST . test1mtl) n,
+    --     bench "RRS"   $ whnf (runR . runRT . runST . test1mtl) n,
+    --     bench "RRRS"  $ whnf (runR . runRT . runRT . runST . test1mtl) n,
+    --     bench "RRRRS" $ whnf (runR . runRT . runRT . runRT . runST . test1mtl) n,
+    --     bench "S"     $ whnf (runS . test1mtl) n
+    --     ],
+
+    --   -- Freer slower than mtl by about 10x, but doesn't slow much for large stack
+    --   bgroup "Freer" [
+    --     bench "SR"    $ nf (F.run . runSF . runRF . test1F) n,
+    --     bench "SRR"   $ nf (F.run . runSF . runRF . runRF . test1F) n,
+    --     bench "SRRR"  $ nf (F.run . runSF . runRF . runRF . runRF . test1F) n,
+    --     bench "SRRRR" $ nf (F.run . runSF . runRF . runRF . runRF . runRF . test1F) n,
+    --     bench "RS"    $ nf (F.run . runRF . runSF . test1F) n,
+    --     bench "RRS"   $ nf (F.run . runRF . runRF . runSF . test1F) n,
+    --     bench "RRRS"  $ nf (F.run . runRF . runRF . runRF . runSF . test1F) n,
+    --     bench "RRRRS" $ nf (F.run . runRF . runRF . runRF . runRF . runSF . test1F) n,
+    --     bench "S"     $ nf (F.run . runSF . test1F) n
+    --     ],
+
+    --   -- Freer faster than plain old Free monad Eff!
+    --   bgroup "EffInference" [
+    --     bench "SR"    $ nf (I.run . runSI . runRI . test1I) n,
+    --     bench "SRR"   $ nf (I.run . runSI . runRI . runRI . test1I) n,
+    --     bench "SRRR"  $ nf (I.run . runSI . runRI . runRI . runRI . test1I) n,
+    --     bench "SRRRR" $ nf (I.run . runSI . runRI . runRI . runRI . runRI . test1I) n,
+    --     bench "RS"    $ nf (I.run . runRI . runSI . test1I) n,
+    --     bench "RRS"   $ nf (I.run . runRI . runRI . runSI . test1I) n,
+    --     bench "RRRS"  $ nf (I.run . runRI . runRI . runRI . runSI . test1I) n,
+    --     bench "RRRRS" $ nf (I.run . runRI . runRI . runRI . runRI . runSI . test1I) n,
+    --     bench "S"     $ nf (I.run . runSI . test1I) n
+    --     ],
+
+    --   -- Slow as hell, clearly subsumed by Freer
+    --   bgroup "Eff" [
+    --     bench "SR"    $ nf (E.run . runSE . runRE . test1E) n,
+    --     bench "SRR"   $ nf (E.run . runSE . runRE . runRE . test1E) n,
+    --     bench "SRRR"  $ nf (E.run . runSE . runRE . runRE . runRE . test1E) n,
+    --     bench "SRRRR" $ nf (E.run . runSE . runRE . runRE . runRE . runRE . test1E) n,
+    --     bench "RS"    $ nf (E.run . runRE . runSE . test1E) n,
+    --     bench "RRS"   $ nf (E.run . runRE . runRE . runSE . test1E) n,
+    --     bench "RRRS"  $ nf (E.run . runRE . runRE . runRE . runSE . test1E) n,
+    --     bench "RRRRS" $ nf (E.run . runRE . runRE . runRE . runRE . runSE . test1E) n,
+    --     bench "S"     $ nf (E.run . runSE . test1E) n
+    --     ]
+    --   ],
+
+    -- bgroup "Count" [
+    --   bgroup "Freer" [
+    --       bench "Count" $ nf (\n -> F.run $ runSF $ times n $ F.modify @Int (+1)) n
+    --       ],
+
+    --   bgroup "FS" [
+    --       bench "Count" $ nf (\n -> FS.runState (times n $ FS.modify @Int (+1)) 0) n
+    --       ],
+
+    --   bgroup "MTL" [
+    --       bench "Count" $ nf (\n -> runState (times n $ modify @Int (+1)) 0) n
+    --       ]
+    --   ],
+
+    -- bgroup "test2" [
+
+
+    --   bench "MTL" $
+    --     whnf ((`runReader` False) . (`runStateT` True) .
+    --           (`runReaderT` 0) . (`runStateT` 0) . test2mtl) n,
+
+    -- -- Only ~ 15% gains on fused handler!!!
+    --   bgroup "Freer" [
+    --     bench "Normal handlers" $
+    --       whnf (F.run . (`F.runReader` False) . (`F.runState` True) .
+    --             (`F.runReader` 0) . (`F.runState` 0) . test2F) n,
+    --     bench "Fused handler" $
+    --       whnf (bigHandler 0 0 True False . test2F) n
+    --     ]
+    --   ]
 
 
     ]
+
