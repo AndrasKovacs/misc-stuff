@@ -62,12 +62,13 @@ open import Function
 const-subst :
   ∀ {i j}{A : Set i}{B : Set j}{b b' : B}{a a' : A}(p : a ≡ a')
   → b ≡ b' → coe (ap (const B) p) b ≡ b'
-const-subst refl p = p
+const-subst refl q = q
 
 I-rec :
   ∀ {i} {I* : Set i} (left* right* : I*)
   (seg* : left* ≡ right*) → I → I*
-I-rec {I* = I*} left* right* seg* = I-elim (λ _ → I*) left* right* (const-subst seg seg*)
+I-rec {I* = I*} left* right* seg* =
+  I-elim (λ _ → I*) left* right* (const-subst seg seg*)
 
 open import Data.Nat
 
