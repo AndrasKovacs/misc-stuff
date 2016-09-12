@@ -1,0 +1,11 @@
+
+Blog post-like:
+  Eff inference
+  benchmarks on effects
+  Coquand's algorithm tutorial
+
+Lib:
+  trie-vector
+  put noteworthy existing libs on Stackage
+
+
