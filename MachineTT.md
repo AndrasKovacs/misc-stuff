@@ -2,7 +2,7 @@
 
 Idea: have a dependent type theory that can be immediately compiled to machine code.
 
-It would look like an extension of [Harper's](https://www.cs.cmu.edu/~rwh/papers/closures/tr.pdf) and [others'](https://www.cs.cornell.edu/talc/papers/typepass.pdf) ["intensional polymorphism"](https://www.cs.cmu.edu/~rwh/papers/intensional/popl95.pdf), with notable differences:
+It would look like an extension of ["intensional polymorphism"](https://www.cs.cmu.edu/~rwh/papers/intensional/popl95.pdf) by [Harper](https://www.cs.cmu.edu/~rwh/papers/closures/tr.pdf) and [others](https://www.cs.cornell.edu/talc/papers/typepass.pdf) , with notable differences:
 
  - It's parametric, and there's no typecase at all. The purpose of the system is to allow non-uniform *memory representation* depending on type structure, but there's no reason to have non-uniform program behavior.
  - Full dependent types with much more representational freedom. In particular, we may have values of statically unknown sigma types represented as a contiguous piece of memory where the layout of the second projection is determined by a type function (also possibly statically unknown) and the value of the first projection.
