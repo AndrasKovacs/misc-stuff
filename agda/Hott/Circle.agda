@@ -40,10 +40,14 @@ postulate
     ∀ {α}{A : Set α} (base* : A)(loop* : base* ≡ base*)
     → ap (S¹-rec base* loop*) loop ≡ loop*
 
--- β-loop-rec' :
---   ∀ {α}{A : Set α} (base* : A)(loop* : base* ≡ base*)
---   → ap (S¹-rec base* loop*) loop ≡ loop*
--- β-loop-rec' base* loop* s = {!!}
+S¹-rec' :
+  ∀ {α}{A : Set α} (base* : A) → base* ≡ base* → S¹ → A
+S¹-rec' {A = A} base* loop* = S¹-elim (λ _ → A ) base* (trans-const base* loop ∙ loop*)
+
+β-loop-rec' :
+  ∀ {α}{A : Set α} (base* : A)(loop* : base* ≡ base*)
+  → ap (S¹-rec' base* loop*) loop ≡ loop*
+β-loop-rec' {A = A} base* loop* = {!!}
 
 -- TODO: how can I prove β-loop-rec from β-loop?
 

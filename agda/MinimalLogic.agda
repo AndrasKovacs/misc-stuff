@@ -106,7 +106,7 @@ module truth_table (lem : {A : Set} → A + ¬ A) where
     _⊩_ : Con → Ty → Set
     Γ ⊩ A = ⟦ Γ ⟧con → ⟦ A ⟧ty
 
-  sound : {Γ : Con}{A : Ty} → Γ ⊢ A → ((M : TTModel) → let open TTModel M in Γ ⊩ A)
+  sound : {Γ : Con}{A : Ty} → Γ ⊢ A → (M : TTModel) → let open TTModel M in Γ ⊩ A
   sound (var zero) M (p , q) = q
   sound (var (suc X)) M (p , q) = sound (var X) M p
   sound (lam {Γ}{A}{B} p) M q = let open TTModel M in
