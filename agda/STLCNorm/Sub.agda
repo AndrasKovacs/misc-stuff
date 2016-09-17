@@ -105,8 +105,6 @@ runSN (sn s) = s
 ƛ-SN : ∀ {Γ A B}{t : Tm (Γ ▷ A) B} → SN t → SN (ƛ t)
 ƛ-SN (sn s) = sn λ {(ƛ _ t~>t') → ƛ-SN (s t~>t')}
 
---------------------------------------------------------------------------------
-
 neu : ∀ {Γ A} → Tm Γ A → Set
 neu (var _) = ⊤
 neu (_ ∙ _) = ⊤
@@ -126,8 +124,8 @@ mutual
   CR₁ {A ⇒ B} = proj₁
 
   CR₂ : ∀ {A Γ t t'} → t ~> t' → ⟦ A ⟧ {Γ} t → ⟦ A ⟧ t'
-  CR₂ {⋆}     t~>t' (sn n)       = n t~>t'
-  CR₂ {A ⇒ B} t~>t' (sn st , rt) = st t~>t' , λ ⟦a⟧ → CR₂ (∙₁ _ t~>t') (rt ⟦a⟧)
+  CR₂ {⋆}     t~>t' (sn nt)       = nt t~>t'
+  CR₂ {A ⇒ B} t~>t' (sn st , ⟦t⟧) = st t~>t' , λ ⟦a⟧ → CR₂ (∙₁ _ t~>t') (⟦t⟧ ⟦a⟧)
 
   CR₃ : ∀ {A Γ}(t : Tm Γ A) → neu t → (∀ {t'} → t ~> t' → ⟦ A ⟧ t') → ⟦ A ⟧ t
   CR₃ {⋆}     t nt f = sn f
@@ -136,11 +134,10 @@ mutual
       go :
         ∀ {A B Γ}{t : Tm Γ (A ⇒ B)} → neu t → (∀ {t'} → t ~> t' → ⟦ A ⇒ B ⟧ t')
         → ∀ {a} → ⟦ A ⟧ a → SN a → ∀ t' → t ∙ a ~> t' → ⟦ B ⟧ t'
-      go () _   _  _        _ (β _ _)
+      go () _ _   _        _ (β _ _)
       go nt f ⟦a⟧ sna      _ (∙₁ t' t~>t') = proj₂ (f t~>t') ⟦a⟧
       go nt f ⟦a⟧ (sn sna) _ (∙₂ a' a~>a') =
         CR₃ (_ ∙ a') _ (go nt f (CR₂ a~>a' ⟦a⟧) (sna a~>a') _)
-
 
 --------------------------------------------------------------------------------
 
@@ -152,20 +149,26 @@ mutual
 ⟦var⟧ v = CR₃ (var v) _ (λ ())
 
 ⟦sub-∈⟧ : ∀ {A Γ Δ}{δ : Sub Δ Γ} → ⟦ δ ⟧ˢ → (v : A ∈ Γ) → ⟦ A ⟧ (sub-∈ δ v)
-⟦sub-∈⟧ = {!!}
+⟦sub-∈⟧ {δ = δ ▷ t} (_   , ⟦t⟧) vz     = ⟦t⟧
+⟦sub-∈⟧ {δ = δ ▷ t} (⟦δ⟧ , _)   (vs v) = ⟦sub-∈⟧ ⟦δ⟧ v
+
+⟦∙⟧→ : ∀ {A B Γ}{f : Tm Γ (A ⇒ B)}{x} → ⟦ A ⇒ B ⟧ f → ⟦ A ⟧ x → ⟦ B ⟧ (f ∙ x)
+⟦∙⟧→ ⟦f⟧ ⟦x⟧ = {!!}
+
+⟦∙⟧← : ∀ {A B Γ}{f : Tm Γ (A ⇒ B)}{x} → ⟦ B ⟧ (f ∙ x) → ⟦ A ⇒ B ⟧ f × (⟦ A ⟧ x)
+⟦∙⟧← ⟦f∙x⟧ = {!!}
+
+⟦ren⟧ : ∀ {Γ Δ A}(r : Γ ⊆ Δ){t : Tm Γ A} → ⟦ A ⟧ t → ⟦ A ⟧ (ren r t)
+⟦ren⟧ r {var v} ⟦t⟧ = ⟦var⟧ (ren-∈ r v)
+⟦ren⟧ r {f ∙ x} ⟦t⟧ = let (⟦f⟧ , ⟦x⟧) = ⟦∙⟧← {f = f}{x}⟦t⟧ in ⟦∙⟧→ (⟦ren⟧ r {f} ⟦f⟧) (⟦ren⟧ r {x} ⟦x⟧)
+⟦ren⟧ r {ƛ {A} t}   ⟦t⟧ = {!!} , (λ {a} ⟦a⟧ → {!⟦ren⟧ (keep {A} r)!})
 
 ⟦ren-Sub⟧ : ∀ {Γ Δ Ξ}{δ : Sub Γ Δ} → ⟦ δ ⟧ˢ → (r : Γ ⊆ Ξ) → ⟦ ren-Sub δ r ⟧ˢ
-⟦ren-Sub⟧ ⟦δ⟧ r = {!!}
+⟦ren-Sub⟧ {δ = ε}     ⟦δ⟧         r = tt
+⟦ren-Sub⟧ {δ = δ ▷ t} (⟦δ⟧ , ⟦t⟧) r = ⟦ren-Sub⟧ ⟦δ⟧ r , ⟦ren⟧ r {t} ⟦t⟧
 
 ⟦wk⟧ : ∀ {A Γ Δ}{δ : Sub Γ Δ} → ⟦ δ ⟧ˢ → ⟦ wk {A} δ ⟧ˢ
 ⟦wk⟧ {A} ⟦δ⟧ = ⟦ren-Sub⟧ ⟦δ⟧ (add refl) , ⟦var⟧ {A} vz
-
-⟦∙⟧ : ∀ {A B Γ Δ}{δ : Sub Γ Δ}{f x}
-      → ⟦ δ ⟧ˢ → ⟦ A ⇒ B ⟧ (sub δ f) → ⟦ A ⟧ (sub δ x) → ⟦ B ⟧ (sub δ f ∙ sub δ x)
-⟦∙⟧ ⟦δ⟧ ⟦f⟧ ⟦x⟧ = {!!}
-
-⟦▷⟧ : ∀ {A Γ Δ}{δ : Sub Γ Δ}{t : Tm Γ A} → ⟦ δ ⟧ˢ → ⟦ A ⟧ t → ⟦ δ ▷ t ⟧ˢ
-⟦▷⟧ = {!!}
 
 ⟦ƛ⟧ :
   ∀ {A B Γ Δ}{δ : Sub Γ Δ}{t : Tm (Δ ▷ A) B}
@@ -176,10 +179,10 @@ mutual
 
 ⟦_⟧ᵗ : ∀ {A Γ Δ}(t : Tm Γ A) → {δ : Sub Δ Γ} → ⟦ δ ⟧ˢ → ⟦ A ⟧ (sub δ t)
 ⟦ var v ⟧ᵗ ⟦δ⟧ = ⟦sub-∈⟧ ⟦δ⟧ v
-⟦ f ∙ x ⟧ᵗ ⟦δ⟧ = ⟦∙⟧ ⟦δ⟧ (⟦ f ⟧ᵗ ⟦δ⟧) (⟦ x ⟧ᵗ ⟦δ⟧)
+⟦ f ∙ x ⟧ᵗ ⟦δ⟧ = ⟦∙⟧→ (⟦ f ⟧ᵗ ⟦δ⟧) (⟦ x ⟧ᵗ ⟦δ⟧)
 ⟦ ƛ t   ⟧ᵗ ⟦δ⟧ =
   ƛ-SN (CR₁ (⟦ t ⟧ᵗ (⟦wk⟧ ⟦δ⟧))) ,
-  λ ⟦a⟧ → ⟦ƛ⟧ ⟦δ⟧ ⟦a⟧ (⟦ t ⟧ᵗ (⟦▷⟧ ⟦δ⟧ ⟦a⟧))
+  λ ⟦a⟧ → ⟦ƛ⟧ ⟦δ⟧ ⟦a⟧ (⟦ t ⟧ᵗ (⟦δ⟧ , ⟦a⟧))
 
 
 
