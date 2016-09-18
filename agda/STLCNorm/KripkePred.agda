@@ -1,21 +1,142 @@
 
 module KripkePred where
 
-open import Basic
-
 open import Data.Product renaming (map to pmap)
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum renaming (map to smap)
-open import Function using (_$_)
-import Function as F
+open import Function
 open import Data.Unit
 open import Data.Empty
+
+-- STLC
+--------------------------------------------------------------------------------
+
+data Ty : Set where
+  ⋆   : Ty
+  _⇒_ : Ty → Ty → Ty
+infixr 2 _⇒_
+
+data Con : Set where
+  ε   : Con
+  _▷_ : Con → Ty → Con
+infix 3 _▷_
+
+data _∈_ (A : Ty) : Con → Set where
+  vz  : ∀ {Γ} → A ∈ Γ ▷ A
+  vs_ : ∀ {Γ B} → A ∈ Γ → A ∈ Γ ▷ B
+infix 2 _∈_
+
+data Tm Γ : Ty → Set where
+  var : ∀ {A} → A ∈ Γ → Tm Γ A
+  _∙_ : ∀ {A B} → Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
+  ƛ   : ∀ {A B} → Tm (Γ ▷ A) B → Tm Γ (A ⇒ B)
+infixl 7 _∙_
+
+-- Renaming
+--------------------------------------------------------------------------------
+
+data _⊆_ : Con → Con → Set where
+  refl : ∀ {Γ} → Γ ⊆ Γ
+  add  : ∀ {A Γ Δ} → Γ ⊆ Δ → Γ     ⊆ Δ ▷ A
+  keep : ∀ {A Γ Δ} → Γ ⊆ Δ → Γ ▷ A ⊆ Δ ▷ A
+infix 2 _⊆_
+
+ren-∈ : ∀ {A Γ Δ} → Γ ⊆ Δ → A ∈ Γ → A ∈ Δ
+ren-∈ refl     v      = v
+ren-∈ (add r)  v      = vs ren-∈ r v
+ren-∈ (keep r) vz     = vz
+ren-∈ (keep r) (vs v) = vs ren-∈ r v
+
+ren : ∀ {A Γ Δ} → Γ ⊆ Δ → Tm Γ A → Tm Δ A
+ren r (var v) = var (ren-∈ r v)
+ren r (f ∙ x) = ren r f ∙ ren r x
+ren r (ƛ t)   = ƛ (ren (keep r) t)
+
+-- Categorical renaming
+--------------------------------------------------------------------------------
+
+_∘ʳ_ : ∀ {Γ Δ Ξ} → Δ ⊆ Ξ → Γ ⊆ Δ → Γ ⊆ Ξ
+refl   ∘ʳ r'      = r'
+add r  ∘ʳ r'      = add (r ∘ʳ r')
+keep r ∘ʳ refl    = keep r
+keep r ∘ʳ add r'  = add (r ∘ʳ r')
+keep r ∘ʳ keep r' = keep (r ∘ʳ r')
+infixr 9 _∘ʳ_
+
+∘ʳ-refl : ∀ {Γ Δ} (r : Γ ⊆ Δ) → r ∘ʳ refl ≡ r
+∘ʳ-refl refl     = refl
+∘ʳ-refl (add r)  = cong add (∘ʳ-refl r)
+∘ʳ-refl (keep r) = refl
+
+ren-∈-∘ʳ :
+  ∀ {Γ Δ Ξ A} (r : Δ ⊆ Ξ) (r' : Γ ⊆ Δ) (v : A ∈ Γ)
+  → ren-∈ r (ren-∈ r' v) ≡ ren-∈ (r ∘ʳ r') v
+ren-∈-∘ʳ refl     r'        v      = refl
+ren-∈-∘ʳ (add r)  r'        v      = cong vs_ (ren-∈-∘ʳ r r' v)
+ren-∈-∘ʳ (keep r) refl      v      = refl
+ren-∈-∘ʳ (keep r) (add r')  v      = cong vs_ (ren-∈-∘ʳ r r' v)
+ren-∈-∘ʳ (keep r) (keep r') vz     = refl
+ren-∈-∘ʳ (keep r) (keep r') (vs v) = ren-∈-∘ʳ (add r) r' v
+
+ren-∘ʳ : ∀ {Γ Δ Ξ A}(r : Δ ⊆ Ξ)(r' : Γ ⊆ Δ)(t : Tm Γ A) → ren r (ren r' t) ≡ ren (r ∘ʳ r') t
+ren-∘ʳ r r' (var v) = cong var (ren-∈-∘ʳ r r' v)
+ren-∘ʳ r r' (f ∙ x) = cong₂ _∙_ (ren-∘ʳ r r' f) (ren-∘ʳ r r' x)
+ren-∘ʳ r r' (ƛ t)   = cong ƛ (ren-∘ʳ (keep r) (keep r') t)
+
+Id-⊆ : ∀ {Γ} → Γ ⊆ Γ → Set
+Id-⊆ refl     = ⊤
+Id-⊆ (add o)  = ⊥
+Id-⊆ (keep o) = Id-⊆ o
+
+ren-∈-Id : ∀ {Γ A}(r : Γ ⊆ Γ){{p : Id-⊆ r}}(v : A ∈ Γ) → ren-∈ r v ≡ v
+ren-∈-Id refl     v      = refl
+ren-∈-Id (add r) {{()}} v
+ren-∈-Id (keep r) vz     = refl
+ren-∈-Id (keep r) (vs v) = cong vs_ (ren-∈-Id r v)
+
+ren-Id : ∀ {Γ A}(r : Γ ⊆ Γ){{p : Id-⊆ r}}(t : Tm Γ A) → ren r t ≡ t
+ren-Id r (var v) = cong var (ren-∈-Id r v)
+ren-Id r (f ∙ x) = cong₂ _∙_ (ren-Id r f) (ren-Id r x)
+ren-Id r (ƛ t)   = cong ƛ (ren-Id (keep r) t)
+
+ren-refl : ∀ {Γ A}(t : Tm Γ A) → ren refl t ≡ t
+ren-refl = ren-Id refl
+
+-- Substitution
+--------------------------------------------------------------------------------
+
+data Sub (Γ : Con) : Con → Set where
+  ε    : Sub Γ ε
+  _▷_  : ∀ {A Δ} → Sub Γ Δ → Tm Γ A → Sub Γ (Δ ▷ A)
+
+ren-Sub : ∀ {Γ Δ Ξ} → Γ ⊆ Ξ → Sub Γ Δ → Sub Ξ Δ
+ren-Sub r ε       = ε
+ren-Sub r (δ ▷ t) = ren-Sub r δ ▷ ren r t
+
+wk : ∀ {A Γ Δ} → Sub Γ Δ → Sub (Γ ▷ A) (Δ ▷ A)
+wk δ = ren-Sub (add refl) δ ▷ var vz
+
+sub-∈ : ∀ {A Γ Δ} → Sub Γ Δ → A ∈ Δ → Tm Γ A
+sub-∈ (δ ▷ t) vz     = t
+sub-∈ (δ ▷ t) (vs v) = sub-∈ δ v
+
+sub : ∀ {A Γ Δ} → Sub Γ Δ → Tm Δ A → Tm Γ A
+sub δ (var v) = sub-∈ δ v
+sub δ (f ∙ x) = sub δ f ∙ sub δ x
+sub δ (ƛ t)   = ƛ (sub (wk δ) t)
+
+idˢ : ∀ {Γ} → Sub Γ Γ
+idˢ {ε}     = ε
+idˢ {Γ ▷ A} = wk idˢ
+
+inst : ∀ {Γ A B} → Tm Γ A → Tm (Γ ▷ A) B → Tm Γ B
+inst t' t = sub (idˢ ▷ t') t
 
 -- Reduction
 --------------------------------------------------------------------------------
 
 data _~>_ {Γ} : ∀ {A} → Tm Γ A → Tm Γ A → Set where
-  β  : ∀ {A B}(t : Tm (Γ ▷ A) B) t'                →  ƛ t ∙ t' ~> sub vz t' t
+  β  : ∀ {A B}(t : Tm (Γ ▷ A) B) t'                →  ƛ t ∙ t' ~> inst t' t
   ƛ  : ∀ {A B}{t : Tm (Γ ▷ A) B} t'      → t ~> t' →  ƛ t      ~> ƛ t'
   ∙₁ : ∀ {A B}{f} (f' : Tm Γ (A ⇒ B)){x} → f ~> f' →  (f ∙ x)  ~> (f' ∙ x)
   ∙₂ : ∀ {A B}{f : Tm Γ (A ⇒ B)} {x} x'  → x ~> x' →  (f ∙ x)  ~> (f ∙ x')
@@ -28,167 +149,95 @@ data SN {Γ A} (t : Tm Γ A) : Set where
   sn : (∀ {t'} → t ~> t' → SN t') → SN t
 -- (AGDA BUG : if SN is an inductive record, CR₃ fails termination check)
 
-runSN : ∀ {Γ A t} → SN {Γ}{A} t → (∀ {t'} → t ~> t' → SN t')
+runSN : ∀ {Γ A}{t : Tm Γ A} → SN t → (∀ {t'} → t ~> t' → SN t')
 runSN (sn s) = s
-
--- Reducibility
---------------------------------------------------------------------------------
-
-RED : {A : Ty} → ∀ {Γ} (t : Tm Γ A) → Set
-RED {⋆}     {Γ} = λ t → ∀ {Δ}(r : Γ ⊆ Δ) → SN (ren r t)
-RED {A ⇒ B} {Γ} = λ t → ∀ {Δ}(r : Γ ⊆ Δ)(a : Tm Δ A) → RED a → RED (ren r t ∙ a)
-
--- -- Renaming preserves reduction
--- --------------------------------------------------------------------------------
-
-ren~>-→ : ∀ {Γ Δ A}(r : Γ ⊆ Δ){t t' : Tm Γ A} → t ~> t' → ren r t ~> ren r t'
-ren~>-→ r (β t t') rewrite ren-sub (keep r) vz t' t = β (ren (keep r) t) (ren r t')
-ren~>-→ r (ƛ t' t~>t')  = ƛ (ren (keep r) t') (ren~>-→ (keep r) t~>t')
-ren~>-→ r (∙₁ f' f~>f') = ∙₁ (ren r f') (ren~>-→ r f~>f')
-ren~>-→ r (∙₂ x' x~>x') = ∙₂ (ren r x') (ren~>-→ r x~>x')
-
--- ren~>-str : ∀ {Γ Δ A}(r : Γ ⊆ Δ){t : Tm Γ A}{t'} → ren r t ~> t' → ∃ λ t'' → t' ≡ ren r t''
--- ren~>-str r {var x} ()
--- ren~>-str r {ƛ f ∙ x} (β _ _) =
---   sub vz x f , (sym $ ren-sub (keep r) vz x f)
--- ren~>-str r {var v ∙ x} (∙₁ f' ())
--- ren~>-str r {var v ∙ x} (∙₂ x' rt~>t') =
---   pmap (var v ∙_) (cong (var (ren-∈ r v) ∙_)) (ren~>-str r rt~>t')
--- ren~>-str r {f ∙ x ∙ y} (∙₁ f' rt~>t') =
---   pmap (_∙ y) (cong (_∙ ren r y)) (ren~>-str r rt~>t')
--- ren~>-str r {f ∙ x ∙ y} (∙₂ x' rt~>t') =
---   pmap ((f ∙ x) ∙_) (cong ((ren r f ∙ ren r x) ∙_)) (ren~>-str r rt~>t')
--- ren~>-str r {ƛ f ∙ x} (∙₁ _ (ƛ t' rt~>t')) =
---   pmap (λ t'' → ƛ t'' ∙ x) (cong (λ t' → ƛ t' ∙ ren r x)) (ren~>-str (keep r) rt~>t')
--- ren~>-str r {ƛ f ∙ x} (∙₂ x' rt~>t') =
---   pmap (ƛ f ∙_) (cong (ƛ (ren (keep r) f) ∙_)) (ren~>-str r rt~>t')
--- ren~>-str r {ƛ t}   (ƛ t' rt~>t') =
---   pmap ƛ (cong ƛ) (ren~>-str (keep r) rt~>t')
-
--- ren~>-← : ∀ {Γ Δ A}(r : Γ ⊆ Δ){t t' : Tm Γ A} → ren r t ~> ren r t' → t ~> t'
--- ren~>-← r = go r refl where
-
---   go : ∀ {Γ Δ A}(r : Γ ⊆ Δ){t t' : Tm Γ A}{t''} → t'' ≡ ren r t' → ren r t ~> t'' → t ~> t'
-
---   go r {var v ∙ x} {t' ∙ t''} eq (∙₂ x' rt~>rt') with ren~>-str r rt~>rt'
---   go r {var v ∙ x} {t' ∙ t''} eq (∙₂ _ rt~>rt') | x'' , refl
---     rewrite sym $ ren-inj r eq = ∙₂ x'' (go r refl rt~>rt')
-
---   go r {f ∙ x ∙ y} eq (∙₁ f' rt~>rt') with ren~>-str r rt~>rt'
---   go r {f ∙ x ∙ y} eq (∙₁ _ rt~>rt') | t'' , refl
---     rewrite sym $ ren-inj r eq = ∙₁ t'' (go r refl rt~>rt')
-
---   go r {f ∙ x ∙ y} eq (∙₂ x' rt~>rt') with ren~>-str r rt~>rt'
---   go r {f ∙ x ∙ y} eq (∙₂ _  rt~>rt') | x'' , refl
---     rewrite sym $ ren-inj r eq = ∙₂ x'' (go r refl rt~>rt')
-
---   go r {ƛ f ∙ x} eq (β _ _) =
---     subst (_ ~>_) (ren-inj r (trans (ren-sub (keep r) vz x f) eq)) (β f x)
-
---   go r {ƛ f ∙ x} eq (∙₁ _ (ƛ t' rt~>rt')) with ren~>-str (keep r) rt~>rt'
---   go r {ƛ f ∙ x} eq (∙₁ _ (ƛ _ rt~>rt')) | f' , refl
---     rewrite sym $ ren-inj r eq = ∙₁ _ (ƛ _ (go (keep r) refl rt~>rt'))
-
---   go r {ƛ f ∙ x} eq (∙₂ x' rt~>rt') with ren~>-str r rt~>rt'
---   go r {ƛ f ∙ x} eq (∙₂ _  rt~>rt') | x'' , refl
---     rewrite sym $ ren-inj r eq = ∙₂ x'' (go r refl rt~>rt')
-
---   go r {ƛ t} {ƛ t'} eq (ƛ _ rt~>rt') =
---     ƛ t' (go (keep r) (ƛ-inj eq) rt~>rt')
-
---   go r {var x} eq ()
---   go r {var v ∙ x} eq (∙₁ f' ())
---   go r {var v ∙ x} {var x₁} () (∙₂ x' rt~>rt')
---   go r {var v ∙ x} {ƛ t'} () (∙₂ x' rt~>rt')
---   go r {ƛ t} {var x} () (ƛ t' rt~>rt')
---   go r {ƛ t} {t'' ∙ t'''} () (ƛ t' rt~>rt')
-
-
--- -- Renaming preserves strong normalization
--- --------------------------------------------------------------------------------
-
--- ren-SN→ : ∀ {Γ Δ A} (r : Γ ⊆ Δ)(t : Tm Γ A) → SN (ren r t) → SN t
--- ren-SN→ r t (sn snt) = sn (λ {t'} t~>t' → ren-SN→ r t' (snt (ren~>-→ r t~>t')))
-
--- ren-SN← : ∀ {Γ Δ A} (r : Γ ⊆ Δ)(t : Tm Γ A) → SN t → SN (ren r t)
--- ren-SN← {Γ}{Δ}{A} r t snt = sn (go t snt) where
---   go : ∀ t → SN t → ∀ {t' : Tm Δ A} → ren r t ~> t' → SN t'
---   go t (sn snt) rt~>t' with ren~>-str r rt~>t'
---   ... | t'' , refl = ren-SN← r t'' (snt (ren~>-← r rt~>t'))
-
--- -- Renaming preserves reducibility
--- --------------------------------------------------------------------------------
-
-
-
-
--- -- ren-∈-RED← : ∀ {Γ Δ A}(r : Γ ⊆ Δ){v : A ∈ Γ} → RED (var v) → RED (var (ren-∈ r v))
--- -- ren-∈-RED← {A = ⋆}     r rv = sn (λ ())
--- -- ren-∈-RED← {A = A ⇒ B} r rv = {!!}
-
--- -- ren-RED← : ∀ {Γ Δ A}(r : Γ ⊆ Δ)(t : Tm Γ A) → RED t → RED (ren r t)
--- -- ren-RED← r (var v) rt = ren-∈-RED← r {v} rt
--- -- ren-RED← r (f ∙ x) rt = {!ren-RED← r f!}
--- -- ren-RED← r (ƛ t)   rt = {!!}
-
--- -- ren-RED← : ∀ {Γ Δ A}(r : Γ ⊆ Δ)(t : Tm Γ A) → RED t → RED (ren r t)
--- -- ren-RED← {A = ⋆}                   = ren-SN←
--- -- ren-RED← {Γ} {Δ} {A ⇒ B} r (var v) rt a ra = {!!}
--- -- ren-RED← {Γ} {Δ} {A ⇒ B} r (f ∙ x) rt a ra = {!!}
--- -- ren-RED← {Γ} {Δ} {A ⇒ B} r (ƛ t)   rt a ra = {!!}
-
--- -- ren-RED→ : ∀ {Γ Δ A}(r : Γ ⊆ Δ)(t : Tm Γ A) → RED (ren r t) → RED t
--- -- ren-RED→ {A = ⋆}     = ren-SN→
--- -- ren-RED→ {A = A ⇒ B} = λ r t rt a ra → ren-RED→ r (t ∙ a) (rt (ren r a) (ren-RED← r a ra))
-
-
-
--- -- Properties of reducibility candidates
--- --------------------------------------------------------------------------------
 
 neu : ∀ {Γ A} → Tm Γ A → Set
 neu (var _) = ⊤
 neu (_ ∙ _) = ⊤
 neu (ƛ _)   = ⊥
 
+ƛ-SN→ : ∀ {Γ A B}{t : Tm (Γ ▷ A) B} → SN t → SN (ƛ t)
+ƛ-SN→ (sn s) = sn λ {(ƛ _ t~>t') → ƛ-SN→ (s t~>t')}
+
+-- Reducibility
+--------------------------------------------------------------------------------
+
+-- Kripke reducibility predicate
+⟦_⟧ : (A : Ty) → ∀ {Γ} → Tm Γ A → Set
+⟦ ⋆     ⟧ {Γ} t = SN t
+⟦ A ⇒ B ⟧ {Γ} f = ∀ {Δ}(r : _ ⊆ Δ){a : Tm Δ A} → ⟦ A ⟧ a → ⟦ B ⟧ (ren r f ∙ a)
+
+∙-SN : ∀ {Γ A B}{f : Tm Γ (A ⇒ B)}{x} → SN (f ∙ x) → SN f × SN x
+∙-SN (sn s) =
+  sn (λ f~>f' → proj₁ (∙-SN (s (∙₁ _ f~>f')))) ,
+  sn (λ x~>x' → proj₂ (∙-SN (s (∙₂ _ x~>x'))))
+
+ren~> : ∀ {Γ Δ A}(r : Γ ⊆ Δ){t t' : Tm Γ A} → t ~> t' → ren r t ~> ren r t'
+ren~> r (β t t')      = {!!} -- TODO: ren-sub
+ren~> r (ƛ t' t~>t')  = ƛ (ren (keep r) t') (ren~> (keep r) t~>t')
+ren~> r (∙₁ f' f~>f') = ∙₁ (ren r f') (ren~> r f~>f')
+ren~> r (∙₂ x' x~>x') = ∙₂ (ren r x') (ren~> r x~>x')
+
+ren-SN : ∀ {Γ Δ A} (r : Γ ⊆ Δ)(t : Tm Γ A) → SN (ren r t) → SN t
+ren-SN r t (sn snt) = sn (λ {t'} t~>t' → ren-SN r t' (snt (ren~> r t~>t')))
+
 mutual
-  CR₁ : ∀ {Γ} {A t} → RED {A}{Γ} t → ∀ {Δ}(r : Γ ⊆ Δ) → SN (ren r t)
-  CR₁ {A = ⋆}         rt = rt
-  CR₁ {A = A ⇒ B} {f} rf = λ r → {!!} 
+  CR₁ : ∀ {A Γ t} → ⟦ A ⟧ {Γ} t → SN t
+  CR₁ {⋆}     ⟦t⟧ = ⟦t⟧
+  CR₁ {A ⇒ B} ⟦t⟧ =
+    ren-SN (add {A} refl) _ $ proj₁ $ ∙-SN $ CR₁ $ ⟦t⟧ _ {var vz} (CR₃ _ _ (λ _ ()))
 
---   -- 1. RED f
---   -- 2. RED (ren (add refl) f)
---   -- 3. (RED (ren (add refl) f ∙ var vz) --> SN (ren (add refl) f ∙ var vz))
---   -- 4. (SN (ren (add refl) f ∙ var vz) --> SN (ren (add refl) f))
---   -- 5. SN (ren (add refl) f)
---   -- 6. SN f
+  CR₂ : ∀ {A Γ t t'} → t ~> t' → ⟦ A ⟧ {Γ} t → ⟦ A ⟧ t'
+  CR₂ {⋆}     t~>t' (sn s) = s t~>t'
+  CR₂ {A ⇒ B} t~>t' ⟦t⟧    = λ r ⟦a⟧ → CR₂ (∙₁ _ (ren~> r t~>t')) (⟦t⟧ r ⟦a⟧)
 
---     -- lem1 : ∀ {Γ A B}(t : Tm (Γ ▷ A) (A ⇒ B)) → RED t → RED (t ∙ var vz)
---     -- lem1 {A = A} t rt = rt (var vz) (CR₃ (var {A = A} vz) tt (λ ()))
+  CR₃ : ∀ {A Γ}(t : Tm Γ A) → neu t → (∀ {Δ}(r : Γ ⊆ Δ){t'} → ren r t ~> t' → ⟦ A ⟧ t') → ⟦ A ⟧ t
+  CR₃ {⋆}     t nt f = sn (f refl ∘ subst (_~> _) (sym (ren-refl t)))
+  CR₃ {A ⇒ B} t nt f =
+    λ r {a} ⟦a⟧ → CR₃ {B} (ren r t ∙ a) _ (λ r {t'} step → {!go !})
 
---     lem2 : ∀ {Γ A B}{f : Tm Γ (A ⇒ B)}{x} → SN (f ∙ x) → SN f
---     lem2 (sn s) = sn (λ f~>f' → lem2 (s (∙₁ _ f~>f')))
+    -- λ r ⟦a⟧ → CR₃ _ _ (go r nt (ren r t) refl (λ r rt~>t' ⟦a⟧ → {!!}) ⟦a⟧ (CR₁ ⟦a⟧))
+    where
+      go :
+        ∀ {A B Γ Δ}(r : Γ ⊆ Δ){t : Tm Γ (A ⇒ B)}
+        → neu t
+        → (rt : Tm Δ (A ⇒ B))
+        → rt ≡ ren r t
+        → (∀ {t'} → ren r t ~> t' → ⟦ A ⇒ B ⟧ t')
+        → ∀ {a} → ⟦ A ⟧ a → SN a
+        → ∀ {t'} → rt ∙ a ~> t' → ⟦ B ⟧ t'
+      go _ {var _} _  _ () _ _ _ (β t t')
+      go _ {_ ∙ _} _  _ () _ _ _ (β t t')
+      go _ {ƛ _  } () _ _  _ _ _ (β t t')
+      go r {t} nt₁ _ refl f {a} ⟦a⟧ sna (∙₁ f' rt~>f') = {!f rt~>f' refl ⟦a⟧!}
+      go r {t} nt₁ _ refl f {a} ⟦a⟧ sna (∙₂ a' a~>a')  = {!!}
 
+      -- go () _ _   _        _ (β _ _)
+      -- go nt f ⟦a⟧ sna      _ (∙₁ t' t~>t') = {!f t~>t'!}
+      -- go nt f ⟦a⟧ (sn sna) _ (∙₂ a' a~>a') =
+      --   CR₃ (_ ∙ a') _ (go nt f (CR₂ a~>a' ⟦a⟧) (sna a~>a') _)
 
+-- --------------------------------------------------------------------------------
 
-  CR₂ : ∀ {Γ} {A t t'} → t ~> t' → RED {A}{Γ} t → RED t'
-  CR₂ {A = ⋆}     t~>t' rt = λ r → runSN (rt r) (ren~>-→ r t~>t')
-  CR₂ {A = A ⇒ B} t~>t' rt = λ r a ra → {!CR₂ (∙₁ _ t~>t')!}
-    -- λ r a ra → {!CR₂ (∙₁ _ t~>t')!} -- CR₂ (∙₁ _ t~>t') (rf a ra)
+-- ⟦_⟧ˢ : ∀ {Γ Δ} → Sub Γ Δ → Set
+-- ⟦ ε     ⟧ˢ = ⊤
+-- ⟦ δ ▷ t ⟧ˢ = ⟦ δ ⟧ˢ × ⟦ _ ⟧ t
 
---   CR₃ : ∀ {Γ A}(t : Tm Γ A) → neu t → (∀ {t'} → t ~> t' → RED {A} t') → RED t
---   CR₃ {A = ⋆}     t nt cr₂ = sn cr₂
---   CR₃ {A = A ⇒ B} t nt cr₂ = λ a ra → go t nt cr₂ a ra (CR₁ ra) where
---     mutual
---       go :
---         ∀ {Γ A B} (t : Tm Γ (A ⇒ B)) → neu t → (∀ {t'} → t ~> t' → RED {A ⇒ B} t')
---         → ∀ a → RED a → SN a → RED (t ∙ a)
---       go t nt cr₂ a ra sna = CR₃ (t ∙ a) tt (go' nt cr₂ a ra sna _)
+-- ⟦ƛ⟧ :
+--   ∀ {A B Γ Δ}{δ : Sub Γ Δ}{t : Tm (Δ ▷ A) B}
+--   → ⟦ δ ⟧ˢ → ∀ {a} → ⟦ A ⟧ a
+--   → ⟦ B ⟧ (sub (δ ▷ a) t)
+--   → ⟦ B ⟧ (ƛ (sub (wk δ) t) ∙ a)
+-- ⟦ƛ⟧ ⟦δ⟧ ⟦a⟧ ⟦t⟧ = {!!}
 
---       go' :
---         ∀ {Γ A B}{t : Tm Γ (A ⇒ B)} → neu t → (∀ {t'} → t ~> t' → RED {A ⇒ B} t')
---         → ∀ a → RED a → SN a → ∀ t' → t ∙ a ~> t' → RED t'
---       go' () _ _ _ _ _ (β _ _)
---       go' nt cr₂ a ra sna      _ (∙₁ t' t~>t') = cr₂ t~>t' a ra
---       go' nt cr₂ a ra (sn sna) _ (∙₂ a' a~>a') = go _ nt cr₂ a' (CR₂ a~>a' ra) (sna a~>a')
+-- ⟦sub-∈⟧ : ∀ {A Γ Δ}{δ : Sub Δ Γ} → ⟦ δ ⟧ˢ → (v : A ∈ Γ) → ⟦ A ⟧ (sub-∈ δ v)
+-- ⟦sub-∈⟧ {δ = δ ▷ t} (_   , ⟦t⟧) vz     = ⟦t⟧
+-- ⟦sub-∈⟧ {δ = δ ▷ t} (⟦δ⟧ , _)   (vs v) = ⟦sub-∈⟧ ⟦δ⟧ v
+
+-- ⟦_⟧ᵗ : ∀ {A Γ Δ}(t : Tm Γ A) → {δ : Sub Δ Γ} → ⟦ δ ⟧ˢ → ⟦ A ⟧ (sub δ t)
+-- ⟦ var v ⟧ᵗ ⟦δ⟧ = ⟦sub-∈⟧ ⟦δ⟧ v
+-- ⟦ f ∙ x ⟧ᵗ ⟦δ⟧ = (⟦ f ⟧ᵗ ⟦δ⟧) (⟦ x ⟧ᵗ ⟦δ⟧)
+-- ⟦ ƛ t   ⟧ᵗ ⟦δ⟧ = λ ⟦a⟧ → ⟦ƛ⟧ ⟦δ⟧ ⟦a⟧ (⟦ t ⟧ᵗ (⟦δ⟧ , ⟦a⟧))
+
 
