@@ -1,5 +1,5 @@
 
-module KripkePred where
+module KripkePred2 where
 
 open import Data.Product renaming (map to pmap)
 open import Relation.Binary.PropositionalEquality
@@ -165,8 +165,8 @@ neu (ƛ _)   = ⊥
 
 -- Kripke reducibility predicate
 ⟦_⟧ : (A : Ty) → ∀ {Γ} → Tm Γ A → Set
-⟦ ⋆     ⟧ {Γ} t = SN t
-⟦ A ⇒ B ⟧ {Γ} f = ∀ {Δ}(r : _ ⊆ Δ){a : Tm Δ A} → ⟦ A ⟧ a → ⟦ B ⟧ (ren r f ∙ a)
+⟦ ⋆     ⟧ {Γ} t = ∀ {Δ}(r : Γ ⊆ Δ) → SN (ren r t)
+⟦ A ⇒ B ⟧ {Γ} f = ∀ {Δ}(r : Γ ⊆ Δ){a : Tm Δ A} → ⟦ A ⟧ a → ⟦ B ⟧ (ren r f ∙ a)
 
 ∙-SN : ∀ {Γ A B}{f : Tm Γ (A ⇒ B)}{x} → SN (f ∙ x) → SN f × SN x
 ∙-SN (sn s) =
@@ -188,44 +188,63 @@ ren-neu r {_ ∙ _} nt = tt
 ren-neu r {ƛ _}   nt = nt
 
 mutual
-  CR₁ : ∀ {A Γ t} → ⟦ A ⟧ {Γ} t → SN t
-  CR₁ {⋆}     ⟦t⟧ = ⟦t⟧
-  CR₁ {A ⇒ B} ⟦t⟧ =
-    ren-SN (add {A} refl) _ $ proj₁ $ ∙-SN $ CR₁ $ ⟦t⟧ _ {var vz} (CR₃ _ _ (λ _ ()))
+  CR₁' : ∀ {A Γ t} → ⟦ A ⟧ {Γ} t → SN t  
+  CR₁' {t = t}⟦t⟧ = subst SN (ren-refl t) (CR₁ refl {t} ⟦t⟧)
 
+  CR₁ : ∀ {A Γ Δ}(r : Γ ⊆ Δ){t} → ⟦ A ⟧ {Γ} t → SN (ren r t)
+  CR₁ {⋆}     r     ⟦t⟧ = ⟦t⟧ r
+  CR₁ {A ⇒ B} r {t} ⟦t⟧ =
+    let
+      l1 : ⟦ B ⟧ (ren (add r) t ∙ var vz)    
+      l1 = ⟦t⟧ (add {A} r) (CR₃ (var (vz {A})) _ (λ _ ()))
+      
+      l2 : SN (ren (add r) t ∙ var vz)
+      l2 = CR₁' l1
+
+      l3 : SN (ren (add {A} r) t)
+      l3 = proj₁ (∙-SN l2)
+
+      l4 : SN (ren (add {A} refl) (ren r t))
+      l4 = subst SN (sym (ren-∘ʳ (add refl) r t)) l3
+
+    in ren-SN (add refl) (ren r t) l4
+    
   CR₂ : ∀ {A Δ Γ t t'}(r : Γ ⊆ Δ) → ren r t ~> t' → ⟦ A ⟧ {Γ} t → ⟦ A ⟧ t'
-  CR₂ {⋆}     r rt~>t' (sn s) = sn (λ {t'} step → {!!}) -- t~>t'
-  CR₂ {A ⇒ B} r rt~>t' ⟦t⟧    = {!!} -- λ r ⟦a⟧ → CR₂ (∙₁ _ (ren~> r t~>t')) (⟦t⟧ r ⟦a⟧)
+  CR₂ {⋆}     r rt~>t' ⟦t⟧ r' = {!!}
+  CR₂ {A ⇒ B} = {!!}
+  -- CR₂ {⋆}     r rt~>t' (sn s) = sn (λ {t'} step → {!!}) -- t~>t'
+  -- CR₂ {A ⇒ B} r rt~>t' ⟦t⟧    = {!!} -- λ r ⟦a⟧ → CR₂ (∙₁ _ (ren~> r t~>t')) (⟦t⟧ r ⟦a⟧)
 
   -- CR₂ : ∀ {A Γ t t'} → t ~> t' → ⟦ A ⟧ {Γ} t → ⟦ A ⟧ t'
   -- CR₂ {⋆}     t~>t' (sn s) = s t~>t'
   -- CR₂ {A ⇒ B} t~>t' ⟦t⟧    = λ r ⟦a⟧ → CR₂ (∙₁ _ (ren~> r t~>t')) (⟦t⟧ r ⟦a⟧)
 
   CR₃ : ∀ {A Γ}(t : Tm Γ A) → neu t → (∀ {Δ}(r : Γ ⊆ Δ){t'} → ren r t ~> t' → ⟦ A ⟧ t') → ⟦ A ⟧ t
-  CR₃ {⋆}     t nt f = sn (f refl ∘ subst (_~> _) (sym (ren-refl t)))
-  CR₃ {A ⇒ B}{Γ} t nt f {Δ} r {a} ⟦a⟧ =
-    CR₃ {B} (ren r t ∙ a) _ (λ r' → go t nt r ⟦a⟧ (CR₁ ⟦a⟧) f r' refl)
-    where
-      go :
-        ∀ {Γ Δ A B}
-        → (t : Tm Γ (A ⇒ B))
-        → neu t
-        → (r : Γ ⊆ Δ)
-        → {a : Tm Δ A}
-        → ⟦ A ⟧ a
-        → SN a
-        → (∀ {Δ}(r : Γ ⊆ Δ){t'} → ren r t ~> t' → ⟦ A ⇒ B ⟧ t')
-        → ∀ {Δ'} (r' : Δ ⊆ Δ') {t' : Tm Δ' B}{lhs}
-        → lhs ≡ ren r' (ren r t ∙ a)
-        → lhs ~> t' → ⟦ B ⟧ t'
-      go (var _) _ _ _ _ _ _ () (β _ _)
-      go (_ ∙ _) _ _ _ _ _ _ () (β _ _)
-      go (ƛ _)  () _ _ _ _ _ _  (β _ _)
-      go _       _ _ _ _ _ _ () (ƛ _ _)
-      go t nt r {a} ⟦a⟧ sna f r' refl (∙₁ f' step) rewrite ren-∘ʳ r' r t
-        = subst (λ x → ⟦ _ ⟧ (x ∙ ren r' a)) (ren-refl f') (f (r' ∘ʳ r) step refl {ren r' a} {!⟦a⟧!})
-      go t nt r ⟦a⟧ sna f r' refl (∙₂ x' step) = {!!}
-
+  CR₃ = {!!}
+  -- CR₃ {⋆}     t nt f = sn (f refl ∘ subst (_~> _) (sym (ren-refl t)))
+  -- CR₃ {A ⇒ B}{Γ} t nt f {Δ} r {a} ⟦a⟧ = 
+  --   CR₃ {B} (ren r t ∙ a) _ (λ r' → go t nt r ⟦a⟧ (CR₁ ⟦a⟧) f r' refl)
+  --   where
+  --     go :
+  --       ∀ {Γ Δ A B}
+  --       → (t : Tm Γ (A ⇒ B))
+  --       → neu t
+  --       → (r : Γ ⊆ Δ)
+  --       → {a : Tm Δ A}
+  --       → ⟦ A ⟧ a
+  --       → SN a               
+  --       → (∀ {Δ}(r : Γ ⊆ Δ){t'} → ren r t ~> t' → ⟦ A ⇒ B ⟧ t')
+  --       → ∀ {Δ'} (r' : Δ ⊆ Δ') {t' : Tm Δ' B}{lhs}
+  --       → lhs ≡ ren r' (ren r t ∙ a)
+  --       → lhs ~> t' → ⟦ B ⟧ t'
+  --     go (var _) _ _ _ _ _ _ () (β _ _)
+  --     go (_ ∙ _) _ _ _ _ _ _ () (β _ _)
+  --     go (ƛ _)  () _ _ _ _ _ _  (β _ _)
+  --     go _       _ _ _ _ _ _ () (ƛ _ _)      
+  --     go t nt r {a} ⟦a⟧ sna f r' refl (∙₁ f' step) rewrite ren-∘ʳ r' r t
+  --       = subst (λ x → ⟦ _ ⟧ (x ∙ ren r' a)) (ren-refl f') (f (r' ∘ʳ r) step refl {ren r' a} {!⟦a⟧!})
+  --     go t nt r ⟦a⟧ sna f r' refl (∙₂ x' step) = {!!}
+       
 
 -- --------------------------------------------------------------------------------
 
