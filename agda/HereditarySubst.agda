@@ -57,22 +57,6 @@ subst x s (var .(wkv x y)) | diff .x y = var y
 subst x s (lam t)   = lam (subst (suc x) (wkTm zero s) t)
 subst x s (app f t) = app (subst x s f) (subst x s t)
 
-mutual
-  _∋_~_ : ∀ {Γ} σ → Γ ⊢ σ → Γ ⊢ σ → Set
-  σ ∋ s ~ t = s ~ t
-  infix 3 _∋_~_
-  
-  data _~_ {Γ} : ∀ {σ} → Γ ⊢ σ → Γ ⊢ σ → Set where
-    refl    : ∀ {σ t} → σ ∋ t ~ t
-    sym     : ∀ {σ t s} → t ~ s → σ ∋ s ~ t
-    trans   : ∀ {σ t s u} → t ~ s → s ~ u → σ ∋ t ~ u
-    congΛ   : ∀ {τ σ} {t s : Γ , τ ⊢ σ} → t ~ s → lam t ~ lam s
-    congApp : ∀ {σ τ t s u p} → (τ ⇒ σ) ∋ s ~ t → u ~ p → app s u ~ app t p
-    beta    : ∀ {σ τ}{t : Γ , σ ⊢ τ}{s} → app (lam t) s ~ subst zero s t
-    eta     : ∀ {σ τ t} → σ ⇒ τ ∋ lam (app (wkTm zero t) (var zero)) ~ t
-  infix 3 _~_
-
--- TODO : try to do proofs with DTDT-style spines!
 mutual 
   data _⊨_ Γ : Ty → Set where
     lam : ∀ {σ τ} → Γ , σ ⊨ τ → Γ ⊨ σ ⇒ τ
@@ -86,15 +70,6 @@ mutual
     ε   : ∀ {σ} → Γ ⊨* σ , σ 
     _,_ : ∀ {σ τ ρ} → Γ ⊨ σ → Γ ⊨* τ , ρ → Γ ⊨* σ ⇒ τ , ρ
   infix 3 _⊨*_,_
-
-mutual
-  ⌈_⌉ : ∀ {Γ σ} → Γ ⊨ σ → Γ ⊢ σ
-  ⌈ lam t      ⌉ = lam ⌈ t ⌉
-  ⌈ ne (f , s) ⌉ = embedSp (var f) s
-
-  embedSp : ∀ {Γ σ τ} → Γ ⊢ σ → Γ ⊨* σ , τ → Γ ⊢ τ
-  embedSp t ε        = t
-  embedSp t (x , sp) = embedSp (app t ⌈ x ⌉) sp
 
 mutual
   wkNf : ∀ {Γ σ τ} (x : τ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨ σ
@@ -141,5 +116,4 @@ nf : ∀ {Γ σ} → Γ ⊢ σ → Γ ⊨ σ
 nf (var x)   = η x
 nf (lam t)   = lam (nf t)
 nf (app f x) = nfapp (nf f) (nf x)
-
 

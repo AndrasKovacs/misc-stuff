@@ -170,20 +170,28 @@ mutual
           (∙₂ a' a~>a')       → go b ⟦b⟧ (sn snb) f a' (CR₂ a~>a' ⟦a⟧) (sna a~>a')})
 
 
--- MUTLI sub: I don't see exactly how yet
--- NOTE : we could push the δ substitution inside the "f" arg, thereby strenghtening
--- the premise (we can get this from ⟦_⟧ᵗ)
-go :
-  ∀ {Γ Δ A B}
-  → {δ : Sub Δ Γ} → ⟦ δ ⟧ˢ
-  → (t : Tm (Γ ▷ A) B) → ⟦ B ⟧ (sub (wk δ) t) → SN (sub (wk δ) t)
-  → (∀ {a} → ⟦ A ⟧ a → ⟦ B ⟧ (sub (δ ▷ a) t))
-  → (∀ {a} → ⟦ A ⟧ a → SN a → ⟦ B ⟧ (ƛ (sub (wk δ) t) ∙ a))
-go {δ = δ} ⟦δ⟧ t ⟦t⟧ (sn snt) f {a} ⟦a⟧ (sn sna) = CR₃ (ƛ (sub (wk δ) t) ∙ a) _
-  (λ {
-    (∙₁ _ (ƛ t' t~>t')) → {!go ⟦δ⟧ !}; -- probably much harder than single sub, but provable
-    (∙₂ a' a~>a' )      → go ⟦δ⟧ t ⟦t⟧ (sn snt) f {a'} (CR₂ a~>a' ⟦a⟧) (sna a~>a');
-    (β  a )             → {! f ⟦a⟧!}}) -- TODO (doable and not very hard)
+-- -- MUTLI sub: I don't see exactly how yet
+-- -- NOTE : we could push the δ substitution inside the "f" arg, thereby strenghtening
+-- -- the premise (we can get this from ⟦_⟧ᵗ)
+-- go :
+--   ∀ {Γ Δ A B}
+--   → {δ : Sub Δ Γ} → ⟦ δ ⟧ˢ
+--   → (t : Tm (Γ ▷ A) B) → ⟦ B ⟧ (sub (wk δ) t) → SN (sub (wk δ) t)
+--   → (∀ {a} → ⟦ A ⟧ a → ⟦ B ⟧ (sub (δ ▷ a) t))
+--   → (∀ {a} → ⟦ A ⟧ a → SN a → ⟦ B ⟧ (ƛ (sub (wk δ) t) ∙ a))
+-- go {δ = δ} ⟦δ⟧ t ⟦t⟧ (sn snt) f {a} ⟦a⟧ (sn sna) = CR₃ (ƛ (sub (wk δ) t) ∙ a) _
+--   (λ {
+--     (∙₁ _ (ƛ t' t~>t')) → {!go ⟦δ⟧ !}; -- probably much harder than single sub, but provable
+--     (∙₂ a' a~>a' )      → go ⟦δ⟧ t ⟦t⟧ (sn snt) f {a'} (CR₂ a~>a' ⟦a⟧) (sna a~>a');
+--     (β  a )             → {! f ⟦a⟧!}}) -- TODO (doable and not very hard)
+
+-- go :
+--   ∀ {Γ Δ A B}
+--   → {δ : Sub Δ Γ} → ⟦ δ ⟧ˢ
+--   → (t : Tm (Γ ▷ A) B) → ⟦ B ⟧ (sub (wk δ) t) → SN (sub (wk δ) t)
+--   → (∀ {a} → ⟦ A ⟧ a → ⟦ B ⟧ (sub (δ ▷ a) t))
+--   → (∀ {a} → ⟦ A ⟧ a → SN a → ⟦ B ⟧ (ƛ (sub (wk δ) t) ∙ a))
+-- go = {!!}
 
 
 -- NO IDEA ABOUT THIS

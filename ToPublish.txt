@@ -4,8 +4,18 @@ Blog post-like:
   benchmarks on effects
   Coquand's algorithm tutorial
 
-Lib:
-  trie-vector
-  put noteworthy existing libs on Stackage
+Todo lib:
+  prim arrays / bytearrays
 
+  trie-vector:
+    4 variants by boxity and 8/16 node size
+    
+  small utf8 text (maybe as special bytearray?)
+  
+  small ByteArray bitset
+  
+  crazy HAMT:
+    4 variant by boxity of keys/values
+    1 variant: specialized to bytearray values (so: including small text)
+      (+ 2 low priority variants: specialized to small/big boxed arrays)
 

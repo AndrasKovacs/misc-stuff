@@ -1,3 +1,4 @@
+{-# OPTIONS --rewriting #-}
 
 module STLC.Cubical.Derived where
 
@@ -48,5 +49,30 @@ abstract
     ∀ {Γ Δ A B}{σ : Tms Γ Δ}{t : Tm Δ (A ⇒ B)}
     → app (t [ σ ]) ≡ (app t) [ σ ^ A ]
   app[] {σ = σ} = ap (λ x → app (x [ σ ])) (⇒η ⁻¹) ◾ ap app lam[] ◾ ⇒β
+
+  ,ₛ≡ :
+    ∀ {Γ Δ}{σ σ' : Tms Γ Δ}(p : σ ≡ σ'){A : Ty}{t t' : Tm Γ A}(q : t ≡ t')
+    → σ ,ₛ t ≡ σ' ,ₛ t'
+  ,ₛ≡ p q = ⟨ i ⟩ (p $ i) ,ₛ (q $ i) 
+
+  ,ₛ-lam :
+    ∀ {Γ Δ A B}{t : Tm (Γ , A) B}{σ : Tms Δ Γ}{a : Tm Δ A}
+    → t [ σ ,ₛ a ] ≡ app (lam t [ σ ]) [ id ,ₛ a ]
+  ,ₛ-lam {t = t}{σ}{a} = (
+      ap (λ x → app x [ id ,ₛ a ]) lam[]
+    ◾ ap (_[ id ,ₛ a ]) ⇒β
+    ◾ [][]
+    ◾ ap (t [_]) (
+      ,∘ ◾ ,ₛ≡ (ass ◾ ap (σ ∘_) (π₁id∘ ◾ ,β₁) ◾ idr) π₂idβ)
+    ) ⁻¹
+
+  split-app :
+    ∀ {Γ Δ A B}{σ : Tms Δ (Γ , A)}{t : Tm Γ (A ⇒ B)}
+    → app (t [ π₁ σ ]) [ id ,ₛ π₂ σ ] ≡ app t [ σ ]
+  split-app {σ = σ}{t} =
+      ap (_[ id ,ₛ π₂ σ ]) app[]
+    ◾ [][]
+    ◾ ap (app t [_]) (
+        ,∘ ◾ ,ₛ≡ (ass ◾ (ap (π₁ σ ∘_) (π₁id∘ ◾ ,β₁) ◾ idr)) π₂idβ ◾ ,η)
 
 

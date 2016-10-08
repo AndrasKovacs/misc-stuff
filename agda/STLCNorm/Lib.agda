@@ -1,6 +1,6 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --without-K #-}
 
-module STLC.lib where
+module Lib where
 
 open import Level
 
@@ -14,13 +14,10 @@ idfun x = x
 
 data _≡_ {i}{A : Set i} (x : A) : A → Set i where
   refl : x ≡ x
-
 infix 4 _≡_
 
-{-# BUILTIN REWRITE _≡_ #-}
 {-# BUILTIN EQUALITY _≡_ #-}
 {-# BUILTIN REFL refl #-}
-
 
 _◾_ : ∀{i}{A : Set i}{x y z : A} → x ≡ y → y ≡ z → x ≡ z
 refl ◾ refl = refl
