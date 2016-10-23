@@ -1,8 +1,8 @@
 {-# OPTIONS --without-K --no-eta #-}
 
-module STLC.Syntax where
+module Syntax where
 
-open import STLC.lib using (_≡_; refl)
+open import Lib using (_≡_; refl)
 
 -- declaration of the syntax
 

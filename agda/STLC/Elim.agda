@@ -1,10 +1,10 @@
 {-# OPTIONS --without-K --no-eta --rewriting #-}
 
-module STLC.Elim where
+module Elim where
 
 open import Level
-open import STLC.lib
-open import STLC.Syntax
+open import Lib
+open import Syntax
 
 record Model {i j} : Set (suc (i ⊔ j)) where
   field
@@ -36,27 +36,27 @@ record Model {i j} : Set (suc (i ⊔ j)) where
 
     π₂ᴹ    : ∀{Γ Γᴹ Δ Δᴹ A Aᴹ}{δ : Tms Γ (Δ , A)} → Tmsᴹ Γᴹ (Δᴹ ,ᴹ Aᴹ) δ → Tmᴹ Γᴹ Aᴹ (π₂ δ)
 
-    idlᴹ   : ∀{Γ Γᴹ Δ Δᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ} → idᴹ ∘ᴹ δᴹ ≡[ ap (Tmsᴹ Γᴹ Δᴹ) idl ]≡ δᴹ
-    idrᴹ   : ∀{Γ Γᴹ Δ Δᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ} → δᴹ ∘ᴹ idᴹ ≡[ ap (Tmsᴹ Γᴹ Δᴹ) idr ]≡ δᴹ
+    idlᴹ   : ∀{Γ Γᴹ Δ Δᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ} → idᴹ ∘ᴹ δᴹ ≡[ Tmsᴹ Γᴹ Δᴹ & idl ]≡ δᴹ
+    idrᴹ   : ∀{Γ Γᴹ Δ Δᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ} → δᴹ ∘ᴹ idᴹ ≡[ Tmsᴹ Γᴹ Δᴹ & idr ]≡ δᴹ
 
     assᴹ   : ∀ {Δ Δᴹ Γ Γᴹ Σ Σᴹ Ω Ωᴹ}{σ : Tms Σ Ω}{σᴹ : Tmsᴹ Σᴹ Ωᴹ σ}
                {δ : Tms Γ Σ}{δᴹ : Tmsᴹ Γᴹ Σᴹ δ}{ν : Tms Δ Γ}{νᴹ : Tmsᴹ Δᴹ Γᴹ ν}
-             → (σᴹ ∘ᴹ δᴹ) ∘ᴹ νᴹ ≡[ ap (Tmsᴹ Δᴹ Ωᴹ) ass ]≡ (σᴹ ∘ᴹ (δᴹ ∘ᴹ νᴹ))
+             → (σᴹ ∘ᴹ δᴹ) ∘ᴹ νᴹ ≡[ Tmsᴹ Δᴹ Ωᴹ & ass ]≡ (σᴹ ∘ᴹ (δᴹ ∘ᴹ νᴹ))
 
     ,∘ᴹ    : ∀ {Γ Γᴹ Δ Δᴹ Σ Σᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ}{σ : Tms Σ Γ}{σᴹ : Tmsᴹ Σᴹ Γᴹ σ}
                {A}{Aᴹ : Tyᴹ A}{a}{aᴹ : Tmᴹ Γᴹ Aᴹ a}
-             → (δᴹ ,ₛᴹ aᴹ) ∘ᴹ σᴹ ≡[ ap (Tmsᴹ Σᴹ (Δᴹ ,ᴹ Aᴹ)) ,∘ ]≡ (δᴹ ∘ᴹ σᴹ) ,ₛᴹ aᴹ [ σᴹ ]ᴹ
+             → (δᴹ ,ₛᴹ aᴹ) ∘ᴹ σᴹ ≡[ Tmsᴹ Σᴹ (Δᴹ ,ᴹ Aᴹ) & ,∘ ]≡ (δᴹ ∘ᴹ σᴹ) ,ₛᴹ aᴹ [ σᴹ ]ᴹ
 
     ,β₁ᴹ   : ∀ {Γ Γᴹ Δ Δᴹ A Aᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ}{a : Tm Γ A}{aᴹ : Tmᴹ Γᴹ Aᴹ a}
-             → π₁ᴹ (δᴹ ,ₛᴹ aᴹ) ≡[ ap (Tmsᴹ Γᴹ Δᴹ) ,β₁ ]≡ δᴹ
+             → π₁ᴹ (δᴹ ,ₛᴹ aᴹ) ≡[ Tmsᴹ Γᴹ Δᴹ & ,β₁ ]≡ δᴹ
 
     ,ηᴹ    : ∀ {Γ Γᴹ Δ Δᴹ A Aᴹ}{δ : Tms Γ (Δ , A)}{δᴹ : Tmsᴹ Γᴹ (Δᴹ ,ᴹ Aᴹ) δ}
-             → π₁ᴹ δᴹ ,ₛᴹ π₂ᴹ δᴹ ≡[ ap (Tmsᴹ Γᴹ (Δᴹ ,ᴹ Aᴹ)) ,η ]≡ δᴹ
+             → π₁ᴹ δᴹ ,ₛᴹ π₂ᴹ δᴹ ≡[ Tmsᴹ Γᴹ (Δᴹ ,ᴹ Aᴹ) & ,η ]≡ δᴹ
 
-    ∙ηᴹ    : ∀ {Γ Γᴹ}{σ : Tms Γ ∙}{σᴹ : Tmsᴹ Γᴹ ∙ᴹ σ} → σᴹ ≡[ ap (Tmsᴹ Γᴹ ∙ᴹ) ∙η ]≡ εᴹ
+    ∙ηᴹ    : ∀ {Γ Γᴹ}{σ : Tms Γ ∙}{σᴹ : Tmsᴹ Γᴹ ∙ᴹ σ} → σᴹ ≡[ Tmsᴹ Γᴹ ∙ᴹ & ∙η ]≡ εᴹ
 
     ,β₂ᴹ   : ∀{Γ Γᴹ Δ Δᴹ A Aᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ}{a : Tm Γ A}{aᴹ : Tmᴹ Γᴹ Aᴹ a}
-           → π₂ᴹ (δᴹ ,ₛᴹ aᴹ) ≡[ ap (Tmᴹ Γᴹ Aᴹ) ,β₂ ]≡ aᴹ
+           → π₂ᴹ (δᴹ ,ₛᴹ aᴹ) ≡[ Tmᴹ Γᴹ Aᴹ & ,β₂ ]≡ aᴹ
 
     lamᴹ   : ∀{Γ Γᴹ A Aᴹ B Bᴹ}{t : Tm (Γ , A) B} → Tmᴹ (Γᴹ ,ᴹ Aᴹ) Bᴹ t → Tmᴹ Γᴹ (Aᴹ ⇒ᴹ Bᴹ) (lam t)
 
@@ -68,11 +68,11 @@ record Model {i j} : Set (suc (i ⊔ j)) where
   field
     lam[]ᴹ : ∀{Γ Γᴹ Δ Δᴹ}{δ : Tms Γ Δ}{δᴹ : Tmsᴹ Γᴹ Δᴹ δ}{A Aᴹ B Bᴹ}
                {t : Tm (Δ , A) B}{tᴹ : Tmᴹ (Δᴹ ,ᴹ Aᴹ) Bᴹ t}
-             → (lamᴹ tᴹ) [ δᴹ ]ᴹ ≡[ ap (Tmᴹ Γᴹ (Aᴹ ⇒ᴹ Bᴹ)) lam[] ]≡ lamᴹ (tᴹ [ δᴹ ^ᴹ Aᴹ ]ᴹ)
+             → (lamᴹ tᴹ) [ δᴹ ]ᴹ ≡[ Tmᴹ Γᴹ (Aᴹ ⇒ᴹ Bᴹ) & lam[] ]≡ lamᴹ (tᴹ [ δᴹ ^ᴹ Aᴹ ]ᴹ)
     ⇒βᴹ    : ∀{Γ Γᴹ A Aᴹ B Bᴹ}{t : Tm (Γ , A) B}{tᴹ : Tmᴹ (Γᴹ ,ᴹ Aᴹ) Bᴹ t}
-             → appᴹ (lamᴹ tᴹ) ≡[ ap (Tmᴹ (Γᴹ ,ᴹ Aᴹ) Bᴹ) ⇒β ]≡ tᴹ
+             → appᴹ (lamᴹ tᴹ) ≡[ Tmᴹ (Γᴹ ,ᴹ Aᴹ) Bᴹ & ⇒β ]≡ tᴹ
     ⇒ηᴹ    : ∀{Γ Γᴹ A Aᴹ B Bᴹ}{t : Tm Γ (A ⇒ B)}{tᴹ : Tmᴹ Γᴹ (Aᴹ ⇒ᴹ Bᴹ) t}
-             → lamᴹ (appᴹ tᴹ) ≡[ ap (Tmᴹ Γᴹ (Aᴹ ⇒ᴹ Bᴹ)) ⇒η ]≡ tᴹ
+             → lamᴹ (appᴹ tᴹ) ≡[ Tmᴹ Γᴹ (Aᴹ ⇒ᴹ Bᴹ) & ⇒η ]≡ tᴹ
 
   infixl 5 _,ᴹ_
   infixl 4 _⇒ᴹ_

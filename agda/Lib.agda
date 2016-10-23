@@ -14,11 +14,6 @@ _∘_ : ∀ {a b c}
         ((x : A) → C (g x))
 f ∘ g = λ x → f (g x)
 
-_$_ : ∀ {a b} {A : Set a} {B : A → Set b} →
-      ((x : A) → B x) → ((x : A) → B x)
-f $ x = f x
-infixr 0 _$_
-
 data _≡_ {i}{A : Set i} (x : A) : A → Set i where
   refl : x ≡ x
 infix 4 _≡_
@@ -78,10 +73,6 @@ infixr 5 _,_
 
 open Σ public
 
-,Σ= : ∀{i j}{A : Set i}{B : A → Set j}{a a' : A}{b : B a}{b' : B a'}
-     (p : a ≡ a') → coe (B & p) b ≡ b' → _≡_ {A = Σ A B} (a , b) (a' , b')
-,Σ= refl refl = refl
-
 _×_ : ∀{i j} → Set i → Set j → Set (i ⊔ j)
 A × B = Σ A λ _ → B
 infixr 4 _×_
@@ -120,4 +111,5 @@ postulate
           
   funexti : ∀{i j}{A : Set i}{B : A → Set j}{f g : {x : A} → B x}
           → ((x : A) → f {x} ≡ g {x}) → _≡_ {A = {x : A} → B x} f g
+
 

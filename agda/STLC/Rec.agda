@@ -1,10 +1,10 @@
 {-# OPTIONS --without-K --no-eta --rewriting #-}
 
-module STLC.Rec where
+module Rec where
 
 open import Level
-open import STLC.lib
-open import STLC.Syntax
+open import Lib
+open import Syntax
 
 record Model {i j} : Set (suc (i ⊔ j)) where
   field
@@ -92,20 +92,20 @@ module _ {i}{j}(M : Model {i}{j}) where
   {-# REWRITE π₂β  #-}
 
   postulate
-    idlβ  : ∀{Γ Δ}{δ : Tms Γ Δ} → ap RecTms (idl {δ = δ}) ≡ idlᴹ
-    idrβ  : ∀{Γ Δ}{δ : Tms Γ Δ} → ap RecTms (idr {δ = δ}) ≡ idrᴹ
+    idlβ  : ∀{Γ Δ}{δ : Tms Γ Δ} → RecTms & (idl {δ = δ}) ≡ idlᴹ
+    idrβ  : ∀{Γ Δ}{δ : Tms Γ Δ} → RecTms & (idr {δ = δ}) ≡ idrᴹ
     assβ  : ∀{Δ Γ Σ Ω}{σ : Tms Σ Ω}{δ : Tms Γ Σ}{ν : Tms Δ Γ}
-            → ap RecTms (ass {σ = σ}{δ}{ν}) ≡ assᴹ
+            → RecTms & (ass {σ = σ}{δ}{ν}) ≡ assᴹ
     ,∘β   : ∀{Γ Δ Σ}{δ : Tms Γ Δ}{σ : Tms Σ Γ}{A : Ty}{a : Tm Γ A}
-            → ap RecTms (,∘ {δ = δ}{σ}{a = a}) ≡ ,∘ᴹ
+            → RecTms & (,∘ {δ = δ}{σ}{a = a}) ≡ ,∘ᴹ
     ,β₁β  : ∀{Γ Δ}{A : Ty}{δ : Tms Γ Δ}{a : Tm Γ A}
-            → ap RecTms (,β₁ {δ = δ}{a}) ≡ ,β₁ᴹ
+            → RecTms & (,β₁ {δ = δ}{a}) ≡ ,β₁ᴹ
     ,ηβ   : ∀{Γ Δ}{A : Ty}{δ : Tms Γ (Δ , A)}
-            → ap RecTms (,η {δ = δ}) ≡ ,ηᴹ
+            → RecTms & (,η {δ = δ}) ≡ ,ηᴹ
     ∙ηβ   : ∀{Γ}{σ : Tms Γ ∙}
-            → ap RecTms (∙η {σ = σ}) ≡ ∙ηᴹ
+            → RecTms & (∙η {σ = σ}) ≡ ∙ηᴹ
     ,β₂β  : ∀{Γ Δ}{A : Ty}{δ : Tms Γ Δ}{a : Tm Γ A}
-            → ap RecTm (,β₂ {δ = δ}{a}) ≡ ,β₂ᴹ
+            → RecTm & (,β₂ {δ = δ}{a}) ≡ ,β₂ᴹ
 
   postulate
     lamβ : ∀{Γ A B}{t : Tm (Γ , A) B} → RecTm (lam t) ≡ lamᴹ (RecTm t)
@@ -116,9 +116,9 @@ module _ {i}{j}(M : Model {i}{j}) where
 
   postulate
     lam[]β : ∀{Γ Δ}{δ : Tms Γ Δ}{A B : Ty}{t : Tm (Δ , A) B}
-             → ap RecTm (lam[] {δ = δ}{t = t}) ≡ lam[]ᴹ
+             → RecTm & (lam[] {δ = δ}{t = t}) ≡ lam[]ᴹ
     ⇒ββ    : ∀{Γ A B}{t : Tm (Γ , A) B}
-             → ap RecTm (⇒β {t = t}) ≡ ⇒βᴹ
+             → RecTm & (⇒β {t = t}) ≡ ⇒βᴹ
     ⇒ηβ    : ∀{Γ A B}{t : Tm Γ (A ⇒ B)}
-             → ap RecTm (⇒η {t = t}) ≡ ⇒ηᴹ
+             → RecTm & (⇒η {t = t}) ≡ ⇒ηᴹ
 

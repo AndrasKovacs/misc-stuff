@@ -98,11 +98,12 @@ concat' as = λ r c n → as _ (λ xs acc → xs r c acc) n
 
 -- where elim_i are the eliminators of the return type
 
--- This lets "g (f a_1 a_2 ... a_n)" neutral expressions reduce.
+-- This lets "g (f a_1 a_2 ... a_n)" expressions reduce.
 -- The eliminators provide a "hook" for external functions
 
 -- It seems to me that converting an arbitrary function to a fusing
--- definition is not easier than supercompilation itself.
+-- definition is far from trivial, though probably not as hard as
+-- supercompilation on general recursive definitions.
 
 -- an example for concat fusion:
 f7 : List Set → List Set
