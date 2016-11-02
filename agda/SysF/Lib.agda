@@ -106,10 +106,15 @@ inspect : ∀ {a b} {A : Set a} {B : A → Set b}
 inspect f x = pack refl
 
 postulate
-  funext  : ∀{i j}{A : Set i}{B : A → Set j}{f g : (x : A) → B x}
+  ext  : ∀{i j}{A : Set i}{B : A → Set j}{f g : (x : A) → B x}
           → ((x : A) → f x  ≡ g x) → _≡_ f g
           
-  funexti : ∀{i j}{A : Set i}{B : A → Set j}{f g : {x : A} → B x}
+  exti : ∀{i j}{A : Set i}{B : A → Set j}{f g : {x : A} → B x}
           → ((x : A) → f {x} ≡ g {x}) → _≡_ {A = {x : A} → B x} f g
 
+Π-≡ :
+  ∀ {α β}{A A' : Set α}{B : A → Set β}{B' : A' → Set β}
+  → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
+  → ((a : A) → B a) ≡ ((a' : A') → B' a')
+Π-≡ {A = A} {B = B} {B'} refl q = (λ B → (x : A) → B x) & ext q
 

@@ -16,7 +16,7 @@ infixr 4 _⇒_
 data Ty : Set where
   _⇒_ : Ty → Ty → Ty
   _*_ : Ty → Ty → Ty
-  ℕ   : Ty
+  ℕ   : Tye
 
 data Con : Set where
   ∙   : Con
