@@ -77,6 +77,10 @@ _×_ : ∀{i j} → Set i → Set j → Set (i ⊔ j)
 A × B = Σ A λ _ → B
 infixr 4 _×_
 
+,Σ≡ : ∀{i j}{A : Set i}{B : A → Set j}{a a' : A}{b : B a}{b' : B a'}
+     (p : a ≡ a') → coe (B & p) b ≡ b' → (Σ A B ∋ (a , b)) ≡ (a' , b')
+,Σ≡ refl refl = refl
+
 record ⊤ : Set where
   constructor tt
 
@@ -117,4 +121,10 @@ postulate
   → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
   → ((a : A) → B a) ≡ ((a' : A') → B' a')
 Π-≡ {A = A} {B = B} {B'} refl q = (λ B → (x : A) → B x) & ext q
+
+Π-≡-i :
+  ∀ {α β}{A A' : Set α}{B : A → Set β}{B' : A' → Set β}
+  → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
+  → ({a : A} → B a) ≡ ({a' : A'} → B' a')
+Π-≡-i {A = A}{B = B} refl q = (λ B → {x : A} → B x) & ext q  
 
