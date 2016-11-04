@@ -50,6 +50,18 @@ _&_ :
 f & refl = refl
 infixl 9 _&_
 
+_&'_ :
+  ∀{i j}{A : Set i}{B : A → Set j}{f g : ∀ a → B a}(p : f ≡ g) a
+  → f a ≡ g a
+refl &' a = refl
+infixl 9 _&'_
+
+_&i'_ :
+  ∀{i j}{A : Set i}{B : A → Set j}{f g : ∀ {a} → B a}(p : (λ {x} → f {x}) ≡ (λ {x} → g {x})) a
+  → f {a} ≡ g {a}
+refl &i' a = refl
+infixl 9 _&i'_
+
 _⊗_ :
   ∀ {α β}{A : Set α}{B : Set β}
     {f g : A → B}(p : f ≡ g){a a' : A}(q : a ≡ a')
@@ -126,5 +138,17 @@ postulate
   ∀ {α β}{A A' : Set α}{B : A → Set β}{B' : A' → Set β}
   → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
   → ({a : A} → B a) ≡ ({a' : A'} → B' a')
-Π-≡-i {A = A}{B = B} refl q = (λ B → {x : A} → B x) & ext q  
+Π-≡-i {A = A}{B = B} refl q = (λ B → {x : A} → B x) & ext q
+
+coe-$ :
+ ∀ {α β γ}{A : Set α}{B : Set β}(C : A → B → Set γ)
+   {b b' : B}(p : b ≡ b')(f : ∀ a → C a b)
+ →  coe ((λ x → ∀ a → C a x) & p) f ≡ (λ a → coe (C a & p) (f a))
+coe-$ C refl f = refl
+
+coe-$-i :
+ ∀ {α β γ}{A : Set α}{B : Set β}(C : A → B → Set γ)
+   {b b' : B}(p : b ≡ b')(f : ∀ {a} → C a b)
+ →  (λ {a} → coe ((λ x → ∀ {a} → C a x) & p) f {a}) ≡ (λ {a} → coe (C a & p) (f {a}))
+coe-$-i C refl f = refl
 
