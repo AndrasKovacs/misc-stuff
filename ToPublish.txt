@@ -15,7 +15,5 @@ Todo lib:
   small ByteArray bitset
   
   crazy HAMT:
-    4 variant by boxity of keys/values
-    1 variant: specialized to bytearray values (so: including small text)
-      (+ 2 low priority variants: specialized to small/big boxed arrays)
+    8 variants by boxed/unboxed/array -ness of keys and values
 

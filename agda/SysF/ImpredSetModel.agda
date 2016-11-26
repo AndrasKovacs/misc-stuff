@@ -101,3 +101,20 @@ Tmᴹ (tapp {A} t B) Γᴹ Δᴹ =
     ◾ []'ᴹ A (id'ₛ , B) Γᴹ ⁻¹)
   (Tmᴹ t Γᴹ Δᴹ (Tyᴹ B Γᴹ))
 
+
+-- demonstration
+ID : Tm ∙ (∀' (var vz ⇒ var vz))
+ID = tlam (lam (var vz))
+
+IDᴹ : ∀ A → A → A
+IDᴹ = Tmᴹ ID _ _
+
+ID' : Tm ∙ (∀' (var vz ⇒ var vz))
+ID' = app (tapp ID (∀' (var vz ⇒ var vz))) ID
+
+ID'ᴹ : ∀ A → A → A
+ID'ᴹ = Tmᴹ ID' _ _
+
+test : IDᴹ ≡ ID'ᴹ
+test = refl
+

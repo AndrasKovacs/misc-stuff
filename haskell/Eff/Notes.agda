@@ -183,3 +183,13 @@ inc'' = get'' >>= λ n → put'' (suc n)
 
 test'' = λ n → times n inc''
 
+
+open import Data.Bool
+
+f : ℕ → Bool
+f zero    = true
+f (suc n) = f n
+
+x = λ n → not (f n)
+
+

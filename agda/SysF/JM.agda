@@ -9,12 +9,12 @@ record _≃_ {i : Level}{A B : Set i}(a : A)(b : B) : Set (suc i) where
   constructor _,≃_
   field
     projT : A ≡ B
-    projt : a ≡[ projT ]≡ b
+    projt : coe projT a ≡ b
 
 infixl 5 _,≃_
 infix 4 _≃_
 
-open _≃_
+open _≃_ public
 
 _◾̃_ : ∀{i}{A B C : Set i}{a : A}{b : B}{c : C}
     → a ≃ b → b ≃ c → a ≃ c
@@ -50,14 +50,6 @@ to≃ p = refl ,≃ p
 from≃ : ∀{i}{A : Set i}{a a' : A}
       → a ≃ a' → a ≡ a'
 from≃ (refl ,≃ refl) = refl
-
-from≡ : ∀{i}{A B : Set i}(p : A ≡ B){a : A}{b : B}
-      → a ≡[ p ]≡ b → a ≃ b
-from≡ refl refl = refl ,≃ refl
-
-to≡ : ∀{i}{A B : Set i}{a : A}{b : B}
-      (p : a ≃ b) → a ≡[ projT p ]≡ b
-to≡ (refl ,≃ refl) = refl
 
 &≃ : ∀{i j k}{A : Set i}{B : A → Set j}{C : A → Set k}(f : {x : A} → B x → C x)
       {a₀ a₁ : A}(a₂ : a₀ ≡ a₁)
@@ -96,11 +88,22 @@ apd≃' (refl ,≃ refl) (refl ,≃ refl) (refl ,≃ refl) = refl ,≃ refl
 UIP : ∀{i}{A : Set i}{x y : A}(p q : x ≡ y) → p ≡ q
 UIP refl refl = refl
 
+UIP' : ∀{i}{A B : Set i}{a : A}{b : B}
+       (p q : A ≡ B) → coe p a ≡ b → coe q a ≡ b
+UIP' refl refl refl = refl
+
 UIP-coe : ∀{i}{A B : Set i}(p q : A ≡ B) x → coe p x ≡ coe q x
 UIP-coe refl refl _ = refl
 
 loopcoe : ∀{i}{A : Set i}(p : A ≡ A){a : A} → coe p a ≡ a
 loopcoe refl = refl
+
+-- foo :
+--   ∀ {i j}{A : Set i}{B₀ B₁ : A → Set j}{f₀ : ∀ a → B₀ a}{f₁ : ∀ a → B₁ a}
+--   → (∀ a → B₀ a ≡ B₁ a)
+--   → f₀ ≃ f₁ → ∀ a → f₀ a ≃ f₁ a
+-- foo {f₀ = f₀} {f₁} p (q ,≃ r) a  with ext p | q | r
+-- ... | refl | refl | refl = refl ,≃ refl
 
 ext≃' :
   ∀ {i j}{A : Set i}{B₀ B₁ : A → Set j}
@@ -109,7 +112,7 @@ ext≃' :
   → f₀ ≃ f₁
 ext≃' {i}{j}{A}{B₀}{B₁}{f₀}{f₁} p =
   (λ z → (x : A) → z x) & ext (λ x → projT (p x))
-  ,≃ ext λ x →  coe-$ (λ z b → b z) (ext (λ x → projT (p x))) f₀ &' x
+  ,≃ ext λ x →  (λ f → f x) & coe-$ (λ z b → b z) (ext (λ x → projT (p x))) f₀
               ◾ UIP-coe ((λ b → b x) & ext (λ x₁ → projT (p x₁))) (projT (p x)) (f₀ x)
               ◾ projt (p x)
 
@@ -237,12 +240,10 @@ exti≃' {i}{j}{A}{B₀}{B₁}{f₀}{f₁} p =
 ,Σ≃' refl (refl ,≃ refl) = refl
 
 proj₁coe : {A₀ A₁ : Set}(A₂ : A₀ ≡ A₁)
-           {B₀ : A₀ → Set}{B₁ : A₁ → Set}(B₂ : B₀ ≡[ (λ z → z → Set) & A₂ ]≡ B₁)
+           {B₀ : A₀ → Set}{B₁ : A₁ → Set}(B₂ : coe ((λ z → z → Set) & A₂) B₀ ≡ B₁)
            (p : Σ A₀ B₀ ≡ Σ A₁ B₁)
            {a₀ : A₀}{b₀ : B₀ a₀}
          → a₀ ≃ proj₁ (coe p (a₀ , b₀))
 proj₁coe refl refl refl = refl ,≃ refl
 
-UIP' : ∀{i}{A B : Set i}{a : A}{b : B}
-       (p q : A ≡ B) → a ≡[ p ]≡ b → a ≡[ q ]≡ b
-UIP' refl refl refl = refl
+

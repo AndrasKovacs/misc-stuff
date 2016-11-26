@@ -1,63 +1,42 @@
--- An initial Nat object also has induction
-
-{-# OPTIONS --without-K #-}
 
 open import Relation.Binary.PropositionalEquality
+open import Data.Nat
 open import Data.Product
+open import Data.Empty
+open import Relation.Nullary
 open import Function
 
-record Nat : Set₁ where
-  constructor con
-  field
-    C : Set
-    z : C
-    s : C → C
-open Nat    
+≤⇒< : ∀ {a b} → a ≤ b → a ≢ b → a < b
+≤⇒< {b = zero}  z≤n      p2 = ⊥-elim (p2 refl)
+≤⇒< {b = suc b} z≤n      p2 = s≤s z≤n
+≤⇒<             (s≤s p1) p2 = s≤s (≤⇒< p1 (p2 ∘ cong suc))
 
-record Nat⇒ (N N' : Nat) : Set₁ where
-  constructor con
-  open Nat
-  field
-    rec  : C N → C N'
-    recz : rec (z N) ≡ z N'
-    recs : ∀ n → rec (s N n) ≡ s N' (rec n)
-open Nat⇒      
+-- divMod n with (suc d)
+divMod : ∀ n d → ∃₂ λ m k → (n ≡ m + k * suc d) × (m ≤ d)
+divMod zero    d = zero , zero , refl , z≤n
+divMod (suc n) d with divMod n d
+... | m , k , p1 , p2 with m ≟ d
+divMod (suc n) d | .d , k , p1 , p2 | yes refl = 0 , suc k , cong suc p1 , z≤n
+... | no ¬p = suc m , k , cong suc p1 , ≤⇒< p2 ¬p
 
-Nat∘ : ∀ {N N' N'' : Nat} → Nat⇒ N' N'' → Nat⇒ N N' → Nat⇒ N N''
-Nat∘ (con rec recz recs) (con rec₁ recz₁ recs₁) =
-  con (rec ∘ rec₁) (trans (cong rec recz₁) recz)
-  (λ n → trans (cong rec (recs₁ n)) (recs (rec₁ n)))
+exp : ℕ → ℕ → ℕ
+exp a zero    = 1
+exp a (suc b) = a * exp a b
 
-Nat-id : (N : Nat) → Nat⇒ N N
-Nat-id (con C z s) = con id refl (λ n → refl)
+log : ∀ n d → ∃₂ λ e m → suc n ≡ m + exp (suc d) e
+log zero    d = 0 , 0 , refl
+log (suc n) d = {!!}
 
-record Initial (N : Nat) : Set₁ where
-  constructor con
-  field
-    init : (N' : Nat) → Nat⇒ N N'
-    univ : (N' : Nat) → (f : Nat⇒ N N') → f ≡ init N'
-open Initial    
 
-init-id : (N : Nat)(iN : Initial N)(f : Nat⇒ N N) → f ≡ Nat-id N
-init-id N i f = trans (univ i N f) (sym (univ i N (Nat-id N)))
+-- log2 :: 
 
-rec-id : {N : Nat}(f : Nat⇒ N N) → f ≡ Nat-id N → rec f ≡ id
-rec-id _ refl = refl
+-- 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+-- 0 1 1 2 2 2 2 3 3 3  3  3  3  3  3  4
+-- 0 0 1 0 1 2 3 0 1 2  3  4  5  6  7  0
 
-init-ind :
-  (ℕ : Nat)(i : Initial ℕ)(P : C ℕ → Set) → (∀ n → P n → P (s ℕ n)) → P (z ℕ) → ∀ n → P n
-init-ind ℕ i P ps pz n =
-  subst P (cong (_$ n) (rec-id _ (init-id ℕ i fromTo))) (proj₂ (rec to n))
-  where
-    ℕP : Nat
-    ℕP = con (∃ P) (z ℕ , pz) (λ {(n , pn) → (s ℕ n , ps n pn)})
+-- suc n = m + (suc (suc d))^k 
 
-    to : Nat⇒ ℕ ℕP
-    to = init i ℕP
 
-    from : Nat⇒ ℕP ℕ
-    from = con proj₁ refl (λ n → refl)
 
-    fromTo : Nat⇒ ℕ ℕ
-    fromTo = Nat∘ from to
+
 

@@ -45,7 +45,7 @@ test5 = run $ runState (0, 'a') $ runState (0, True) $ do
 
 -- Multiple writer with type applications
 test6 = run $ runWriter @String $ runWriter @[Int] $ do
-  tell "foo"
+  tell @String "foo"
   tell @[Int] [0..10]
 
 -- Multiple state with type applications
