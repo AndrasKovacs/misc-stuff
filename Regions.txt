@@ -1,0 +1,146 @@
+
+-- Region allocation
+--------------------------------------------------------------------------------
+
+Region inference seems to be the sort of thing that could be a conservative optimization
+to garbage collection, meaning that it would only make runtimes faster, pauses shorter and
+live sets smaller.
+
+Generally, there's a tradeoff between allocation/deallocation performance, fragmentation and
+dynamic live set size, which remains true when we move away from traditional GC - which is not
+informed by static analysis at all - towards static systems such as region/lifetime inference.
+
+Regions generally allow more garbage in order to achieve efficient (even O(1))
+allocation and deallocation.
+
+Ownership/lifetime/move systems (only notable example: Rust) sacrifice speed for fine-grainedness
+of allocation.
+
+With regions, intermittent structures that are built up and then torn down are extremely efficient
+to allocate. However, we can't efficiently or conveniently free small parts of big structures.
+
+In the Rust model, making many small allocations is really slow, but we can selectively free any
+part of any structure.
+
+I don't conclusively know which model is better; my vague impression is that regions are nicer,
+and Rust went for the ownership model in order to be more approachable to C++ programmers who are
+accustomed to RAII. But Rust can also emulate regions, and it could be the case that ownership
+is simply more suitable for vanilla application logic.
+
+There's likely a formalism that unifies regions and ownership. Lifetimes are almost the same
+as regions. Ownership is a bit like tying a region to a variable, and owned pointers are like
+an existential package of a region handle and pointer to that region. On the other hand, I don't
+know how move semantics is expressible in terms of regions (but it seems to be an important
+optimization for regions too).
+
+Also, common region type systems mandate that elements of inductive types are in a single region,
+so e.g. a list has all cons cells in the same region. But I can imagine existential region parameters
+in constructors (maybe bounded with region containment relation, see Cyclone for one solution), as well
+as lists where each cell is in a different region (this would, I guess, require being able to talk about
+families of regions, or functions returning regions).
+
+-- Best region model for GC optimization
+--------------------------------------------------------------------------------
+
+I see an issue with the MLKit/Cyclone runtime model of regions. It is essentially a stack of stacks,
+where we can allocate in any live region, not just the topmost, and also deallocate/reset any region. 
+The problem is, in the most general case this scheme requires a memory allocator behind the scenes that
+is roughly as sophisticated as good old malloc itself. Probably it would benefit from a number of optimizations
+not available to malloc, since it has more static structure, but I don't see a truly simple implementation.
+
+Let's keep the region implementation as dumb as possible. I propose: all the regions are implemented as a
+*single stack*. We can only allocate on the topmost region, by pushing stuff to the stack.
+Pushing new regions to the stack happens by saving the current region pointer, and we pop regions by
+resetting the region pointer to the saved value.
+
+This scheme only allows non-intersecting nested regions, with allocation always going to the topmost region.
+This also implies that if a returned value contains heap data, it "drags" every region above along with it
+on exit, thereby preventing the creation of those regions.
+
+So when can we actually pop regions? We can wrap a stament in push-pop if the value returned from it
+doesn't contain pointers to internally allocated data (Chlipala did this in Ur/Web). Is this too restrictive?
+Unboxed numbers, tuples, records, enums are OK to return. Any sort of recrusive structure isn't. Sum types
+aren't OK by default, but could they be returned on stack as unions? Overall, I think this is probably
+too restrictive. Proper region stacks would allow much more regions, but that needs malloc. 
+
+
+-- Tail calls
+--------------------------------------------------------------------------------
+
+Region deallocation/deletion can ruin tail calls if we're not careful about them.
+
+If we have a function which would normally be tail recursive, and which has region allocated
+arguments with no escaping pointers, then standard region inference would insert a region
+pop/delete after the recursive call, thereby preventing tail recursion.
+
+This kind of crappy deletion does not even seem to save memory. Take this function:
+
+  f :: Int -> &Int -> Int
+  f n x = case n of
+    0 -> *x + 1
+    _ -> let n' = n - 1
+         let x' = I# (*x + 1)
+         in f n' x'
+
+Here &Int means a boxed Int, i. e. a pointer to a heap Int. Int is unboxed.
+
+After region elaboration, f looks like this:
+
+  f :: Int -> &Int -> Int
+  f n x = case n of
+    0 -> *x + 1
+    _ -> let n' = n - 1
+         r <- pushRegion
+         let x' = I# (x* + 1)
+         let res = f n' x'
+         popRegion r
+         ret res
+
+We can put "x'" in a new region because the input &Int doesn't escape, and the result is
+stack allocated, so it's not freed when any region is freed.
+
+Besides preventing the tail call, this elaboration also does not deallocate earlier
+than if we ditched the separate region for "x'", since when recursion hits base case
+we have the whole execution stack sitting there, with the "popRegion"-s waiting for their turn.
+
+If we ditch the region, the result looks like simply the previous "f". In this case,
+calling "f" looks like  this:
+
+    ...
+    let x = < some &Int >
+    ...
+    r <- pushRegion 
+    let y = f n x
+    popRegion r 
+    ...
+
+In short, this optimization entails not evaluating tail recursive calls in a
+new region.
+
+--------------------------------------------------------------------------------
+
+When is region allocation useless? One example would be having a persistent map,
+and modifying entries in a loop (perhaps on user IO input). Or having an AST, and
+doing compiler passes on it which reallocate some but not all nodes. Basically,
+usual persistent tree updates with sharing.
+
+Therefore, I think that generational GC is beneficial even if we have region allocation,
+because persistent tree updates conform rather well to the "generation hypothesis", despite
+not meshing well with regions.
+
+--------------------------------------------------------------------------------
+
+Overall, I think now that the benefit of regions is unclear. If we already have an excellent
+stable allocator (like LuaJIT), then the deterministic low-cost freeing is a really nice plus.
+On the other hand, if we have copying GC, freeing garbage already comes for free, and generational
+collection provides similar benefits as regions do. The simple stack-based region scheme I mentioned
+goes well alongside copying GC, but it may be too restricted to be a net benefit.
+
+TODO:
+
+  - Regions + closures & unknown function calls?
+  - persistent tree updates? non-uniform regions in ADT?
+  - reusing regions?
+  - GC implementation details?
+  - How to aid GC with static info in other ways?
+

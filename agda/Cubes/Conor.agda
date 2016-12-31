@@ -7,7 +7,7 @@ open import Data.Product
 
 infix  0 _↦_
 infixl 9 _$_
-infixr 9 _∙_ 
+infixr 9 _∙_
 infix  4 _≡_
 
 postulate _↦_ : ∀ {a} {A : Set a} → A → A → Set
@@ -38,7 +38,7 @@ postulate
   [-]-left   : ∀ q r → ₀ [ q - r ] ↦ q
   [-]-right  : ∀ q r → ₁ [ q - r ] ↦ r
   $-₀        : ∀ ℓ (A : Set ℓ) (S T : A) (Q : S ≡ T) → Q $ ₀ ↦ S
-  $-₁        : ∀ ℓ (A : Set ℓ) (S T : A) (Q : S ≡ T) → Q $ ₁ ↦ T  
+  $-₁        : ∀ ℓ (A : Set ℓ) (S T : A) (Q : S ≡ T) → Q $ ₁ ↦ T
   coerce-0-0 : ∀ ℓ (S T : Set ℓ) (Q : S ≡ T) a → a [ ₀ ∣ Q ∣ ₀ ⟩ ↦ a
   coerce-1-1 : ∀ ℓ (S T : Set ℓ) (Q : S ≡ T) a → a [ ₁ ∣ Q ∣ ₁ ⟩ ↦ a
 
@@ -69,9 +69,9 @@ postulate
 --   a .) the path is constant in the sense of the I parameter not occurring inside
 --   b .) the path is constant in the sense of Q $ ₀ and Q $ ₁ being definitionally equal
 
-postulate
-  coerce-const : ∀ ℓ (A : Set ℓ) a p q → a [ p ∣ ⟨ _ ⟩ A ∣ q ⟩ ↦ a
-{-# REWRITE coerce-const #-}
+-- postulate
+--   coerce-const : ∀ ℓ (A : Set ℓ) a p q → a [ p ∣ ⟨ _ ⟩ A ∣ q ⟩ ↦ a
+-- {-# REWRITE coerce-const #-}
 
 
 
@@ -79,7 +79,7 @@ postulate
   coerce-∙   :
     ∀ ℓ (S T U : Set ℓ) (Q : S ≡ T) (Q' : T ≡ U) (a : S)
     → a [ ₀ ∣ Q ∙ Q' ∣ ₁ ⟩ ↦ ((a [ ₀ ∣ Q ∣ ₁ ⟩) [ ₀ ∣ Q' ∣ ₁ ⟩)
-    
+
   coerce-∙′  :
     ∀ ℓ (S T U : Set ℓ) (Q : S ≡ T) (Q' : T ≡ U) a
     → a [ ₁ ∣ Q ∙ Q' ∣ ₀ ⟩ ↦ ((a [ ₁ ∣ Q' ∣ ₀ ⟩) [ ₁ ∣ Q ∣ ₀ ⟩)
@@ -109,7 +109,7 @@ postulate
                in  t (s- ₁) [ ₁ ∣ ⟨ i ⟩ T i (s- i) ∣ ₀ ⟩
 
   coerce-≡   : ∀ ℓ (S T : I → Set ℓ) (Q : S ₀ ≡ T ₀)
-             → Q [ ₀ ∣ ⟨ i ⟩ S i ≡ T i ∣ ₁ ⟩ ↦ 
+             → Q [ ₀ ∣ ⟨ i ⟩ S i ≡ T i ∣ ₁ ⟩ ↦
                (⟨ i ⟩ S (i [ ₁ - ₀ ])) ∙ Q ∙ (⟨ i ⟩ T i)
 
   coerce-≡′  : ∀ ℓ (S T : I → Set ℓ) (Q : S ₁ ≡ T ₁)
@@ -156,20 +156,29 @@ subst : ∀ {ℓ ℓ'} {A : Set ℓ} (B : A → Set ℓ')
         {x y : A} → x ≡ y → B x → B y
 subst B = coe ∘ ap B
 
-apd : ∀ {ℓ ℓ'} {A : Set ℓ} {B : A → Set ℓ'} (f : Π A B)
-       {x y : A} → (p : x ≡ y) → subst B p (f x) ≡ f y
-apd {B = B} f p = ⟨ i ⟩ subst B (p ∨ i) (f (p $ i)) 
+sym' : ∀ {ℓ}{A : Set ℓ}{x y : A} → x ≡ y → y ≡ x
+sym' p = subst (_≡ _) p refl
+
+-- λ {ℓ} {A} {x} {y} p → path (λ i → p $ (i [ ₁ - ₀ ]))
+
+-- λ {ℓ} {A} {x} {y} p →
+--   coerce (path (λ i → p $ i ≡ x)) ₀ ₁ (path (λ _ → x))
+
+
+-- apd : ∀ {ℓ ℓ'} {A : Set ℓ} {B : A → Set ℓ'} (f : Π A B)
+--        {x y : A} → (p : x ≡ y) → subst B p (f x) ≡ f y
+-- apd {B = B} f p = ⟨ i ⟩ subst B (p ∨ i) (f (p $ i))
 
 module ApReduce where
 
   p1 : ∀ {A B : Set}(f : A → B) x → ap f (refl {a = x}) ≡ refl {a = f x}
   p1 _ _ = refl
-  
+
   open import Function hiding (_$_)
-  
+
   p2 : ∀ {A : Set}(x y : A) (p : x ≡ y) → ap id p ≡ p
   p2 _ _ _ = refl
-  
+
   p3 : ∀ {A B C : Set}(f : B → C) (g : A → B){x y} → ap (f ∘ g) {x}{y} ≡ ap f ∘ ap g
   p3 f g = refl
 
@@ -195,9 +204,9 @@ J P refl* e = coe (⟨ i ⟩ P (e $ i) (e ∧ i)) refl*
 -- left-id : ∀ {ℓ}{A : Set ℓ}{x y : A}(p : x ≡ y) → refl ≡ trans p (sym p)
 -- left-id {x = x}{y} p = ⟨ i ⟩ trans (p ∧ i) (sym (p ∧ i))
 
--- J-refl : ∀ {ℓ ℓ′} {A : Set ℓ} {x : A} (P : (y : A) → x ≡ y → Set ℓ′)
---        → (p : P x refl) → J P p refl ≡ p
--- J-refl {x = x} P p = {!J P p refl!}
+J-refl : ∀ {ℓ ℓ′} {A : Set ℓ} {x : A} (P : (y : A) → x ≡ y → Set ℓ′)
+       → (p : P x refl) → J P p refl ≡ p
+J-refl {x = x} P p = {!J P p refl!}
 
 -- funext : ∀ {ℓ ℓ'} {A : Set ℓ} {B : A → Set ℓ'} {f g : (x : A) → B x}
 --            → (∀ x → f x ≡ g x) → f ≡ g

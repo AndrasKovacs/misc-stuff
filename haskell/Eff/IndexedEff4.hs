@@ -5,7 +5,7 @@ indexed by the heterogeneous list of all the indices in the component effects.
 -}
 
 {-# language
-  RebindableSyntax, UndecidableInstances, TypeInType, TypeApplications,
+  UndecidableInstances, TypeInType, TypeApplications,
   AllowAmbiguousTypes, GADTs, TypeFamilies, ScopedTypeVariables,
   UndecidableInstances, LambdaCase, EmptyCase, TypeOperators, ConstraintKinds,
   NoMonomorphismRestriction, FlexibleContexts, MultiParamTypeClasses,
@@ -13,27 +13,18 @@ indexed by the heterogeneous list of all the indices in the component effects.
 
 {-# options_ghc -Wno-partial-type-signatures #-}
 
-import Prelude hiding (Monad(..))
+import Prelude hiding (read)
+
 import Control.Monad.Indexed
 import Data.Kind
-import Data.Type.Bool
-import GHC.TypeLits (Symbol)
 import GHC.Exts
+import Data.Singletons.Prelude hiding (Elem, (:>))
+import System.IO
 
-return :: IxMonad m => a -> m i i a
-return = ireturn
+(>>>) :: IxApplicative m => m i j a -> m j k b -> m i k b
+f >>> g = imap (const id) f `iap` g
 
-(>>=) :: IxMonad m => m i j a -> (a -> m j k b) -> m i k b
-(>>=) = (>>>=)
-
-(>>) :: IxApplicative m => m i j a -> m j k b -> m i k b
-f >> g = imap (const id) f `iap` g
-
-fail :: IxMonad m => String -> m i j a
-fail = undefined
-
-infixl 1 >>=
-infixl 1 >>
+infixl 1 >>>
 
 -- FastTCQueue reimplementation, because we need to index with arbitrary kinds,
 -- not just *. Also specialized to Atkey's indexed types, so we have
@@ -209,7 +200,9 @@ put ::
   Elem (State name) i o fs is os => o -> Eff fs is os ()
 put o = send (Put @name @i o)
 
-runState :: i -> Eff (State name ::: fs) (i :> is) (o :> os) a -> Eff fs is os (a, o)
+runState ::
+  forall name i o fs is os a.
+  i -> Eff (State name ::: fs) (i :> is) (o :> os) a -> Eff fs is os (a, o)
 runState i (Pure a)                  = Pure (a, i)
 runState i (Impure (Here Get)     k) = runState i (ftcApp k i)
 runState i (Impure (Here (Put o)) k) = runState o (ftcApp k ())
@@ -221,10 +214,10 @@ runState i (Impure (There cmd)    k) = Impure cmd (Leaf $ runState i . ftcApp k)
 data FileStatus = FOpen | FClosed
 
 data File (name :: Symbol) i o a where
-  Open  :: File name FClosed FOpen   ()
-  Close :: File name FOpen   FClosed ()
-  Read  :: File name FOpen   FOpen   String
-  Write :: File name FOpen   FOpen   ()
+  Open  ::           File name FClosed FOpen   ()
+  Close ::           File name FOpen   FClosed ()
+  Read  ::           File name FOpen   FOpen   String
+  Write :: String -> File name FOpen   FOpen   ()
 
 open ::
   forall name fs is os.
@@ -236,22 +229,86 @@ close ::
   Elem (File name) FOpen FClosed fs is os => Eff fs is os ()
 close = send (Close @name)
 
--- Example
+write ::
+  forall name fs is os.
+  (SingI name, Elem (File name) FOpen FOpen fs is os) => String -> Eff fs is os ()
+write str = send (Write @name str)
+
+read ::
+  forall name fs is os.
+  (SingI name, Elem (File name) FOpen FOpen fs is os) => Eff fs is os String
+read = send (Read @name)
+
+
 --------------------------------------------------------------------------------
 
 
-    -- We have a labelled indexed state and two labelled file handles
-    -- Input indices in the first line, outputs in the second.
-    test :: Eff
-      (State "x" ::: File "foo"    ::: File "bar" ::: INil)
-      (Int       :>  FClosed       :>  FOpen      :>  Nil )
-      (String    :>  FOpen         :>  FClosed    :>  Nil )
-      ()
-    test = do
-      x <- get       -- no need for label here since State is unambiguous
-      put $ x + 100
-      open @"foo"
-      close @"bar"
-      put "I have to put here some string"
-      return ()
+-- runFileC ::
+--   forall name a o.
+--   SingI name => Eff (File name ::: INil) (FClosed :> Nil) (o :> Nil) a -> IO a
+-- runFileC (Pure a) = pure a
+-- runFileC (Impure (Here Open) k) = do
+--     h <- openFile (fromSing (sing @_ @name)) ReadWriteMode
+--     runFileO h (ftcApp k ())
+    
+-- runFileO ::
+--   forall name a o. SingI name =>
+--   Handle -> Eff (File name ::: INil) (FOpen :> Nil) (o :> Nil) a -> IO a
+-- runFileO h (Pure a) = pure a
+-- runFileO h (Impure (Here cmd) k) = case cmd of
+--  Close     -> hClose h >> runFileC (ftcApp k ())
+--  Read      -> do {l <- hGetLine h; runFileO h (ftcApp k l)}
+--  Write str -> hPutStrLn h str >> runFileO h (ftcApp k ())
+
+-- runFile :: forall name a.
+--   SingI name => Eff (File name ::: INil) (FClosed :> Nil) (FClosed :> Nil) a -> IO a
+-- runFile = runFileC
+
+--------------------------------------------------------------------------------
+
+-- File to State
+    
+runFileC ::
+  forall name a o.
+  SingI name => Eff (File name ::: INil) (FClosed :> Nil) (o :> Nil) a -> IO a
+runFileC (Pure a) = pure a
+runFileC (Impure (Here Open) k) = do
+    h <- openFile (fromSing (sing @_ @name)) ReadWriteMode
+    runFileO h (ftcApp k ())
+    
+runFileO ::
+  forall name a o. SingI name =>
+  Handle -> Eff (File name ::: INil) (FOpen :> Nil) (o :> Nil) a -> IO a
+runFileO h (Pure a) = pure a
+runFileO h (Impure (Here cmd) k) = case cmd of
+ Close     -> hClose h >> runFileC (ftcApp k ())
+ Read      -> do {l <- hGetLine h; runFileO h (ftcApp k l)}
+ Write str -> hPutStrLn h str >> runFileO h (ftcApp k ())
+
+runFile :: forall name a.
+  SingI name => Eff (File name ::: INil) (FClosed :> Nil) (FClosed :> Nil) a -> IO a
+runFile = runFileC
+            
+
+
+-- Example
+--------------------------------------------------------------------------------
+
+-- We have a labelled indexed state and two labelled file handles
+-- Input indices in the first line, outputs in the second.
+test :: Eff
+  (State "x" ::: File "foo"    ::: File "bar" ::: INil)
+  (Int       :>  FClosed       :>  FOpen      :>  Nil )
+  (String    :>  FOpen         :>  FClosed    :>  Nil )
+  ()
+test = 
+  get >>>= \x -> 
+  put (x + 100) >>>
+  open @"foo"   >>>
+  close @"bar"  >>>
+  put "I have to put here some string" >>>
+  ireturn ()
+
+
+  
 
