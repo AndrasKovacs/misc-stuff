@@ -31,7 +31,7 @@ trans-const _ refl = refl
 postulate
   S¹-rec : ∀ {α}{A : Set α} (base* : A) → base* ≡ base* → S¹ → A
   β-base-rec :
-    ∀ {α}{A : Set α} (base* : A)(loop* : base* ≡ base*)(s : S¹)
+    ∀ {α}{A : Set α} (base* : A)(loop* : base* ≡ base*)
     → S¹-rec base* loop* base ≡ base*
   {-# REWRITE β-base-rec #-}
 

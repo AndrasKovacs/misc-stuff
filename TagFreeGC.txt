@@ -1,0 +1,38 @@
+
+Notes on tagfree gc:
+
+1. There's a topic I couldn't find any prior research on (understandably):
+   if we have tagfree GC, we are also able to create new
+   boxed heap object merely by taking addresses of fields of other heap objects.
+
+   For example, a pointer to (Int, Int) can be simply recast to a pointer to
+   Int. With tagged GC, this is impossible, since the tag of a boxed Int is not
+   the same as the tag of an (Int, Int). Also, there's no tag at all if we take
+   the address of the second Int!
+
+   This could allow us to have significantly more sharing than in a tagged setting.
+   However! Garbage collection becomes more complicated. What if we evacuate the first
+   Int from an (Int, Int), then later try to evacuate the whole (Int, Int)?
+
+   Evacuating the Int caused the old heap location to be overwritten with a forwarding
+   pointer. At least we have to have a bitmap with one bit for each word of the old
+   heap, telling us whether it has been evacuated. So, when evacuating an object, we
+   copy the unevacuated words from the old heap and the evacuated words from the new heap.
+
+   As a result, we eventually overwrite every live word of the old heap with forwarding pointers.
+
+   Sharing is preserved on the new heap if we evacuate the largest objects first. We can't
+   feasibly make sure that this happens, but if we traverse dfs then we can traverse
+   heuristically larger subobjects before smaller ones.
+
+   I'm unsure as to whether this could yield real performance benefits, given the additional
+   complexity of forwarding all heap words. Maybe in a tag-free setting we have fewer live words
+   to begin with; for example, every word of tag-free lists of pointers is actually a pointer
+   and must be forwarded anyway. Also, we can quickly check large chunks of the evacuation bitmap
+   (with 128 bit registers, for instance), and default to bulk copying if there's no evacuation.
+
+   What I find most interesting about this is not potential performance benefits, simply the
+   ability to take addresses of structure fields in a managed memory settings, which is as far
+   as I know unprecedented.
+
+
