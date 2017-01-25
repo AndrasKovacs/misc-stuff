@@ -1,3 +1,128 @@
+{-# OPTIONS --without-K #-}
+
+open import Relation.Binary.PropositionalEquality
+
+data Con : Set
+data Emb : Con → Con → Set
+data Sub (Γ : Con) : Con → Set
+data Ty (Γ : Con) : Set
+data Tm (Γ : Con) : Ty Γ → Set
+data Var : ∀ Γ → Ty Γ → Set
+
+data _~ᵗ_ {Γ} : Ty Γ → Ty Γ → Set
+data _~ᶜ_ : Con → Con → Set
+data _~_ {Γ} : ∀ {A} → Tm Γ A → Tm Γ A → Set
+data _~ˢ_ {Γ} : ∀ {Δ} → Sub Γ Δ → Sub Γ Δ → Set
+
+idₑ  : ∀ {Γ}     → Emb Γ Γ
+Tyₑ  : ∀ {Γ Δ}   → Emb Γ Δ → Ty Δ → Ty Γ
+Varₑ : ∀ {Γ Δ A} → (σ : Emb Γ Δ) → Var Δ A → Var Γ (Tyₑ σ A)
+Tmₑ  : ∀ {Γ Δ A} → (σ : Emb Γ Δ) → Tm Δ A  → Tm Γ  (Tyₑ σ A)
+idₛ  : ∀ {Γ}     → Sub Γ Γ
+Tyₛ  : ∀ {Γ Δ}   → Sub Γ Δ → Ty Δ → Ty Γ
+Varₛ : ∀ {Γ Δ A} → (σ : Sub Γ Δ) → Var Δ A → Var Γ (Tyₛ σ A)
+Tmₛ  : ∀ {Γ Δ A} → (σ : Sub Γ Δ) → Tm Δ A  → Tm Γ  (Tyₛ σ A)
+
+Tyₛ-id : ∀ {Γ} A → A ≡ Tyₛ {Γ} idₛ A
+Tyₛ-id A = {!!}
+
+Tyₛ~ : ∀ {Γ Δ}{σ σ' : Sub Γ Δ} → σ ~ˢ σ' → ∀ A → Tyₛ σ A ~ᵗ Tyₛ σ' A
+Tyₛ~ p A = {!!}
+
+≡→~ᵗ : ∀ {Γ}{A A' : Ty Γ} → A ≡ A' → A ~ᵗ A'
+
+
+data Con where
+  ∙   : Con
+  _,_ : (Γ : Con) → Ty Γ → Con
+
+data Ty Γ where
+  coe : ∀ {Δ} → Δ ~ᶜ Γ → Ty Δ → Ty Γ
+  U   : Ty Γ
+  Π   : (A : Ty Γ) → Ty (Γ , A) → Ty Γ
+  El  : Tm Γ U → Ty Γ
+
+data _~ᶜ_ where
+  ~refl : ∀ {Γ} → Γ ~ᶜ Γ
+  _~⁻¹  : ∀ {Γ Δ} → Γ ~ᶜ Δ → Δ ~ᶜ Γ
+  _~◾_  : ∀ {Γ Δ Σ} → Γ ~ᶜ Δ → Δ ~ᶜ Σ → Γ ~ᶜ Σ
+  _,_   : ∀ {Γ A Γ' A'}(p : Γ ~ᶜ Γ') → coe p A ~ᵗ A' → (Γ , A) ~ᶜ (Γ' , A')
+
+
+
+data Emb where
+  ∙    :                          Emb  ∙             ∙
+  keep : ∀ {Γ Δ A}(σ : Emb Γ Δ) → Emb (Γ , Tyₑ σ A) (Δ , A)
+  drop : ∀ {Γ Δ A}(σ : Emb Γ Δ) → Emb (Γ , A      )  Δ
+
+data Sub Γ where
+  ∙    : Sub Γ ∙
+  _,_  : ∀ {Δ A}(σ : Sub Γ Δ) → Tm Γ (Tyₛ σ A) → Sub Γ (Δ , A)
+
+,ₛ : ∀ {Γ Δ} A (σ : Sub Γ Δ) → Tm Γ (Tyₛ σ A) → Sub Γ (Δ , A)
+,ₛ A σ t = σ , t
+
+data _~ᵗ_ {Γ} where
+  ~refl : ∀ {A} → A ~ᵗ A
+  trunc : ∀ {A p} → coe p A ~ᵗ A
+  _~⁻¹  : ∀ {A B} → A ~ᵗ B → B ~ᵗ A
+  _~◾_  : ∀ {A B C} → A ~ᵗ B → B ~ᵗ C → A ~ᵗ C
+  ~El   : ∀ {t t'} → t ~ t' → El t ~ᵗ El t'
+  ~Π    : ∀ {A A' : Ty Γ}{B B'}(p : A ~ᵗ A') → coe (~refl , (trunc ~◾ p)) B ~ᵗ B' → Π A B ~ᵗ Π A' B'
+
+≡→~ᵗ refl = ~refl
+
+data Var where
+  vz : ∀ {Γ A} →           Var (Γ , A) (Tyₑ (drop idₑ) A)
+  vs : ∀ {Γ A} → Var Γ A → Var (Γ , A) (Tyₑ (drop idₑ) A)
+
+data Tm Γ where
+  coe : ∀ {Δ A A'} → (p : Δ ~ᶜ Γ) → coe p A' ~ᵗ A → Tm Δ A' → Tm Γ A
+  var : ∀ {A}   → Var Γ A → Tm Γ A
+  lam : ∀ {A B} → Tm (Γ , A) B → Tm Γ (Π A B)
+  app : ∀ {A B} → Tm Γ (Π A B) →(a : Tm Γ A) → Tm Γ (Tyₛ (idₛ , coe ~refl (trunc ~◾ ≡→~ᵗ (Tyₛ-id A)) a) B)
+
+data _~ˢ_ {Γ} where
+  ~refl : ∀ {Δ}{σ : Sub Γ Δ} → σ ~ˢ σ
+  _~⁻¹  : ∀ {Δ}{σ δ : Sub Γ Δ} → σ ~ˢ δ → δ ~ˢ σ
+  _~◾_  : ∀ {Δ}{σ δ ν : Sub Γ Δ} → σ ~ˢ δ → δ ~ˢ ν → σ ~ˢ ν
+  _,_   :
+    ∀ {Δ A}{σ δ : Sub Γ Δ}{t : Tm Γ (Tyₛ σ A)}{t' : Tm Γ (Tyₛ δ A)}
+    (p : σ ~ˢ δ) → coe ~refl (trunc ~◾ Tyₛ~ p A) t ~ t' →  (,ₛ A σ t) ~ˢ (,ₛ A δ t')
+
+idₑ {∙}     = ∙
+idₑ {Γ , A} = {!keep (idₑ {Γ})!}
+Tyₑ  = {!!}
+Varₑ = {!!}
+Tmₑ  = {!!}
+idₛ  = {!!}
+Tyₛ  = {!!}
+Varₛ = {!!}
+Tmₛ  = {!!}
+
+data _~_ {Γ} where
+  ~refl : ∀ {A}{t : Tm Γ A} → t ~ t
+  trunc : ∀ {A} p q (t : Tm Γ A) → coe p q t ~ t
+  _~⁻¹  : ∀ {A}{t t' : Tm Γ A} → t ~ t' → t' ~ t
+  _~◾_  : ∀ {A}{t t' t'' : Tm Γ A} → t ~ t' → t' ~ t'' → t ~ t''
+
+  app   : ∀ {A B}{f f' : Tm Γ (Π A B)}{x x' : Tm Γ A}
+    → f ~ f' → (p : x ~ x')
+    → app f x ~
+      coe ~refl (trunc ~◾ Tyₛ~ {Γ}{Γ , A}
+        {idₛ , coe ~refl (trunc ~◾ ≡→~ᵗ (Tyₛ-id A)) x'}
+        {idₛ , coe ~refl (trunc ~◾ ≡→~ᵗ (Tyₛ-id A)) x}
+        (~refl , {!!}) B) (app f' x')
+  lam   : ∀ {A B}{t t' : Tm (Γ , A) B} → t ~ t' → lam t ~ lam t'
+
+  β : ∀ {A B}(t : Tm (Γ , A) B)(a : Tm Γ A) → app (lam t) a ~ Tmₛ (idₛ , coe ~refl (trunc ~◾ ≡→~ᵗ (Tyₛ-id A)) a) t
+  η : ∀ {A B}(f : Tm Γ (Π A B)) → f ~ lam (app (Tmₑ (drop idₑ) f) (var vz))
+
+
+{-
+
+
+
 {-# OPTIONS --type-in-type #-}
 
 open import Data.Empty
@@ -14,11 +139,6 @@ postulate
 
 bot : ⊥
 bot = peirce' ⊤ (λ _ → ⊥) ⊥ (λ _ → ⊥) (λ _ → tt) (λ f _ → f tt)
-
-
-
-
-
 
 
 {-
@@ -202,10 +322,10 @@ import Data.Sum as S
 
 
 
-      
-      
+
+
 -}
 
 
 
-
+-}
