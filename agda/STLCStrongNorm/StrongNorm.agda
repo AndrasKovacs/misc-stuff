@@ -365,14 +365,13 @@ SN-app₁ : ∀ {Γ A B}{f : Tm Γ (A ⇒ B)}{a} → SN (app f a) → SN f
 SN-app₁ (sn s) = sn λ f~>f' → SN-app₁ (s (app₁ f~>f'))
 
 neu : ∀ {Γ A} → Tm Γ A → Set
-neu (var _)   = ⊤
 neu (lam _)   = ⊥
-neu (app _ _) = ⊤
+neu _         = ⊤
 
 neuₑ : ∀ {Γ Δ A}(σ : OPE Δ Γ)(t : Tm Γ A) → neu t → neu (Tmₑ σ t)
+neuₑ σ (lam t)   nt = nt
 neuₑ σ (var v)   nt = tt
 neuₑ σ (app f a) nt = tt
-neuₑ σ (lam t) ()
 
 -- The actual proof, by Kripke logical predicate
 --------------------------------------------------------------------------------
@@ -385,17 +384,17 @@ data Subᴾ {Γ} : ∀ {Δ} → Sub Γ Δ → Set where
   ∙   : Subᴾ ∙
   _,_ : ∀ {A Δ}{σ : Sub Γ Δ}{t : Tm Γ A}(σᴾ : Subᴾ σ)(tᴾ : Tmᴾ t) → Subᴾ (σ , t)
 
-Tmᴾₑ : ∀ {A Γ Δ}{t : Tm Γ A} → Tmᴾ t → (σ : OPE Δ Γ) → Tmᴾ (Tmₑ σ t)
-Tmᴾₑ {ι} tᴾ σ = SNₑ→ σ tᴾ
-Tmᴾₑ {A ⇒ B}{t = t} tᴾ σ δ aᴾ rewrite Tm-∘ₑ σ δ t ⁻¹ = tᴾ (σ ∘ₑ δ) aᴾ
+Tmᴾₑ : ∀ {Γ Δ A}{t : Tm Γ A}(σ : OPE Δ Γ) → Tmᴾ t → Tmᴾ (Tmₑ σ t)
+Tmᴾₑ {A = ι}        σ tᴾ = SNₑ→ σ tᴾ
+Tmᴾₑ {A = A ⇒ B}{t} σ tᴾ δ aᴾ rewrite Tm-∘ₑ σ δ t ⁻¹ = tᴾ (σ ∘ₑ δ) aᴾ
 
 Subᴾₑ : ∀ {Γ Δ Σ}{σ : Sub Δ Σ}(δ : OPE Γ Δ) → Subᴾ σ → Subᴾ (σ ₛ∘ₑ δ)
 Subᴾₑ σ ∙        = ∙
-Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Tmᴾₑ tᴾ σ
+Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Tmᴾₑ σ tᴾ
 
 ~>ᴾ : ∀ {Γ A}{t t' : Tm Γ A} → t ~> t' → Tmᴾ t → Tmᴾ t'
-~>ᴾ {A = ι}     t~>t' (sn st) = st t~>t'
-~>ᴾ {A = A ⇒ B} t~>t' tᴾ      = λ σ aᴾ → ~>ᴾ (app₁ (~>ₑ σ t~>t')) (tᴾ σ aᴾ)
+~>ᴾ {A = ι}     t~>t' (sn tˢⁿ) = tˢⁿ t~>t'
+~>ᴾ {A = A ⇒ B} t~>t' tᴾ       = λ σ aᴾ → ~>ᴾ (app₁ (~>ₑ σ t~>t')) (tᴾ σ aᴾ)
 
 mutual
   qᴾ : ∀ {Γ A}{t : Tm Γ A} → Tmᴾ t → SN t
@@ -417,8 +416,8 @@ mutual
       go _ () _ _ _ _ (β _ _)
       go t nt f a aᴾ sna (app₁ {f' = f'} step) =
         coe ((λ x → Tmᴾ (app x a)) & Tm-idₑ f') (f step idₑ aᴾ)
-      go t nt f a aᴾ (sn sa) (app₂ {a' = a'} step) =
-        uᴾ (app t a') (go t nt f a' (~>ᴾ step aᴾ) (sa step))
+      go t nt f a aᴾ (sn aˢⁿ) (app₂ {a' = a'} step) =
+        uᴾ (app t a') (go t nt f a' (~>ᴾ step aᴾ) (aˢⁿ step))
 
 eval-∈ : ∀ {Γ A}(v : A ∈ Γ) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (∈ₛ σ v)
 eval-∈ vz     (σᴾ , tᴾ) = tᴾ
