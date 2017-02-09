@@ -9,7 +9,7 @@
 -- Huber thesis pg. 31: "U(I) consists of Set₀-valued presheaves over C/I (slice category over I)"
 -- todo : rename Ren to OPE
 
-module ImpredPSh3 where
+module ImpredPSh4 where
 
 open import Lib
 open import JM
@@ -29,7 +29,7 @@ open import Syntax
   ∀ {Γ' Γ Δ' Δ Σ' Σ}{σ'}(σ : OPE {Δ'}{Σ'} σ' Δ Σ){δ'}(δ : OPE {Γ'}{Δ'} δ' Γ Δ)
     (Aᴹ : *ᴹ {Σ'} Σ)
   → (λ {x y z} → *ᴹₑ (σ ∘ₑ δ) Aᴹ {x}{y}{z}) ≡ *ᴹₑ δ (*ᴹₑ σ Aᴹ)
-*ᴹ-∘ₑ σ δ Aᴹ = exti λ Δ' → exti λ Δ → exti λ ν' → ext λ ν → {!!}
+*ᴹ-∘ₑ σ δ Aᴹ = exti λ Δ' → exti λ Δ → exti λ ν' → ext λ ν → {!_∘ₑ_!}
 
 data Con'ᴹ : Con' → ∀ {Δ'} → Con Δ' → Set where
   ∙   : ∀ {Δ' Δ} → Con'ᴹ ∙ {Δ'} Δ
@@ -98,6 +98,34 @@ Tmᴹ (tapp t B) Γ'ᴹ Γᴹ = coe {!!} (Tmᴹ t Γ'ᴹ Γᴹ idₑ (λ δ → 
 
 --------------------------------------------------------------------------------
 
+-- quote/unquote for types!
+--   probably need to make the Sub' Δ' Γ' in q/u unnecessariy
+
+mutual
+  q*∈ : ∀ {Γ'}(v : *∈ Γ') → ∀{Δ' Δ}(σ : Sub' Δ' Γ')(α : Con'ᴹ Γ' Δ) → *∈ᴹ v α → Nf Δ (*∈ₛ σ v)
+  q*∈ vz     (σ , A) (α , *ᴹ) *∈ᴹ = {!!}
+  q*∈ (vs v) (σ , _) (α , _ ) *∈ᴹ = q*∈ v σ α *∈ᴹ
+
+  q : ∀ {Γ'}(A : Ty Γ') → ∀{Δ' Δ}(σ : Sub' Δ' Γ')(α : Con'ᴹ Γ' Δ) → Tyᴹ {Γ'} A α → Nf Δ (Tyₛ σ A)
+  q (var v) σ α Aᴹ = q*∈ v σ α Aᴹ
+  q (A ⇒ B) σ α Aᴹ =
+    lam (q B σ (Con'ᴹₑ (drop idₑ) α) (Aᴹ (drop idₑ) (u A σ _ (var vz))))
+  q {Γ'} (∀' A) {Δ'} {Δ} σ α Aᴹ = 
+    tlam (q A (σ ₛ∘'ₑ drop id'ₑ , var vz) (Con'ᴹₑ (drop' idₑ) α , {!!}) (Aᴹ (drop' idₑ) {!!}))
+    -- unquote *ᴹ
+
+  u*∈ : ∀ {Γ'}(v : *∈ Γ') → ∀{Δ' Δ}(σ : Sub' Δ' Γ')(α : Con'ᴹ Γ' Δ) → Ne Δ (*∈ₛ σ v) → *∈ᴹ v α
+  u*∈ vz     (σ , A) (α , *ᴹ) n = {!!}
+  u*∈ (vs v) (σ , _) (α , _ ) n = u*∈ v σ α n
+
+  u : ∀ {Γ'}(A : Ty Γ') → ∀{Δ' Δ}(σ : Sub' Δ' Γ')(α : Con'ᴹ Γ' Δ) → Ne Δ (Tyₛ σ A) → Tyᴹ {Γ'} A α
+  u (var v) σ α n = u*∈ v σ α n
+  u (A ⇒ B) σ α n {Σ'}{Σ}{δ'} δ aᴹ =
+    u B (σ ₛ∘'ₑ δ') (Con'ᴹₑ δ α)
+      (app (coe (Ne Σ & Ty-ₛ∘ₑ σ δ' (A ⇒ B)) (Neₑ δ n)) (q A (σ ₛ∘'ₑ δ') (Con'ᴹₑ δ α) aᴹ))
+  u {Γ'} (∀' A) {Δ'} {Δ} σ α n {Σ'} {Σ} {δ'} δ Bᴹ =
+    u A (σ ₛ∘'ₑ δ' , {!!}) (Con'ᴹₑ δ α , Bᴹ) (tapp (coe (Ne Σ & (∀' & {!!})) (Neₑ δ n)) {!!})
+    -- quote *ᴹ
 
 
 

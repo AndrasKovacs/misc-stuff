@@ -1,4 +1,4 @@
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting --type-in-type #-}
 
 open import Data.Product
 
@@ -8,7 +8,7 @@ open import Data.Product
 infix  0 _↦_
 infixl 9 _$_
 infixr 9 _∙_
-infix  4 _≡_
+infix  3 _≡_
 
 postulate _↦_ : ∀ {a} {A : Set a} → A → A → Set
 {-# BUILTIN REWRITE _↦_ #-}
@@ -37,10 +37,10 @@ syntax path (λ i → t) = ⟨ i ⟩ t
 postulate
   [-]-left   : ∀ q r → ₀ [ q - r ] ↦ q
   [-]-right  : ∀ q r → ₁ [ q - r ] ↦ r
-  $-₀        : ∀ ℓ (A : Set ℓ) (S T : A) (Q : S ≡ T) → Q $ ₀ ↦ S
-  $-₁        : ∀ ℓ (A : Set ℓ) (S T : A) (Q : S ≡ T) → Q $ ₁ ↦ T
-  coerce-0-0 : ∀ ℓ (S T : Set ℓ) (Q : S ≡ T) a → a [ ₀ ∣ Q ∣ ₀ ⟩ ↦ a
-  coerce-1-1 : ∀ ℓ (S T : Set ℓ) (Q : S ≡ T) a → a [ ₁ ∣ Q ∣ ₁ ⟩ ↦ a
+  $-₀        : ∀ (A : Set) (S T : A) (Q : S ≡ T) → Q $ ₀ ↦ S
+  $-₁        : ∀ (A : Set) (S T : A) (Q : S ≡ T) → Q $ ₁ ↦ T
+  coerce-0-0 : ∀ (S T : Set) (Q : S ≡ T) a → a [ ₀ ∣ Q ∣ ₀ ⟩ ↦ a
+  coerce-1-1 : ∀ (S T : Set) (Q : S ≡ T) a → a [ ₁ ∣ Q ∣ ₁ ⟩ ↦ a
 
 {-# REWRITE [-]-left   #-}
 {-# REWRITE [-]-right  #-}
@@ -53,7 +53,7 @@ postulate
   [₀-₀]      : ∀ p → p [ ₀ - ₀ ] ↦ ₀
   [₀-₁]      : ∀ p → p [ ₀ - ₁ ] ↦ p
   [₁-₁]      : ∀ p → p [ ₁ - ₁ ] ↦ ₁
-  path-η     : ∀ ℓ (A : Set ℓ) (S T : A) (Q : S ≡ T) → ⟨ i ⟩ (Q $ i) ↦ Q
+  path-η     : ∀ (A : Set ) (S T : A) (Q : S ≡ T) → ⟨ i ⟩ (Q $ i) ↦ Q
 
 {-# REWRITE [₀-₀]  #-}
 {-# REWRITE [₀-₁]  #-}
@@ -69,50 +69,48 @@ postulate
 --   a .) the path is constant in the sense of the I parameter not occurring inside
 --   b .) the path is constant in the sense of Q $ ₀ and Q $ ₁ being definitionally equal
 
--- postulate
---   coerce-const : ∀ ℓ (A : Set ℓ) a p q → a [ p ∣ ⟨ _ ⟩ A ∣ q ⟩ ↦ a
--- {-# REWRITE coerce-const #-}
-
-
+postulate
+  coerce-const : ∀ (A : Set) a p q → a [ p ∣ ⟨ _ ⟩ A ∣ q ⟩ ↦ a
+{-# REWRITE coerce-const #-}
 
 postulate
   coerce-∙   :
-    ∀ ℓ (S T U : Set ℓ) (Q : S ≡ T) (Q' : T ≡ U) (a : S)
+    ∀ (S T U : Set) (Q : S ≡ T) (Q' : T ≡ U) (a : S)
     → a [ ₀ ∣ Q ∙ Q' ∣ ₁ ⟩ ↦ ((a [ ₀ ∣ Q ∣ ₁ ⟩) [ ₀ ∣ Q' ∣ ₁ ⟩)
 
   coerce-∙′  :
-    ∀ ℓ (S T U : Set ℓ) (Q : S ≡ T) (Q' : T ≡ U) a
+    ∀ (S T U : Set) (Q : S ≡ T) (Q' : T ≡ U) a
     → a [ ₁ ∣ Q ∙ Q' ∣ ₀ ⟩ ↦ ((a [ ₁ ∣ Q' ∣ ₀ ⟩) [ ₁ ∣ Q ∣ ₀ ⟩)
 
-  coerce-Σ   : ∀ ℓ (S : I → Set ℓ) (T : (i : I) → S i → Set ℓ) (s : S ₀) (t : T ₀ s)
+  coerce-Σ   : ∀ (S : I → Set) (T : (i : I) → S i → Set) (s : S ₀) (t : T ₀ s)
              → (s , t) [ ₀ ∣ ⟨ i ⟩ Σ (S i) (T i) ∣ ₁ ⟩ ↦
                let s- : (j : I) → S j
                    s- j = s [ ₀ ∣ ⟨ i ⟩ S i ∣ j ⟩
                in  s- ₁ , t [ ₀ ∣ ⟨ i ⟩ T i (s- i) ∣ ₁ ⟩
 
-  coerce-Σ′  : ∀ ℓ (S : I → Set ℓ) (T : (i : I) → S i → Set ℓ) (s : S ₁) (t : T ₁ s)
+  coerce-Σ′  : ∀ (S : I → Set) (T : (i : I) → S i → Set) (s : S ₁) (t : T ₁ s)
              → (s , t) [ ₁ ∣ ⟨ i ⟩ Σ (S i) (T i) ∣ ₀ ⟩ ↦
                let s- : (j : I) → S j
                    s- j = s [ ₁ ∣ ⟨ i ⟩ S i ∣ j ⟩
                in  s- ₀ , t [ ₁ ∣ ⟨ i ⟩ T i (s- i) ∣ ₀ ⟩
 
-  coerce-Π   : ∀ ℓ (S : I → Set ℓ) (T : (i : I) → S i → Set ℓ) (t : Π (S ₀) (T ₀))
+  coerce-Π   : ∀ (S : I → Set) (T : (i : I) → S i → Set) (t : Π (S ₀) (T ₀))
              → (λ x → t x) [ ₀ ∣ ⟨ i ⟩ Π (S i) (T i) ∣ ₁ ⟩ ↦ λ x →
                let s- : (j : I) → S j
                    s- j = x [ ₁ ∣ ⟨ i ⟩ S i ∣ j ⟩
                in  t (s- ₀) [ ₀ ∣ ⟨ i ⟩ T i (s- i) ∣ ₁ ⟩
 
-  coerce-Π′  : ∀ ℓ (S : I → Set ℓ) (T : (i : I) → S i → Set ℓ) (t : Π (S ₁) (T ₁))
+  coerce-Π′  : ∀ (S : I → Set) (T : (i : I) → S i → Set) (t : Π (S ₁) (T ₁))
              → (λ x → t x) [ ₁ ∣ ⟨ i ⟩ Π (S i) (T i) ∣ ₀ ⟩ ↦ λ x →
                let s- : (j : I) → S j
                    s- j = x [ ₀ ∣ ⟨ i ⟩ S i ∣ j ⟩
                in  t (s- ₁) [ ₁ ∣ ⟨ i ⟩ T i (s- i) ∣ ₀ ⟩
 
-  coerce-≡   : ∀ ℓ (S T : I → Set ℓ) (Q : S ₀ ≡ T ₀)
+  coerce-≡   : ∀ (S T : I → Set) (Q : S ₀ ≡ T ₀)
              → Q [ ₀ ∣ ⟨ i ⟩ S i ≡ T i ∣ ₁ ⟩ ↦
                (⟨ i ⟩ S (i [ ₁ - ₀ ])) ∙ Q ∙ (⟨ i ⟩ T i)
 
-  coerce-≡′  : ∀ ℓ (S T : I → Set ℓ) (Q : S ₁ ≡ T ₁)
+  coerce-≡′  : ∀ (S T : I → Set) (Q : S ₁ ≡ T ₁)
              → Q [ ₁ ∣ ⟨ i ⟩ S i ≡ T i ∣ ₀ ⟩ ↦
                (⟨ i ⟩ S i) ∙ Q ∙ (⟨ i ⟩ T (i [ ₁ - ₀ ]))
 
@@ -127,87 +125,56 @@ postulate
 
 open import Function using (_∘_)
 
-coe : ∀ {ℓ} {S T : Set ℓ} (Q : S ≡ T) → Q $ ₀ → Q $ ₁
-coe Q x = x [ ₀ ∣ Q ∣ ₁ ⟩
-
-_∧_ : ∀ {ℓ}{A : Set ℓ}{x y : A} → (p : x ≡ y) → (i : I) → x ≡ p $ i
-p ∧ i = ⟨ j ⟩ (p $ i [ ₀ - j ])
-
-_∨_ : ∀ {ℓ}{A : Set ℓ}{x y : A} → (p : x ≡ y) → (i : I) → p $ i ≡ y
-p ∨ i = ⟨ j ⟩ (p $ i [ j - ₁ ])
-
-1-_ : I → I
-1- i = i [ ₁ - ₀ ]
-
 refl : ∀ {ℓ} {A : Set ℓ} {a : A} → a ≡ a
 refl {a = a} = ⟨ _ ⟩ a
 
-ap : ∀ {ℓ ℓ'} {A : Set ℓ} {B : Set ℓ'} (f : A → B)
-       {x y : A} → x ≡ y → f x ≡ f y
-ap f p = ⟨ i ⟩ f (p $ i)
+coe : ∀ {ℓ} {S T : Set ℓ} (Q : S ≡ T) → Q $ ₀ → Q $ ₁
+coe Q x = x [ ₀ ∣ Q ∣ ₁ ⟩
 
-sym : ∀ {ℓ}{A : Set ℓ}{x y : A} → x ≡ y → y ≡ x
-sym p = ⟨ i ⟩ (p $ 1- i)
+infix 5 _⁻¹
+_⁻¹ : ∀ {A}{x y : A} → x ≡ y → y ≡ x
+_⁻¹ p = ⟨ i ⟩ (p $ (i [ ₁ - ₀ ]))
 
-trans : ∀ {ℓ}{A : Set ℓ}{x y z : A} → x ≡ y → y ≡ z → x ≡ z
-trans {x = x}{y}{z} p q = coe (⟨ i ⟩ x ≡ q $ i) p
+infixl 6 _&_
+_&_ : ∀ {A B}(f : A → B){x y : A} → x ≡ y → f x ≡ f y
+_&_ f p = ⟨ i ⟩ f (p $ i)
 
-subst : ∀ {ℓ ℓ'} {A : Set ℓ} (B : A → Set ℓ')
-        {x y : A} → x ≡ y → B x → B y
-subst B = coe ∘ ap B
+infixr 4 _◾_
+_◾_ : ∀ {A}{a b c : A} → a ≡ b → b ≡ c → a ≡ c
+_◾_ {a = a} {b} {c} p q = coe ((a ≡_) & q) p
 
-sym' : ∀ {ℓ}{A : Set ℓ}{x y : A} → x ≡ y → y ≡ x
-sym' p = subst (_≡ _) p refl
+transp : ∀ {A}(P : A → Set){a b : A} → a ≡ b → P a → P b
+transp P p = coe (P & p)
 
--- λ {ℓ} {A} {x} {y} p → path (λ i → p $ (i [ ₁ - ₀ ]))
+ext : ∀ {A}{B : A → Set}{f g : ∀ a → B a} → (∀ a → f a ≡ g a) → f ≡ g
+ext {f = f} {g} p = ⟨ i ⟩ (λ a → p a $ i)
 
--- λ {ℓ} {A} {x} {y} p →
---   coerce (path (λ i → p $ i ≡ x)) ₀ ₁ (path (λ _ → x))
+J : ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ {a'} (p : a ≡ a') → P a' p
+J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ i [ ₀ - j ]))) refl*
 
+J-refl :
+  ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) refl* → J P refl* refl ≡ refl*
+J-refl P refl* = ⟨ _ ⟩ refl*  
 
--- apd : ∀ {ℓ ℓ'} {A : Set ℓ} {B : A → Set ℓ'} (f : Π A B)
---        {x y : A} → (p : x ≡ y) → subst B p (f x) ≡ f y
--- apd {B = B} f p = ⟨ i ⟩ subst B (p ∨ i) (f (p $ i))
+ap2 : ∀ {A B C}(f : A → B → C){a a' b b'} → a ≡ a' → b ≡ b' → f a b ≡ f a' b'
+ap2 f {a} {a'} {b} {b'} p q = ⟨ i ⟩ f (p $ i) (q $ i)
 
-module ApReduce where
+bar : (A B : Set)(p : A ≡ B) → p ◾ refl ≡ p
+bar A B p = J (λ _ p₁ → p₁ ◾ refl ≡ p₁) {!!} p
 
-  p1 : ∀ {A B : Set}(f : A → B) x → ap f (refl {a = x}) ≡ refl {a = f x}
-  p1 _ _ = refl
+foo :
+  ∀ (A : Set) A' B B' (p : A ≡ A')(q : B ≡ B')(r : A ≡ B)
+  → coe (ap2 _≡_ p q) r ≡ (p ⁻¹) ◾ r ◾ q
+foo A A' B B' = 
+  J (λ _ p₁ →
+       (q₁ : B ≡ B') (r₁ : A ≡ B) →
+       coe (ap2 _≡_ p₁ q₁) r₁ ≡ p₁ ⁻¹ ◾ r₁ ◾ q₁)
+    (J (λ _ q → (r : A ≡ B) → coe (ap2 _≡_ refl q) r ≡ refl ⁻¹ ◾ r ◾ q)
+       (J (λ _ r → coe (ap2 _≡_ refl refl) r ≡ refl ⁻¹ ◾ r ◾ refl)
+         {!!}))
 
-  open import Function hiding (_$_)
+-- path (λ i → A) ∙ path (λ _ → A) ∙ path (λ i → A) ≡
 
-  p2 : ∀ {A : Set}(x y : A) (p : x ≡ y) → ap id p ≡ p
-  p2 _ _ _ = refl
+-- path (λ i → A) ∙
+-- path (λ i → A) ∙ path (λ i → A) ∙ path (λ _ → A) ∙ path (λ i → A)
 
-  p3 : ∀ {A B C : Set}(f : B → C) (g : A → B){x y} → ap (f ∘ g) {x}{y} ≡ ap f ∘ ap g
-  p3 f g = refl
-
-J : ∀ {ℓ ℓ′} {A : Set ℓ} {x : A} (P : (y : A) → x ≡ y → Set ℓ′)
-  → P x refl → {y : A} (e : x ≡ y) → P y e
-J P refl* e = coe (⟨ i ⟩ P (e $ i) (e ∧ i)) refl*
-
--- subst-subst : ∀ {ℓ}{A : Set ℓ}(x y : A) → (p : x ≡ y) → subst (_≡ y) p p ≡ refl
--- subst-subst x y p = ⟨ i ⟩ subst (_≡ y) (p ∨ i) (p ∨ i)
-
--- Contr : ∀ {α} → Set α → Set α
--- Contr A = ∃ λ (a : A) → ∀ a' → a ≡ a'
-
--- Sing : ∀ {α} → (A : Set α) → A → Set α
--- Sing A a = ∃ λ b → a ≡ b
-
--- singContr : ∀ {α A} a → Contr {α} (Sing A a)
--- singContr a = (a , refl) , (λ {(_ , p) → ⟨ i ⟩ p $ i , p ∧ i})
-
--- symInvolutive : ∀ {ℓ}{A : Set ℓ}{x y : A} (p : x ≡ y) → sym (sym p) ≡ p
--- symInvolutive p = ⟨ j ⟩ ⟨ i ⟩ p $ j [ (1- 1- i) - i ]
-
--- left-id : ∀ {ℓ}{A : Set ℓ}{x y : A}(p : x ≡ y) → refl ≡ trans p (sym p)
--- left-id {x = x}{y} p = ⟨ i ⟩ trans (p ∧ i) (sym (p ∧ i))
-
-J-refl : ∀ {ℓ ℓ′} {A : Set ℓ} {x : A} (P : (y : A) → x ≡ y → Set ℓ′)
-       → (p : P x refl) → J P p refl ≡ p
-J-refl {x = x} P p = {!J P p refl!}
-
--- funext : ∀ {ℓ ℓ'} {A : Set ℓ} {B : A → Set ℓ'} {f g : (x : A) → B x}
---            → (∀ x → f x ≡ g x) → f ≡ g
--- funext p = ⟨ i ⟩ (λ x → p x $ i)
