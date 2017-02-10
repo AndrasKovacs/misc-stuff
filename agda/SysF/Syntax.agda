@@ -11,8 +11,7 @@ module Syntax where
 open import Lib
 
 infixr 6 _∘'ₑ_
-infixr 6 _ₑ∘'ₛ_ _ₛ∘'ₑ_
--- infixr 6 _∘ₑ_
+infixr 6 _ₑ∘'ₛ_ _ₛ∘'ₑ_ _∘'ₛ_
 infixr 3 _⇒_
 infix 3 _∈_
 
@@ -94,16 +93,16 @@ Ty-idₑ (A ⇒ B) = _⇒_ & Ty-idₑ A ⊗ Ty-idₑ B
 Ty-idₑ (∀' A)  = ∀' & Ty-idₑ A
 
 *∈-∘ₑ : ∀ {Γ Δ Σ}(σ : OPE' Δ Σ)(δ : OPE' Γ Δ)(v : *∈ Σ) → *∈ₑ δ (*∈ₑ σ v) ≡ *∈ₑ (σ ∘'ₑ δ) v
-*∈-∘ₑ ∙        ∙        ()       
-*∈-∘ₑ σ        (drop δ) v      = vs & *∈-∘ₑ σ δ v 
-*∈-∘ₑ (drop σ) (keep δ) v      = vs & *∈-∘ₑ σ δ v 
+*∈-∘ₑ ∙        ∙        ()
+*∈-∘ₑ σ        (drop δ) v      = vs & *∈-∘ₑ σ δ v
+*∈-∘ₑ (drop σ) (keep δ) v      = vs & *∈-∘ₑ σ δ v
 *∈-∘ₑ (keep σ) (keep δ) vz     = refl
 *∈-∘ₑ (keep σ) (keep δ) (vs v) = vs & *∈-∘ₑ σ δ v
 
 Ty-∘ₑ : ∀ {Γ Δ Σ}(σ : OPE' Δ Σ)(δ : OPE' Γ Δ)(A : Ty Σ) → Tyₑ δ (Tyₑ σ A) ≡ Tyₑ (σ ∘'ₑ δ) A
 Ty-∘ₑ σ δ (var v) = var & *∈-∘ₑ σ δ v
 Ty-∘ₑ σ δ (A ⇒ B) = _⇒_ & Ty-∘ₑ σ δ A ⊗ Ty-∘ₑ σ δ B
-Ty-∘ₑ σ δ (∀' A)  = ∀' & Ty-∘ₑ (keep σ) (keep δ) A  
+Ty-∘ₑ σ δ (∀' A)  = ∀' & Ty-∘ₑ (keep σ) (keep δ) A
 
 -- Type substitution
 --------------------------------------------------------------------------------
@@ -139,9 +138,6 @@ Tyₛ σ (∀' A)  = ∀' (Tyₛ (keep'ₛ σ) A)
 id'ₛ : ∀ {Γ} → Sub' Γ Γ
 id'ₛ {∙}    = ∙
 id'ₛ {Γ ,*} = keep'ₛ id'ₛ
-
-Ty-idₛ : ∀ {Γ} A → Tyₛ {Γ} id'ₛ A ≡ A
-Ty-idₛ = cheat where postulate cheat : _
 
 ass'ₛₑₑ :
   ∀ {Γ Δ Σ Ξ}(σ : Sub' Σ Ξ)(δ : OPE' Δ Σ)(ν : OPE' Γ Δ)
@@ -185,6 +181,21 @@ Ty-ₛ∘ₑ σ δ (∀' A)  =
        ◾ (σ ₛ∘'ₑ_) & (drop & (idr'ₑ δ ⁻¹))
        ◾ ass'ₛₑₑ σ δ wk' ⁻¹))
 
+idr'ₛₑ : ∀ {Γ Δ}(σ : Sub' Δ Γ) → σ ₛ∘'ₑ id'ₑ ≡ σ
+idr'ₛₑ ∙       = refl
+idr'ₛₑ (σ , A) = _,_ & idr'ₛₑ σ ⊗ Ty-idₑ A
+
+*∈-idₛ : ∀ {Γ}(v : *∈ Γ) → *∈ₛ id'ₛ v ≡ var v
+*∈-idₛ vz     = refl
+*∈-idₛ (vs v) = *∈-ₛ∘ₑ id'ₛ (drop id'ₑ) v ⁻¹
+              ◾ Tyₑ (drop id'ₑ) & *∈-idₛ v
+              ◾ var & (vs & *∈-idₑ v)
+
+Ty-idₛ : ∀ {Γ} A → Tyₛ {Γ} id'ₛ A ≡ A
+Ty-idₛ (var v) = *∈-idₛ v
+Ty-idₛ (A ⇒ B) = _⇒_ & Ty-idₛ A ⊗ Ty-idₛ B
+Ty-idₛ (∀' A)  = ∀' & Ty-idₛ A
+
 emb'ₑ : ∀ {Γ Δ} → OPE' Γ Δ → Sub' Γ Δ
 emb'ₑ ∙        = ∙
 emb'ₑ (drop σ) = drop'ₛ (emb'ₑ σ)
@@ -206,6 +217,59 @@ idl'ₛₑ (keep σ) =
   ◾ (λ x → id'ₛ ₛ∘'ₑ drop x) & (idl'ₑ σ ◾ idr'ₑ σ ⁻¹)
   ◾ ass'ₛₑₑ id'ₛ σ wk' ⁻¹
   ◾ (_ₛ∘'ₑ wk') & idl'ₛₑ σ)
+
+_∘'ₛ_ : ∀ {Γ Δ Σ} → Sub' Δ Σ → Sub' Γ Δ → Sub' Γ Σ
+∙       ∘'ₛ δ = ∙
+(σ , A) ∘'ₛ δ = (σ ∘'ₛ δ) , Tyₛ δ A
+
+ass'ₛₑₛ :
+  ∀ {Γ Δ Σ Ξ}(σ : Sub' Σ Ξ)(δ : OPE' Δ Σ)(ν : Sub' Γ Δ)
+  → (σ ₛ∘'ₑ δ) ∘'ₛ ν ≡ σ ∘'ₛ (δ ₑ∘'ₛ ν)
+ass'ₛₑₛ ∙       δ ν = refl
+ass'ₛₑₛ (σ , A) δ ν = _,_ & ass'ₛₑₛ σ δ ν ⊗ Ty-ₑ∘ₛ δ ν A
+
+ass'ₛₛₑ :
+  ∀ {Γ Δ Σ Ξ}(σ : Sub' Σ Ξ)(δ : Sub' Δ Σ)(ν : OPE' Γ Δ)
+  → (σ ∘'ₛ δ) ₛ∘'ₑ ν ≡ σ ∘'ₛ (δ ₛ∘'ₑ ν)
+ass'ₛₛₑ ∙       δ ν = refl
+ass'ₛₛₑ (σ , A) δ ν = _,_ & ass'ₛₛₑ σ δ ν ⊗ Ty-ₛ∘ₑ δ ν A
+
+idl'ₑₛ : ∀ {Γ Δ}(σ : Sub' Γ Δ) → id'ₑ ₑ∘'ₛ σ ≡ σ
+idl'ₑₛ ∙       = refl
+idl'ₑₛ (σ , A) = (_, A) & idl'ₑₛ σ
+
+*∈-∘ₛ : ∀ {Γ Δ Σ}(σ : Sub' Δ Σ)(δ : Sub' Γ Δ) v → Tyₛ δ (*∈ₛ σ v) ≡ *∈ₛ (σ ∘'ₛ δ) v
+*∈-∘ₛ (σ , A) δ vz     = refl
+*∈-∘ₛ (σ , A) δ (vs v) = *∈-∘ₛ σ δ v
+
+Ty-∘ₛ : ∀ {Γ Δ Σ}(σ : Sub' Δ Σ)(δ : Sub' Γ Δ) A → Tyₛ δ (Tyₛ σ A) ≡ Tyₛ (σ ∘'ₛ δ) A
+Ty-∘ₛ σ δ (var v) = *∈-∘ₛ σ δ v
+Ty-∘ₛ σ δ (A ⇒ B) = _⇒_ & Ty-∘ₛ σ δ A ⊗ Ty-∘ₛ σ δ B
+Ty-∘ₛ σ δ (∀' A)  = ∀' & (Ty-∘ₛ (keep'ₛ σ) (keep'ₛ δ) A
+                    ◾ (λ x → Tyₛ (x , var vz) A) & (ass'ₛₑₛ σ (drop id'ₑ) (keep'ₛ δ)
+                    ◾ (σ ∘'ₛ_) & idl'ₑₛ (drop'ₛ δ)
+                    ◾ ass'ₛₛₑ σ δ (drop id'ₑ) ⁻¹))
+
+*∈-emb : ∀ {Γ Δ}(σ : OPE' Γ Δ) v → *∈ₛ (emb'ₑ σ) v ≡ var (*∈ₑ σ v)
+*∈-emb ∙ ()
+*∈-emb (drop σ) v =
+    *∈-ₛ∘ₑ (emb'ₑ σ) (drop id'ₑ) v ⁻¹
+  ◾ Tyₑ (drop id'ₑ) & *∈-emb σ v
+  ◾ var & (vs & *∈-idₑ (*∈ₑ σ v))
+*∈-emb (keep σ) vz     = refl
+*∈-emb (keep σ) (vs v) =
+    *∈-ₛ∘ₑ (emb'ₑ σ) (drop id'ₑ) v ⁻¹
+  ◾ Tyₑ (drop id'ₑ) & *∈-emb σ v
+  ◾ var & (vs & *∈-idₑ (*∈ₑ σ v))
+
+Ty-emb : ∀ {Γ Δ}(σ : OPE' Γ Δ) A → Tyₛ (emb'ₑ σ) A ≡ Tyₑ σ A
+Ty-emb σ (var v) = *∈-emb σ v
+Ty-emb σ (A ⇒ B) = _⇒_ & Ty-emb σ A ⊗ Ty-emb σ B
+Ty-emb σ (∀' A)  = ∀' & Ty-emb (keep σ) A
+
+emb'-∘ₛ : ∀ {Γ Δ Σ}(σ : Sub' Δ Σ)(δ : OPE' Γ Δ) → σ ∘'ₛ emb'ₑ δ ≡ σ ₛ∘'ₑ δ
+emb'-∘ₛ ∙       δ = refl
+emb'-∘ₛ (σ , A) δ = _,_ & emb'-∘ₛ σ δ ⊗ Ty-emb δ A
 
 -- Term syntax
 --------------------------------------------------------------------------------
@@ -290,7 +354,7 @@ _∘ₑ_ :
 drop' σ ∘ₑ keep' δ = drop' (σ ∘ₑ δ)
 keep' σ ∘ₑ keep' δ = keep' (σ ∘ₑ δ)
 drop  σ ∘ₑ keep  δ = drop  (σ ∘ₑ δ)
-_∘ₑ_ {σ' = σ'} {δ'} (keep {ν = ν} {A} σ) (keep {δ = δ₁} δ₂) = 
+_∘ₑ_ {σ' = σ'} {δ'} (keep {ν = ν} {A} σ) (keep {δ = δ₁} δ₂) =
   coe ((λ x → OPE (σ' ∘'ₑ δ') (δ₁ , x) (ν , A)) & (Ty-∘ₑ σ' δ' A ⁻¹))
   (keepₜ {A = A} (σ ∘ₑ δ₂))
 
@@ -318,7 +382,7 @@ mutual
 
 tappₙₑ : ∀ {Γ}{Δ : Con Γ}{A} → Ne Δ (∀' A) → (B : Ty Γ) → Ne Δ (Tyₛ (id'ₛ , B) A)
 tappₙₑ = tapp
-    
+
 mutual
   Nfₑ : ∀ {Γ' Γ Δ' Δ σ' A} → OPE {Γ'}{Δ'} σ' Γ Δ → Nf Δ A → Nf Γ (Tyₑ σ' A)
   Nfₑ σ (lam t)  = lam (Nfₑ (keep σ) t)

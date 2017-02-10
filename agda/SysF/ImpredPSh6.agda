@@ -45,7 +45,7 @@ Tyᴹ {Γ'} (A ⇒ B) {Δ'} Δ σ' σ'ᴹ = con
   (∀ {Σ' Σ δ'}(δ : OPE {Σ'}{Δ'} δ' Σ Δ) → Tyᴹ A Σ _ (Con'ᴹₑ δ' σ'ᴹ) .S → Tyᴹ B Σ _ (Con'ᴹₑ δ' σ'ᴹ) .S)
 
   (λ fᴹ → lam
-    (coe ((λ x → Nf (Δ , Tyₛ x A) (Tyₛ x B)) & {!!})
+    (coe ((λ x → Nf (Δ , Tyₛ x A) (Tyₛ x B)) & idr'ₛₑ σ')
       (Tyᴹ B _ _ (Con'ᴹₑ id'ₑ σ'ᴹ) .Q
       (fᴹ (drop idₑ) (Tyᴹ A _ _ (Con'ᴹₑ id'ₑ σ'ᴹ) .U (var vz))))))
 
@@ -59,7 +59,16 @@ Tyᴹ {Γ'} (∀' A) {Δ'} Δ σ' σ'ᴹ = con
     tlam (Tyᴹ A _ _ (Con'ᴹₑ (drop id'ₑ) σ'ᴹ , u* vz) .Q (fᴹ (drop' idₑ) _ (u* vz))))
 
   (λ n {Σ'}{Σ}{δ'} δ B Bᴹ →
-    Tyᴹ A _ _ (Con'ᴹₑ δ' σ'ᴹ , Bᴹ) .U (coe (Ne Σ & {!!}) (tappₙₑ (Neₑ δ n) B)))
+    Tyᴹ A _ _ (Con'ᴹₑ δ' σ'ᴹ , Bᴹ) .U
+      (coe
+          (Ne Σ & (Ty-ₑ∘ₛ (keep δ') (id'ₛ , B) (Tyₛ (keep'ₛ σ') A)
+        ◾ Ty-∘ₛ (keep'ₛ σ') ((δ' ₑ∘'ₛ id'ₛ) , B) A
+        ◾ (λ x → Tyₛ (x , B) A) &
+            (ass'ₛₑₛ σ' (drop id'ₑ) ((δ' ₑ∘'ₛ id'ₛ) , B)
+           ◾ ((λ x → σ' ∘'ₛ id'ₑ ₑ∘'ₛ x) & idr'ₑₛ δ')
+           ◾ (σ' ∘'ₛ_) & idl'ₑₛ (emb'ₑ δ')
+           ◾ emb'-∘ₛ σ' δ')))
+      (tappₙₑ (Neₑ δ n) B)))
 
 Tyᴹₑ :
   ∀ {Γ' A Δ' Δ σ' σ'ᴹ Σ' Σ δ'}(δ : OPE {Σ'}{Δ'} δ' Σ Δ)
