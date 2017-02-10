@@ -1,11 +1,9 @@
 
 {-# OPTIONS --without-K --type-in-type #-}
 
-
-module ImpredPSh6 where
+module PShNormalization where
 
 open import Lib
-open import JM
 open import Syntax
 
 record Cand {Γ'} Γ A : Set where
