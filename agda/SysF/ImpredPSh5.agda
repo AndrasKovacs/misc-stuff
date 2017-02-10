@@ -35,8 +35,8 @@ Con'ᴹₑ δ (σ'ᴹ , Aᴹ) = Con'ᴹₑ δ σ'ᴹ , *ᴹₑ δ Aᴹ
 *∈ᴹ vz     (σ , A) (σᴹ , Aᴹ) = coe (Cand _ & Ty-idₑ A) (Aᴹ idₑ)
 *∈ᴹ (vs v) (σ , _) (σᴹ , _)  = *∈ᴹ v σ σᴹ
 
-generic*ᴹ : ∀ {Γ' Γ}(v : *∈ Γ') → *ᴹ {Γ'} Γ (var v)
-generic*ᴹ {Γ'}{Γ} v {Δ'}{Δ}{σ'} σ = con (Ne Δ (var (*∈ₑ σ' v))) ne (λ n → n)
+u* : ∀ {Γ' Γ}(v : *∈ Γ') → *ᴹ {Γ'} Γ (var v)
+u* {Γ'}{Γ} v {Δ'}{Δ}{σ'} σ = con (Ne Δ (var (*∈ₑ σ' v))) ne (λ n → n)
 
 Tyᴹ : ∀ {Γ'}(A : Ty Γ') → ∀ {Δ' Δ}(σ : Sub' Δ' Γ')(σᴹ : Con'ᴹ Γ' Δ σ) → Cand Δ (Tyₛ σ A)
 Tyᴹ (var v) σ σᴹ = *∈ᴹ v σ σᴹ
@@ -55,7 +55,7 @@ Tyᴹ {Γ'} (∀' A)  {Δ'} {Δ} σ σᴹ = con
 
   (∀ {Σ' Σ δ'}(δ : OPE {Σ'}{Δ'} δ' Σ Δ)(B : Ty Σ')(Bᴹ : *ᴹ Σ B) → Tyᴹ A _ (Con'ᴹₑ δ σᴹ , Bᴹ) .S)
 
-  (λ fᴹ → let g* = generic*ᴹ vz in tlam (Tyᴹ A _ (Con'ᴹₑ (drop' idₑ) σᴹ , g*) .Q (fᴹ (drop' idₑ) _ g*)))
+  (λ fᴹ → let g* = u* vz in tlam (Tyᴹ A _ (Con'ᴹₑ (drop' idₑ) σᴹ , g*) .Q (fᴹ (drop' idₑ) _ g*)))
 
   (λ n {Σ'}{Σ}{δ'} δ B Bᴹ →
      Tyᴹ A _ (Con'ᴹₑ δ σᴹ , Bᴹ) .U (coe (Ne Σ & {!!}) (tappₙₑ (Neₑ δ n) B)))

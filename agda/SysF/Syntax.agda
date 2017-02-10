@@ -140,6 +140,9 @@ id'ₛ : ∀ {Γ} → Sub' Γ Γ
 id'ₛ {∙}    = ∙
 id'ₛ {Γ ,*} = keep'ₛ id'ₛ
 
+Ty-idₛ : ∀ {Γ} A → Tyₛ {Γ} id'ₛ A ≡ A
+Ty-idₛ = cheat where postulate cheat : _
+
 ass'ₛₑₑ :
   ∀ {Γ Δ Σ Ξ}(σ : Sub' Σ Ξ)(δ : OPE' Δ Σ)(ν : OPE' Γ Δ)
   → (σ ₛ∘'ₑ δ) ₛ∘'ₑ ν ≡ σ ₛ∘'ₑ (δ ∘'ₑ ν)
