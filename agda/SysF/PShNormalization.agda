@@ -14,6 +14,7 @@ record Cand {Γ'} Γ A : Set where
     U : Ne Γ A → S
 open Cand
 
+-- todo: pack (*ᴹ A) functor laws in
 *ᴹ : ∀ {Γ'} → Ty Γ' → Set
 *ᴹ {Γ'} A = ∀ {Δ'} Δ σ' → Cand {Δ'} Δ (Tyₑ σ' A)
 
@@ -68,14 +69,26 @@ Tyᴹ {Γ'} (∀' A) {Δ'} Δ σ' σ'ᴹ = con
            ◾ emb'-∘ₛ σ' δ')))
       (tappₙₑ (Neₑ δ n) B)))
 
+*∈ᴹₑ :
+  ∀ {Γ' v Δ' Δ σ' σ'ᴹ Σ' Σ δ'}(δ : OPE {Σ'}{Δ'} δ' Σ Δ)
+  → *∈ᴹ {Γ'} v Δ σ' σ'ᴹ .S → *∈ᴹ v Σ _ (Con'ᴹₑ δ' σ'ᴹ) .S
+*∈ᴹₑ {v = vz {Γ'}}{Δ'}{Δ}{σ' , A}{σ'ᴹ , x} {Σ'} {Σ} {δ'} δ aᴹ = {!!} -- *ᴹ A functor
+*∈ᴹₑ {v = vs v}{σ'ᴹ = σ'ᴹ , x} δ aᴹ = *∈ᴹₑ{v = v}{σ'ᴹ = σ'ᴹ} δ aᴹ
+
 Tyᴹₑ :
   ∀ {Γ' A Δ' Δ σ' σ'ᴹ Σ' Σ δ'}(δ : OPE {Σ'}{Δ'} δ' Σ Δ)
   → Tyᴹ {Γ'} A Δ σ' σ'ᴹ .S → Tyᴹ A Σ _ (Con'ᴹₑ δ' σ'ᴹ) .S
-Tyᴹₑ {A = var v} δ aᴹ = {!!}
+Tyᴹₑ {A = var v} δ aᴹ = *∈ᴹₑ {v = v} δ aᴹ
+
 Tyᴹₑ {A = A ⇒ B} {σ' = σ'} {σ'ᴹ} {δ' = δ'} δ tᴹ {Ξ'} {Ξ} {ν'} ν aᴹ =
-  coe {!!} (tᴹ (δ ∘ₑ ν) (coe {!!} aᴹ))
+  coe (apd2' (λ x y → Tyᴹ B Ξ x y .S) (ass'ₛₑₑ σ' δ' ν' ⁻¹) {!!}) -- Con'ᴹ-∘ₑ
+    (tᴹ (δ ∘ₑ ν)
+    (coe (apd2' (λ x y → Tyᴹ A Ξ x y .S) (ass'ₛₑₑ σ' δ' ν') {!!}) -- Con'ᴹ-∘ₑ
+      aᴹ))
+
 Tyᴹₑ {A = ∀' A } {σ' = σ'} {σ'ᴹ} {δ' = δ'} δ tᴹ {Ξ'} {Ξ} {ν'} ν B Bᴹ =
-  coe {!!} (tᴹ (δ ∘ₑ ν) B Bᴹ)
+  coe (apd2' (λ x y → Tyᴹ A Ξ (x , B) (y , Bᴹ) .S) (ass'ₛₑₑ σ' δ' ν' ⁻¹) {!!}) -- Con'ᴹ-∘ₑ
+    (tᴹ (δ ∘ₑ ν) B Bᴹ)
 
 data Conᴹ : ∀ {Γ'} → Con Γ' → ∀ {Δ'} (Δ : Con Δ'){σ'} → Con'ᴹ Γ' {Δ'} σ' → Set where
   ∙   : ∀ {Δ' Δ} → Conᴹ ∙ {Δ'} Δ ∙
@@ -91,15 +104,22 @@ Conᴹₑ δ (Γᴹ ,*) = Conᴹₑ δ Γᴹ ,*
 ∈ᴹ : ∀ {Γ' Γ A} → _∈_ {Γ'} A Γ → ∀ {Δ' Δ σ'} σ'ᴹ → Conᴹ Γ Δ σ'ᴹ → Tyᴹ {Γ'} A {Δ'} Δ σ' σ'ᴹ .S
 ∈ᴹ vz       σ'ᴹ      (Γᴹ , t) = t
 ∈ᴹ (vs v)   σ'ᴹ      (Γᴹ , t) = ∈ᴹ v σ'ᴹ Γᴹ
-∈ᴹ (vs* v) (σ'ᴹ , _) (Γᴹ ,* ) = coe {!!} (∈ᴹ v σ'ᴹ Γᴹ)
+∈ᴹ (vs* v) (σ'ᴹ , _) (Γᴹ ,* ) = coe {!!} (∈ᴹ v σ'ᴹ Γᴹ) -- Tyₑᴹ
 
 Tmᴹ : ∀ {Γ' Γ A} → Tm {Γ'} Γ A → ∀ {Δ' Δ σ'} σ'ᴹ → Conᴹ Γ Δ σ'ᴹ → Tyᴹ {Γ'} A {Δ'} Δ σ' σ'ᴹ .S
 Tmᴹ (var v)    σ'ᴹ Γᴹ = ∈ᴹ v σ'ᴹ Γᴹ
 Tmᴹ (lam t)    σ'ᴹ Γᴹ = λ δ aᴹ → Tmᴹ t _ (Conᴹₑ δ Γᴹ , aᴹ)
-Tmᴹ (app f x)  σ'ᴹ Γᴹ = coe {!!} (Tmᴹ f σ'ᴹ Γᴹ idₑ (coe {!!} (Tmᴹ x σ'ᴹ Γᴹ)))
+
+Tmᴹ {A = B} (app {A} f x) {Δ = Δ} {σ'} σ'ᴹ Γᴹ =
+  coe (apd2' (λ x₁ y → Tyᴹ B Δ x₁ y .S) (idr'ₛₑ σ' ) {!!}) -- Ty-idₑᴹ
+    (Tmᴹ f σ'ᴹ Γᴹ idₑ
+      (coe (apd2' (λ x₁ y → Tyᴹ A Δ x₁ y .S) (idr'ₛₑ σ' ⁻¹) {!!}) -- Ty-idₑᴹ
+      (Tmᴹ x σ'ᴹ Γᴹ)))
+
 Tmᴹ (tlam t)   σ'ᴹ Γᴹ = λ δ B Bᴹ → Tmᴹ t (_ , Bᴹ) (Conᴹₑ δ Γᴹ ,*)
-Tmᴹ (tapp t B) {σ' = σ'} σ'ᴹ Γᴹ =
-  coe {!!}
+
+Tmᴹ (tapp {A} t B) {Δ = Δ} {σ'} σ'ᴹ Γᴹ =
+  coe {!!}  -- Tyₛᴹ
     (Tmᴹ t σ'ᴹ Γᴹ idₑ (Tyₛ σ' B)
     (λ {Σ'} Σ δ' → coe (Cand Σ & (Ty-ₛ∘ₑ σ' δ' B ⁻¹)) (Tyᴹ B Σ (σ' ₛ∘'ₑ δ') (Con'ᴹₑ δ' σ'ᴹ))))
 
@@ -112,11 +132,13 @@ uCon' (Γ' ,*) = Con'ᴹₑ (drop id'ₑ) (uCon' Γ') , u* vz
 uCon : ∀ Γ' Γ → Conᴹ {Γ'} Γ Γ (uCon' Γ')
 uCon ∙      ∙       = ∙
 uCon Γ'     (Γ , A) =
-  coe {!!} (Conᴹₑ (drop {A = A} idₑ) (uCon Γ' Γ)) ,
+
+  coe (apd2' (λ x y → Conᴹ Γ (Γ , A) {x} y) (idr'ₛₑ id'ₛ) {!!}) -- Ty-idₑᴹ
+    (Conᴹₑ (drop {A = A} idₑ) (uCon Γ' Γ)) ,
   Tyᴹ A (Γ , A) id'ₛ (uCon' Γ') .U (coe (Ne (Γ , A) & (Ty-idₛ A ⁻¹)) (var vz))
+
 uCon (Γ' ,*) (Γ ,*)  = Conᴹₑ (drop' idₑ) (uCon Γ' Γ) ,*
 
 nf : ∀ {Γ' A Γ} → Tm {Γ'} Γ A → Nf Γ A
 nf {Γ'}{A}{Γ} t = coe (Nf Γ & Ty-idₛ A) (Tyᴹ A Γ _ (uCon' Γ') .Q (Tmᴹ t _ (uCon Γ' Γ)))
-
 

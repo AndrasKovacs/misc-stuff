@@ -57,8 +57,17 @@ apd : ∀{i j}{A : Set i}{B : A → Set j}(f : (x : A) → B x){a₀ a₁ : A}(a
     → coe (B & a₂) (f a₀) ≡ f a₁
 apd f refl = refl
 
-J : {A : Set} {x : A} (P : {y : A} → x ≡ y → Set) → P refl → {y : A} → (w : x ≡ y) → P w
-J P pr refl = pr
+apd2' :
+  ∀ {i j k}{A : Set i}{B : A → Set j}{C : Set k}
+  (f : ∀ a → B a → C){a₀ a₁ : A}(a₂ : a₀ ≡ a₁){b₀ : B a₀}{b₁ : B a₁}
+  (b₂ : coe (B & a₂) b₀ ≡ b₁) → f a₀ b₀ ≡ f a₁ b₁
+apd2' f refl refl = refl
+
+apd2 :
+  ∀ {i j k}{A : Set i}{B : A → Set j}{C : ∀ a → B a → Set k}
+    (f : ∀ a → (b : B a) → C a b){a₀ a₁ : A}(a₂ : a₀ ≡ a₁){b₀ : B a₀}{b₁ : B a₁}
+    (b₂ : coe (B & a₂) b₀ ≡ b₁) → coe (apd2' C a₂ b₂) (f a₀ b₀) ≡ f a₁ b₁
+apd2 f refl refl = refl
 
 record Σ {i j} (A : Set i) (B : A → Set j) : Set (i ⊔ j) where
   constructor _,_
@@ -115,31 +124,7 @@ inspect f x = pack refl
 postulate
   ext  : ∀{i j}{A : Set i}{B : A → Set j}{f g : (x : A) → B x}
           → ((x : A) → f x  ≡ g x) → _≡_ f g
-          
+
   exti : ∀{i j}{A : Set i}{B : A → Set j}{f g : {x : A} → B x}
           → ((x : A) → f {x} ≡ g {x}) → _≡_ {A = {x : A} → B x} f g
-
-Π-≡ :
-  ∀ {α β}{A A' : Set α}{B : A → Set β}{B' : A' → Set β}
-  → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
-  → ((a : A) → B a) ≡ ((a' : A') → B' a')
-Π-≡ {A = A} {B = B} {B'} refl q = (λ B → (x : A) → B x) & ext q
-
-Π-≡-i :
-  ∀ {α β}{A A' : Set α}{B : A → Set β}{B' : A' → Set β}
-  → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
-  → ({a : A} → B a) ≡ ({a' : A'} → B' a')
-Π-≡-i {A = A}{B = B} refl q = (λ B → {x : A} → B x) & ext q
-
-coe-$ :
- ∀ {α β γ}{A : Set α}{B : Set β}(C : A → B → Set γ)
-   {b b' : B}(p : b ≡ b')(f : ∀ a → C a b)
- →  coe ((λ x → ∀ a → C a x) & p) f ≡ (λ a → coe (C a & p) (f a))
-coe-$ C refl f = refl
-
-coe-$-i :
- ∀ {α β γ}{A : Set α}{B : Set β}(C : A → B → Set γ)
-   {b b' : B}(p : b ≡ b')(f : ∀ {a} → C a b)
- →  (λ {a} → coe ((λ x → ∀ {a} → C a x) & p) f {a}) ≡ (λ {a} → coe (C a & p) (f {a}))
-coe-$-i C refl f = refl
 
