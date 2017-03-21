@@ -359,7 +359,7 @@ _∘ₑ_ {σ' = σ'} {δ'} (keep {ν = ν} {A} σ) (keep {δ = δ₁} δ₂) =
   (keepₜ {A = A} (σ ∘ₑ δ₂))
 
 
--- options for prooving things
+-- options for proving things
 -- 1. define and apply assloads of coe reduction rules (most tedious)
 -- 2. define OTT-like structure for coercions (dunno how well it works)
 -- 3. use proof automation, maybe throw in JMeq too (dunno how performant, how well it works

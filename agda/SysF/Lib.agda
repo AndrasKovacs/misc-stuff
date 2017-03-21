@@ -1,8 +1,9 @@
 {-# OPTIONS --without-K #-}
 
 module Lib where
-
 open import Level
+
+--------------------------------------------------------------------------------
 
 infix 3 _∋_
 _∋_ : ∀ {α}(A : Set α) → A → A
@@ -13,6 +14,8 @@ _∘_ : ∀ {a b c}
         (∀ {x} (y : B x) → C y) → (g : (x : A) → B x) →
         ((x : A) → C (g x))
 f ∘ g = λ x → f (g x)
+
+--------------------------------------------------------------------------------
 
 data _≡_ {i}{A : Set i} (x : A) : A → Set i where
   refl : x ≡ x
@@ -28,14 +31,6 @@ infixr 4 _◾_
 _⁻¹ : ∀{i}{A : Set i}{x y : A} → x ≡ y → y ≡ x
 refl ⁻¹ = refl
 infix 6 _⁻¹
-
-_≡⟨_⟩_ : ∀{i}{A : Set i}(x : A){y z : A} → x ≡ y → y ≡ z → x ≡ z
-x ≡⟨ x≡y ⟩ y≡z = x≡y ◾ y≡z
-infixr 2 _≡⟨_⟩_
-
-_∎ : ∀{i}{A : Set i}(x : A) → x ≡ x
-x ∎ = refl
-infix  3 _∎
 
 coe : ∀{i}{A B : Set i} → A ≡ B → A → B
 coe refl a = a
@@ -69,6 +64,8 @@ apd2 :
     (b₂ : coe (B & a₂) b₀ ≡ b₁) → coe (apd2' C a₂ b₂) (f a₀ b₀) ≡ f a₁ b₁
 apd2 f refl refl = refl
 
+--------------------------------------------------------------------------------
+
 record Σ {i j} (A : Set i) (B : A → Set j) : Set (i ⊔ j) where
   constructor _,_
   field
@@ -93,6 +90,8 @@ infixr 4 _×_
      (p : a ≡ a') → coe (B & p) b ≡ b' → (Σ A B ∋ (a , b)) ≡ (a' , b')
 ,Σ≡ refl refl = refl
 
+--------------------------------------------------------------------------------
+
 record ⊤ : Set where
   constructor tt
 
@@ -106,20 +105,7 @@ data _⊎_ (A B : Set) : Set where
   inr : B → A ⊎ B
 infixr 1 _⊎_
 
-ind⊎ : {A B : Set}(P : A ⊎ B → Set) → ((a : A) → P (inl a)) → ((b : B) → P (inr b))
-     → (w : A ⊎ B) → P w
-ind⊎ P ca cb (inl a) = ca a
-ind⊎ P ca cb (inr b) = cb b
-
-record Reveal_·_is_ {a b} {A : Set a} {B : A → Set b}
-                    (f : (x : A) → B x) (x : A) (y : B x) :
-                    Set (a ⊔ b) where
-  constructor pack
-  field eq : f x ≡ y
-
-inspect : ∀ {a b} {A : Set a} {B : A → Set b}
-          (f : (x : A) → B x) (x : A) → Reveal f · x is f x
-inspect f x = pack refl
+--------------------------------------------------------------------------------
 
 postulate
   ext  : ∀{i j}{A : Set i}{B : A → Set j}{f g : (x : A) → B x}
@@ -127,4 +113,10 @@ postulate
 
   exti : ∀{i j}{A : Set i}{B : A → Set j}{f g : {x : A} → B x}
           → ((x : A) → f {x} ≡ g {x}) → _≡_ {A = {x : A} → B x} f g
+
+Π-≡ :
+  ∀ {α β}{A A' : Set α}{B : A → Set β}{B' : A' → Set β}
+  → (p : A ≡ A') → ((a : A) → B a ≡ B' (coe p a))
+  → ((a : A) → B a) ≡ ((a' : A') → B' a')
+Π-≡ {A = A} {B = B} {B'} refl q = (λ B → (x : A) → B x) & ext q
 

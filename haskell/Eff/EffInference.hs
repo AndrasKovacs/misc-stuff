@@ -17,6 +17,8 @@ import Data.Word
 import GHC.TypeLits (Symbol)
 import Data.Monoid
 
+import Control.Exception (Exception)
+
 -- Examples
 --------------------------------------------------------------------------------
 
@@ -209,14 +211,6 @@ interpose p f = go where
 
 data State s k = Put s k | Get (s -> k) deriving Functor
 
--- runState :: forall s fs a. Functor (NS fs) => s -> Eff (State  s ': fs) a -> Eff fs (a, s)
--- runState = flip $ cata
---   (\a s -> Pure (a, s))
---   (\case
---       Here (Get k) -> \s -> k s s
---       Here (Put s' k) -> \_ -> k s'
---       There ns -> \s -> Free (($ s) <$> ns))
-
 runState :: forall s fs a. Functor (NS fs) => s -> Eff (State  s ': fs) a -> Eff fs (a, s)
 runState s (Pure a)                 = Pure (a, s)
 runState s (Free (Here (Get k)))    = runState s (k s)
@@ -281,7 +275,7 @@ ask = liftEff (Ask id)
 {-# inline ask #-}
 
 -- The only thing we can't implement efficiently using cata
--- Remorseless reflection plz
+-- Freer monad neede
 local :: forall r fs a. Elem (Reader r) fs => (r -> r) -> Eff fs a -> Eff fs a
 local f e = do
   r <- f <$> ask
@@ -291,19 +285,19 @@ local f e = do
 -- Exception
 --------------------------------------------------------------------------------
 
-newtype Exc e k = Throw e deriving Functor
+-- newtype Exc e k = Throw e deriving Functor
 
-throw :: forall e fs a. Elem (Exc e) fs => e -> Eff fs a
-throw e = liftEff (Throw e)
-{-# inline throw #-}
+-- throw :: forall e fs a. Elem (Exc e) fs => e -> Eff fs a
+-- throw e = liftEff (Throw e)
+-- {-# inline throw #-}
 
-runExc :: forall e fs a. Functor (NS fs) => Eff (Exc e ': fs) a -> Eff fs (Either e a)
-runExc = handle Right (\(Throw e) -> Pure (Left e))
-{-# inline runExc #-}
+-- runExc :: forall e fs a. Functor (NS fs) => Eff (Exc e ': fs) a -> Eff fs (Either e a)
+-- runExc = handle Right (\(Throw e) -> Pure (Left e))
+-- {-# inline runExc #-}
 
-catch :: Elem (Exc e) fs => Eff fs a -> (e -> Eff fs a) -> Eff fs a
-catch eff h = cata Pure (\ns -> maybe (Free ns) (\(Throw e) -> h e) (prj ns)) eff
-{-# inline catch #-}
+-- catch :: Elem (Exc e) fs => Eff fs a -> (e -> Eff fs a) -> Eff fs a
+-- catch eff h = cata Pure (\ns -> maybe (Free ns) (\(Throw e) -> h e) (prj ns)) eff
+-- {-# inline catch #-}
 
 -- Lift
 --------------------------------------------------------------------------------
@@ -331,4 +325,35 @@ runWriter :: forall m fs a.
   (Monoid m, Functor (NS fs)) => Eff (Writer m ': fs) a -> Eff fs (a, m)
 runWriter = handle (,mempty) (\(Tell m k) -> second (<> m) <$> k)
 {-# inline runWriter #-}
+
+--------------------------------------------------------------------------------
+
+data Throw e k = Throw e
+  deriving (Functor)
+
+throw :: forall e r a . (Elem (Throw e) r) => e -> Eff r a
+throw = liftEff . Throw
+
+catch :: forall e r a . (e -> a) -> Eff (Throw e ': r) a -> Eff r a
+catch = undefined
+
+data StrError = StrError String deriving (Show)
+data IntError = IntError Int    deriving (Show)
+
+instance Exception StrError
+instance Exception IntError
+
+f1 :: forall r. (Elem (Throw StrError) r, Elem (Throw IntError) r) => Int -> Eff r Int
+f1 _ = do
+    throw (StrError "err")
+    throw (IntError 123)
+
+throwIO' :: forall e r a . (Elem IO r, Exception e) => Eff (Throw e ': r) a -> Eff r a
+throwIO' = undefined
+
+f1' ::
+  (Elem IO r,
+   Elem (Throw StrError) (Throw IntError ': r),
+   Elem (Throw IntError) (Throw IntError ': r)) => Eff r Int
+f1' = throwIO' @IntError (f1 10)
 

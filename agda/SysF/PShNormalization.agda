@@ -1,6 +1,11 @@
 
 {-# OPTIONS --without-K --type-in-type #-}
 
+-- Normalization with a presheaf logical predicate model for types and simple presheaf model for terms.
+-- We want to only have the minimum necessary structure for normalization, so that external correctness
+-- proofs don't have to deal with mountains of coercion. We have more than enough coercion in any case.
+
+
 module PShNormalization where
 
 open import Lib
@@ -69,6 +74,24 @@ Tyᴹ {Γ'} (∀' A) {Δ'} Δ σ' σ'ᴹ = con
            ◾ emb'-∘ₛ σ' δ')))
       (tappₙₑ (Neₑ δ n) B)))
 
+--------------------------------------------------------------------------------
+
+
+Con-idₑᴹ : ∀ {Γ' Δ' σ'}(σ'ᴹ : Con'ᴹ Γ' {Δ'} σ') → coe (Con'ᴹ Γ' & idr'ₛₑ σ') (Con'ᴹₑ id'ₑ σ'ᴹ) ≡ σ'ᴹ
+Con-idₑᴹ ∙          = refl
+Con-idₑᴹ (σ'ᴹ , Aᴹ) = {!!}
+
+OPE'ᴹ : ∀ {Γ' Δ'}(σ' : OPE' Γ' Δ') → ∀ {Σ' δ'} → Con'ᴹ Γ' {Σ'} δ' → Con'ᴹ Δ' {Σ'} (σ' ₑ∘'ₛ δ')
+OPE'ᴹ ∙         {Σ'}  δ'ᴹ       = δ'ᴹ
+OPE'ᴹ (drop σ') {Σ'} (δ'ᴹ , _)  = OPE'ᴹ σ' δ'ᴹ
+OPE'ᴹ (keep σ') {Σ'} (δ'ᴹ , Aᴹ) = OPE'ᴹ σ' δ'ᴹ , Aᴹ
+
+OPE'ᴹ-idₑ : ∀ {Γ' Δ' σ'}(σ'ᴹ : Con'ᴹ Γ' {Δ'} σ') → coe (Con'ᴹ Γ' & idl'ₑₛ σ') (OPE'ᴹ id'ₑ σ'ᴹ) ≡ σ'ᴹ
+OPE'ᴹ-idₑ ∙          = refl
+OPE'ᴹ-idₑ (σ'ᴹ , Aᴹ) = {!!} -- computation rule for coercion in Con'ᴹ
+
+--------------------------------------------------------------------------------
+
 *∈ᴹₑ :
   ∀ {Γ' v Δ' Δ σ' σ'ᴹ Σ' Σ δ'}(δ : OPE {Σ'}{Δ'} δ' Σ Δ)
   → *∈ᴹ {Γ'} v Δ σ' σ'ᴹ .S → *∈ᴹ v Σ _ (Con'ᴹₑ δ' σ'ᴹ) .S
@@ -89,6 +112,8 @@ Tyᴹₑ {A = A ⇒ B} {σ' = σ'} {σ'ᴹ} {δ' = δ'} δ tᴹ {Ξ'} {Ξ} {ν'}
 Tyᴹₑ {A = ∀' A } {σ' = σ'} {σ'ᴹ} {δ' = δ'} δ tᴹ {Ξ'} {Ξ} {ν'} ν B Bᴹ =
   coe (apd2' (λ x y → Tyᴹ A Ξ (x , B) (y , Bᴹ) .S) (ass'ₛₑₑ σ' δ' ν' ⁻¹) {!!}) -- Con'ᴹ-∘ₑ
     (tᴹ (δ ∘ₑ ν) B Bᴹ)
+
+--------------------------------------------------------------------------------
 
 data Conᴹ : ∀ {Γ'} → Con Γ' → ∀ {Δ'} (Δ : Con Δ'){σ'} → Con'ᴹ Γ' {Δ'} σ' → Set where
   ∙   : ∀ {Δ' Δ} → Conᴹ ∙ {Δ'} Δ ∙
@@ -111,9 +136,9 @@ Tmᴹ (var v)    σ'ᴹ Γᴹ = ∈ᴹ v σ'ᴹ Γᴹ
 Tmᴹ (lam t)    σ'ᴹ Γᴹ = λ δ aᴹ → Tmᴹ t _ (Conᴹₑ δ Γᴹ , aᴹ)
 
 Tmᴹ {A = B} (app {A} f x) {Δ = Δ} {σ'} σ'ᴹ Γᴹ =
-  coe (apd2' (λ x₁ y → Tyᴹ B Δ x₁ y .S) (idr'ₛₑ σ' ) {!!}) -- Ty-idₑᴹ
+  coe (apd2' (λ x₁ y → Tyᴹ B Δ x₁ y .S) (idr'ₛₑ σ' ) {!!}) -- Con-idₑᴹ
     (Tmᴹ f σ'ᴹ Γᴹ idₑ
-      (coe (apd2' (λ x₁ y → Tyᴹ A Δ x₁ y .S) (idr'ₛₑ σ' ⁻¹) {!!}) -- Ty-idₑᴹ
+      (coe (apd2' (λ x₁ y → Tyᴹ A Δ x₁ y .S) (idr'ₛₑ σ' ⁻¹) {!!}) -- Con-idₑᴹ
       (Tmᴹ x σ'ᴹ Γᴹ)))
 
 Tmᴹ (tlam t)   σ'ᴹ Γᴹ = λ δ B Bᴹ → Tmᴹ t (_ , Bᴹ) (Conᴹₑ δ Γᴹ ,*)
