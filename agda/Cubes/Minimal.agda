@@ -47,7 +47,7 @@ postulate
 postulate
   coe        : {A B : Set} → A ≡ B → A → B
   regularity : (A : Set) → coe (⟨ _ ⟩ A) ↦ (λ a → a)
--- {-# REWRITE regularity #-}
+{-# REWRITE regularity #-}
 
 --------------------------------------------------------------------------------
 
