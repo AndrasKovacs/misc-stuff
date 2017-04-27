@@ -45,7 +45,7 @@ postulate
 postulate
   coe        : {A B : Set} → A ≡ B → A → B
   regularity : (A : Set) → coe (⟨ _ ⟩ A) ↦ (λ a → a)
--- {-# REWRITE regularity #-}
+{-# REWRITE regularity #-}
 
 --------------------------------------------------------------------------------
 
@@ -66,11 +66,11 @@ J : ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ {a'} (p
 J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ (i ∧ j)))) refl*
 
 coe-refl : ∀ {A a} → coe (⟨ i ⟩ A) a ≡ a
-coe-refl {A}{a} = {!!}
+coe-refl {A}{a} = refl
 
 J-refl :
   ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) refl* → J P refl* refl ≡ refl*
-J-refl {A}{a} P refl* = {!!}
+J-refl {A}{a} P refl* = refl
 
 infix 5 _⁻¹
 _⁻¹ : ∀ {A}{x y : A} → x ≡ y → y ≡ x
