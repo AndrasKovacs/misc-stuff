@@ -1,6 +1,8 @@
 
 {-# OPTIONS --type-in-type --rewriting #-}
 
+-- The simplest cubical type theory I could think of which has funext, J, and computation rule for J
+
 postulate _↦_ : {A : Set} → A → A → Set
 {-# BUILTIN REWRITE _↦_ #-}
 infix 3 _↦_

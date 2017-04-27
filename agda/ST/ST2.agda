@@ -192,28 +192,48 @@ SafeSTᴾ+⇒SafeST' {As}(write B n b k) safe'+ =
 --------------------------------------------------------------------------------
 
 postulate
-  -- free theorem for (∀ S → ST S A)
-  free-theorem : ∀ {A}(m : ∀ S → ST S A) → ∀ Aᴾ S (Sᴾ : ∀ {A} → S A → Set) → STᴾ Sᴾ Aᴾ (m S)
+  -- free theorem for (∀ {S} → ST S A)
+  free-theorem : ∀ {A}(m : ∀ {S} → ST S A) → ∀ Aᴾ S (Sᴾ : ∀ {A} → S A → Set) → STᴾ Sᴾ Aᴾ (m {S})
 
-manifest : ∀ {A} → (∀ S → ST S A) → ST' A
-manifest m = m (λ _ → ℕ)
+manifest : ∀ {A} → (∀ {S} → ST S A) → ST' A
+manifest m = m {λ _ → ℕ}
 
-safeManifest : ∀ {A As}(m : ∀ S → ST S A) → SafeST' As (manifest m)
+safeManifest : ∀ {A As}(m : ∀ {S} → ST S A) → SafeST' As (manifest m)
 safeManifest m = SafeSTᴾ+⇒SafeST' (manifest m) (λ Bs → free-theorem m (λ _ → ⊤) _ _)
 
-runST : ∀ {A} → (∀ S → ST S A) → A
+runST : ∀ {A} → (∀ {S} → ST S A) → A
 runST m = runST' (manifest m) (safeManifest m) [] tt
 
 --------------------------------------------------------------------------------
 
-ex1 : ∀ S → ST S ℕ
-ex1 S =
-  new ℕ' 0 λ x →
-  read _ x λ b →
-  write _ x (b + 10) $
-  read _ x λ b →
-  ret b
+infixl 1 _>>=_ _>>_
 
-computes : runST ex1 ≡ 10
-computes = refl
+_>>=_ : ∀ {S A B} → ST S A → (A → ST S B) → ST S B
+ret a         >>= f = f a
+new C c k     >>= f = new C c (λ x → k x >>= f)
+read C n k    >>= f = read C n (λ c → k c >>= f)
+write C n c k >>= f = write C n c (k >>= f)
+
+_>>_ : ∀ {S A B} → ST S A → ST S B → ST S B
+ma >> mb = ma >>= λ _ → mb
+
+modify : ∀ {S A} → (⟦ A ⟧ S → ⟦ A ⟧ S) → S A → ST S ⊤
+modify f sa = read _ sa λ a → write _ sa (f a) (ret tt)
+
+ex1 : ∀ {S} → ST S ℕ
+ex1 =
+  new ℕ' 0 λ x →
+  modify (_+_ 10) x >>
+  read _ x λ n →
+  ret n
+
+ex-sum' : List ℕ → ∀ {S} → S ℕ' → ST S ℕ
+ex-sum' []       sref = read _ sref ret
+ex-sum' (x ∷ xs) sref = modify (_+ x) sref >> ex-sum' xs sref
+
+computes1 : runST ex1 ≡ 10
+computes1 = refl
+
+computes2 : runST (new _ 0 (ex-sum' (4 ∷ 5 ∷ 5 ∷ 5 ∷ []))) ≡ 19
+computes2 = refl
 
