@@ -1,4 +1,4 @@
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting --without-K #-}
 
 open import Level renaming (zero to lzero; suc to lsuc)
 open import Function
