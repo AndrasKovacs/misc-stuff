@@ -45,18 +45,6 @@ eqv (suc x) (suc y) with eqv x y
 eqv (suc x) (suc .x)         | same      = same
 eqv (suc x) (suc .(wkv x y)) | diff .x y = diff (suc x) (suc y)
 
-wkTm : ∀ {Γ σ τ} (x : σ ∈ Γ) → Γ - x ⊢ τ → Γ ⊢ τ
-wkTm x (var y)   = var (wkv x y)
-wkTm x (lam t)   = lam (wkTm (suc x) t)
-wkTm x (app f t) = app (wkTm x f) (wkTm x t)
-
-subst : ∀ {Γ σ τ} (x : σ ∈ Γ) → Γ - x ⊢ σ → Γ ⊢ τ → Γ - x ⊢ τ
-subst x s (var y) with eqv x y
-subst x s (var .x)         | same = s
-subst x s (var .(wkv x y)) | diff .x y = var y
-subst x s (lam t)   = lam (subst (suc x) (wkTm zero s) t)
-subst x s (app f t) = app (subst x s f) (subst x s t)
-
 mutual 
   data _⊨_ Γ : Ty → Set where
     lam : ∀ {σ τ} → Γ , σ ⊨ τ → Γ ⊨ σ ⇒ τ
@@ -84,6 +72,8 @@ appSp : ∀ {Γ σ τ ρ} → Γ ⊨* σ , τ ⇒ ρ → Γ ⊨ τ → Γ ⊨* �
 appSp ε       t = t , ε
 appSp (x , s) t = x , appSp s t
 
+open import Relation.Binary.PropositionalEquality
+
 mutual
   η : ∀ {Γ σ} → σ ∈ Γ → Γ ⊨ σ
   η x = η-Ne (x , ε)
@@ -106,11 +96,13 @@ mutual
 
   _◇_ : ∀ {Γ σ τ} → Γ ⊨ σ → Γ ⊨* σ , τ → Γ ⊨ τ
   t ◇ ε      = t
-  f ◇ s , sp = nfapp f s ◇ sp
+  lam f ◇ s , sp = (⟨ zero ⟶ s ⟩ f) ◇ sp
 
-  nfapp : ∀ {Γ σ τ} → Γ ⊨ σ ⇒ τ  → Γ ⊨ σ → Γ ⊨ τ
-  nfapp (lam t) s = ⟨ zero ⟶ s ⟩ t
-  infix 3 _◇_
+
+nfapp : ∀ {Γ σ τ} → Γ ⊨ σ ⇒ τ  → Γ ⊨ σ → Γ ⊨ τ
+nfapp (lam t) s = ⟨ zero ⟶ s ⟩ t
+
+infix 3 _◇_
 
 nf : ∀ {Γ σ} → Γ ⊢ σ → Γ ⊨ σ
 nf (var x)   = η x
