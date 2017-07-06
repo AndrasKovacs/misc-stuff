@@ -1,29 +1,18 @@
 
-{-# OPTIONS --type-in-type --without-K #-}
+open import Data.Nat
 
-open import Relation.Binary.PropositionalEquality
+data Vec (A : Set) : ℕ → Set where
+  []  : Vec A zero
+  _∷_ : ∀ {n} → A → Vec A n → Vec A (suc n)
 
-J : ∀ A (a : A)(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ a' p → P a' p
-J A a P Prefl .a refl = Prefl
-
-transport : ∀ {A}{a a' : A}(P : A → Set) → a ≡ a' → P a → P a'
-transport {A}{a}{a'} P p pa = J A a (λ a' _ → P a') pa a' p
-
-Jᴾ :
-  ∀ A (Aᴾ : A → Set)
-    a (aᴾ : Aᴾ a)
-    (P : ∀ a' → a ≡ a' → Set)
-    (Pᴾ : (a' : A)(a'ᴾ : Aᴾ a')(p : a ≡ a')(pᴾ : transport Aᴾ p aᴾ ≡ a'ᴾ) → P a' p → Set)
-    (Prefl : P a refl)
-    (Preflᴾ : Pᴾ a aᴾ refl refl Prefl)
-    (a' : A)(a'ᴾ : Aᴾ a')
-    (p : a ≡ a')(pᴾ : transport Aᴾ p aᴾ ≡ a'ᴾ)
-  → Pᴾ a' a'ᴾ p pᴾ (J A a P Prefl a' p)
-Jᴾ A Aᴾ a aᴾ P Pᴾ Prefl Preflᴾ a' a'ᴾ p pᴾ =
-  J A a (λ a' p → ∀ a'ᴾ pᴾ → Pᴾ a' a'ᴾ p pᴾ (J A a P Prefl a' p))
-    (λ a'ᴾ pᴾ → J (Aᴾ a) aᴾ (λ a'ᴾ pᴾ → Pᴾ a a'ᴾ refl pᴾ Prefl) Preflᴾ a'ᴾ pᴾ)
-    a' p a'ᴾ pᴾ
+foo : Vec (ℕ → ℕ) zero
+foo = {!!}
 
 
+-- data VecA
+-- data VecB
+-- data VecC
+
+infixr 5 _∷_
 
 

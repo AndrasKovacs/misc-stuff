@@ -10,7 +10,7 @@ infix 3 _↦_
 postulate
   I   : Set
   ₀ ₁ : I
-  _∧_ : I → I → I 
+  _∧_ : I → I → I
 
 infix 3 _≡_
 data _≡_ {A : Set} : A → A → Set where
@@ -80,22 +80,25 @@ _⁻¹ {x = x}{y} = J (λ y p → y ≡ x) refl
 
 -- --------------------------------------------------------------------------------
 
--- open import Data.Nat
+open import Data.Nat
 
--- f : ℕ → ℕ
--- f = (_+ 0)
+f : ℕ → ℕ
+f = (_+ 0)
 
--- g : ℕ → ℕ
--- g x = x
+g : ℕ → ℕ
+g x = x
 
--- p' : ∀ x → f x ≡ g x
--- p' zero    = refl
--- p' (suc x) = ap suc (p' x)
+p' : ∀ x → f x ≡ g x
+p' zero    = refl
+p' (suc x) = ap suc (p' x)
 
--- p : f ≡ g
--- p = ext p'
+p : f ≡ g
+p = ext p'
 
--- q : 10 ≡ 10
--- q = ap (λ f → f 10) p
+q : 10 ≡ 10
+q = ap (λ f → f 10) p
+
+works : q ≡ refl
+works = refl
 
 
