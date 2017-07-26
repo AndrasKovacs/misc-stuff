@@ -1,9 +1,4 @@
 
-{-
-Strong β-normalization for STLC, based on Girard's proof in
-chapter 4 of http://www.paultaylor.eu/stable/prot.pdf
--}
-
 {-# OPTIONS --without-K #-}
 
 open import Relation.Binary.PropositionalEquality
