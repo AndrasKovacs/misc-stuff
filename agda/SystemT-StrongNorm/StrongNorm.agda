@@ -52,6 +52,7 @@ data Tm Γ : Ty → Set where
 infixr 9 _∘ᵣ_
 infixl 8 _[_]∈ᵣ _[_]ᵣ
 
+-- Order-preserving embedding
 data Ren : Con → Con → Set where
   ∙    : Ren ∙ ∙
   drop : ∀ {A Γ Δ} → Ren Γ Δ → Ren (Γ , A) Δ

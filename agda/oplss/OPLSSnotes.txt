@@ -1,0 +1,45 @@
+
+- Pfenning:
+  - ordered logic
+  - subsingleton logic: Turing machine-like
+
+- TODO:
+  - call-by push value
+  - look at stuff in PFPL which I haven't before
+
+- Joshua Yanovski
+
+  - Rust ownership is actually linear instead of affine, because you need to either move or destruct a value
+    - look into GHC linear types proposal
+    - think about Rust-like implementation for McBride's Rig (Rusty Rigs!)
+  - Learn: separation logic, monadic second-order logic
+  - Breadth first tagless GC probably OK
+  - Rust:
+    - Enum variants are padded to max size! Use boxes to trim large variants.
+    - GC libraries are nice
+    - Overflow stuff, indexing stuff
+
+Pie book:
+  + doesn't seem to work
+  (cons 'foo 'bar) does not type check without annotation
+    (book examples can't be copy-pasted)
+  - todo: check which-Nat
+
+Prog verification
+  separation logic
+  Iris
+  session types
+  linear types (Wadler etc)
+  SMT algorithms
+
+CEK machine vs SECD machine
+
+POPL structure editor paper
+
+Liquid Haskell interaction/prover stuff
+Coq & CPDT!! TT-in-TT plz
+Autosubst, Needle & Knot plz
+Iris project
+
+People: Greg Nisbet, David Christiansen, Joshua Yanovski
+

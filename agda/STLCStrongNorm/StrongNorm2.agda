@@ -1,4 +1,9 @@
 
+{-
+Strong β-normalization for STLC, based on Girard's proof in
+chapter 4 of http://www.paultaylor.eu/stable/prot.pdf
+-}
+
 {-# OPTIONS --without-K #-}
 
 open import Relation.Binary.PropositionalEquality
@@ -129,9 +134,7 @@ infixr 6 _ₑ∘ₛ_ _ₛ∘ₑ_ _∘ₛ_
 
 data Sub (Γ : Con) : Con → Set where
   ∙   : Sub Γ ∙
-  _,_ : ∀ {A : Ty}{Δ : Con} → Sub Γ Δ → Tm Γ A → Sub Γ (Δ , A)
-
--- σ : Sub Γ Δ   --- a Tm Γ _ for each free variable in Δ
+  _,_ : ∀ {A Δ} → Sub Γ Δ → Tm Γ A → Sub Γ (Δ , A)
 
 -- Left and right compositions with embedding
 _ₛ∘ₑ_ : ∀ {Γ Δ Σ} → Sub Δ Σ → OPE Γ Δ → Sub Γ Σ
@@ -168,7 +171,7 @@ Tmₛ σ (app f a) = app (Tmₛ σ f) (Tmₛ σ a)
 -- Identity and composition
 idₛ : ∀ {Γ} → Sub Γ Γ
 idₛ {∙}     = ∙
-idₛ {Γ , A} = (idₛ {Γ} ₛ∘ₑ drop idₑ) , var vz -- keepₛ idₛ
+idₛ {Γ , A} = keepₛ idₛ
 
 _∘ₛ_ : ∀ {Γ Δ Σ} → Sub Δ Σ → Sub Γ Δ → Sub Γ Σ
 ∙       ∘ₛ δ = ∙

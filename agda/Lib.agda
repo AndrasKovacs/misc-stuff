@@ -74,6 +74,9 @@ infixr 5 _,_
      (C : (x : A) → B x → Set c) → Set (a ⊔ b ⊔ c)
 ∃₂ C = ∃ λ a → ∃ λ b → C a b
 
+,_ : ∀ {a b} {A : Set a} {B : A → Set b} {x} → B x → ∃ B
+, y = _ , y
+
 open Σ public
 
 _×_ : ∀{i j} → Set i → Set j → Set (i ⊔ j)
@@ -96,6 +99,10 @@ data _⊎_ (A B : Set) : Set where
   inl : A → A ⊎ B
   inr : B → A ⊎ B
 infixr 1 _⊎_
+
+either : {A B C : Set} → (A → C) → (B → C) → A ⊎ B → C
+either f g (inl x) = f x
+either f g (inr x) = g x
 
 ind⊎ : {A B : Set}(P : A ⊎ B → Set) → ((a : A) → P (inl a)) → ((b : B) → P (inr b))
      → (w : A ⊎ B) → P w
