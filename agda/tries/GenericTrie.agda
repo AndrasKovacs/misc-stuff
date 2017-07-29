@@ -1,12 +1,14 @@
 
-open import Lib hiding (_×_)
+open import Lib hiding (_×_; ⊤)
 import Lib as L
 
-mutual  
+mutual
+  -- Types
   data * : Set where
-    Top     : *
-    μ       : F → *
+    ⊤ : *
+    μ : F → *
 
+  -- Functors
   data F : Set where
     I       : F
     K       : * → F
@@ -17,7 +19,7 @@ infixr 6 _×_
 
 mutual
   ⟦_⟧ : * → Set
-  ⟦ Top ⟧ = ⊤
+  ⟦ ⊤   ⟧ = L.⊤
   ⟦ μ f ⟧ = Fix f
 
   ⟦_⟧ᶠ : F → Set → Set
@@ -31,12 +33,8 @@ mutual
 
 mutual
   *ᵀ : * → (Set → Set)
-  *ᵀ Top     A = A
-  *ᵀ (μ f)   A = μᵀ f A
-
-  record μᵀ (f : F)(A : Set) : Set where
-    coinductive
-    field unfold : Fᵀ f (μ f) A
+  *ᵀ ⊤     A = A
+  *ᵀ (μ f) A = μᵀ f A
 
   Fᵀ : F → * → (Set → Set)
   Fᵀ I       a   = *ᵀ a
@@ -44,11 +42,15 @@ mutual
   Fᵀ (f + g) a A = Fᵀ f a A L.× Fᵀ g a A
   Fᵀ (f × g) a A = Fᵀ f a (Fᵀ g a A)
 
+  record μᵀ (f : F)(A : Set) : Set where
+    coinductive
+    field unfold : Fᵀ f (μ f) A
+
 open μᵀ
 
 mutual
   lookup : ∀ a {B} → *ᵀ a B → (⟦ a ⟧ → B)
-  lookup Top   t i        = t
+  lookup ⊤     t i        = t
   lookup (μ f) t (fold i) = lookupF f f (t .unfold) i 
 
   lookupF : ∀ f g {B} → Fᵀ f (μ g) B → ⟦ f ⟧ᶠ (Fix g) → B
@@ -60,7 +62,7 @@ mutual
 
 mutual
   tabulate : ∀ a {B} → (⟦ a ⟧ → B) → *ᵀ a B
-  tabulate Top   g = g tt
+  tabulate ⊤     g = g tt
   tabulate (μ f) g .unfold = tabulateF f f (g ∘ fold)
 
   {-# TERMINATING #-} -- Agda plz
@@ -70,8 +72,11 @@ mutual
   tabulateF (f + g) h j = tabulateF f h (j ∘ inl) , tabulateF g h (j ∘ inr)
   tabulateF (f × g) h j = tabulateF f h λ i₁ → tabulateF g h λ i₂ → j (i₁ , i₂)
 
+-- Examples
+--------------------------------------------------------------------------------
+
 nat : *
-nat = μ (K Top + I)
+nat = μ (K ⊤ + I)
 
 pattern z   = fold (inl tt)
 pattern s n = fold (inr n)
@@ -84,7 +89,7 @@ add z     b = b
 add (s a) b = s (add a b)
 
 tree : *
-tree = μ (K Top + (I × I))
+tree = μ (K ⊤ + (I × I))
 
 pattern leaf     = fold (inl tt)
 pattern node l r = fold (inr (l , r))
