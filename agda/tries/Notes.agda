@@ -1,73 +1,131 @@
 
-open import Lib hiding (⊤)
-import Lib as L using (⊤)
+open import Lib hiding (_×_; ⊤)
+open import Data.List hiding (unfold)
+open import Data.Bool
+open import Category.Monad
+import Lib as L
 
 mutual
   -- Types
-  data U : Set where
-    ⊤ : U
-    μ : F → U
+  data * : Set where
+    ⊤ : *
+    μ : F → *
 
   -- Functors
   data F : Set where
     I       : F
-    K       : U → F
-    _+_ _*_ : F → F → F
+    K       : * → F
+    _+_ _×_ : F → F → F
 
 infixr 5 _+_
-infixr 6 _*_
+infixr 6 _×_
 
 mutual
-  ⟦_⟧ : U → Set
+  ⟦_⟧ : * → Set
   ⟦ ⊤   ⟧ = L.⊤
-  ⟦ μ f ⟧ = Fix f
+  ⟦ μ f ⟧ = ⟦μ⟧ f
 
   ⟦_⟧ᶠ : F → Set → Set
   ⟦ I     ⟧ᶠ A = A
   ⟦ K a   ⟧ᶠ _ = ⟦ a ⟧
   ⟦ f + g ⟧ᶠ A = ⟦ f ⟧ᶠ A ⊎ ⟦ g ⟧ᶠ A
-  ⟦ f * g ⟧ᶠ A = ⟦ f ⟧ᶠ A × ⟦ g ⟧ᶠ A
+  ⟦ f × g ⟧ᶠ A = ⟦ f ⟧ᶠ A L.× ⟦ g ⟧ᶠ A
 
-  data Fix (f : F) : Set where
-    fold : ⟦ f ⟧ᶠ (Fix f) → Fix f
+  data ⟦μ⟧ (f : F) : Set where
+    ⟨_⟩ : ⟦ f ⟧ᶠ (⟦μ⟧ f) → ⟦μ⟧ f
 
-mutual
-  Uᵀ : (a : U) → (⟦ a ⟧ → Set) → Set
-  Uᵀ ⊤     A = A tt
-  Uᵀ (μ f) A = μᵀ f A
+open import Data.Maybe
+module _ {α} where open RawMonad {α} Data.Maybe.monad public
 
-  Fᵀ : (f : F)(a : U) → (⟦ f ⟧ᶠ ⟦ a ⟧ → Set) → Set
-  Fᵀ I       a A = Uᵀ a A
-  Fᵀ (K a)   _ A = Uᵀ a A
-  Fᵀ (f + g) a A = Fᵀ f a (A ∘ inl) × Fᵀ g a (A ∘ inr)
-  Fᵀ (f * g) a A = Fᵀ f a (λ x₁ → Fᵀ g a (λ x₂ → A (x₁ , x₂)))
-
-  record μᵀ (f : F)(A : Fix f → Set) : Set where
-    coinductive
-    field unfold : Fᵀ f (μ f) (A ∘ fold)
-
-open μᵀ
+data AtLeastOne (A B : Set) : Set where
+  left  : A → AtLeastOne A B
+  right : B → AtLeastOne A B
+  both  : A → B → AtLeastOne A B  
 
 mutual
-  lookup : ∀ a {B} → Uᵀ a B → (x : ⟦ a ⟧) → B x
-  lookup ⊤     t x        = t
-  lookup (μ f) t (fold x) = lookupᶠ f f (t .unfold) x
+  *ᵀ : * → Set → Bool → Set
+  *ᵀ a     A true  = L.⊤  
+  *ᵀ ⊤     A false = A
+  *ᵀ (μ f) A false = μᵀ f A
 
-  lookupᶠ : ∀ f g {B} → Fᵀ f (μ g) B → (i : ⟦ f ⟧ᶠ (Fix g)) → B i
-  lookupᶠ I       h t (fold i)  = lookupᶠ h h (t .unfold) i
-  lookupᶠ (K a)   h t i         = lookup a t i
-  lookupᶠ (f + g) h t (inl i)   = lookupᶠ f h (t .proj₁) i
-  lookupᶠ (f + g) h t (inr i)   = lookupᶠ g h (t .proj₂) i  
-  lookupᶠ (f * g) h t (i₁ , i₂) = lookupᶠ g h (lookupᶠ f h t i₁) i₂
+  data μᵀ (f : F)(A : Set) : Set where
+    ⟨_⟩ : Fᵀ f (μ f) A → μᵀ f A
 
-  tabulate : ∀ a {B} → ((i : ⟦ a ⟧) → B i) → Uᵀ a B
-  tabulate ⊤     g = g tt
-  tabulate (μ f) g .unfold = tabulateF f f (g ∘ fold)
+  Fᵀ : F → * → Set → Set
+  Fᵀ I       a A = *ᵀ a A false
+  Fᵀ (K a)   _ A = *ᵀ a A false
+  Fᵀ (f + g) a A = AtLeastOne (Fᵀ f a A) (Fᵀ g a A)
+  Fᵀ (f × g) a A = Fᵀ f a (Fᵀ g a A)
 
-  {-# TERMINATING #-} -- Agda plz
-  tabulateF : ∀ f g {B} → ((i : ⟦ f ⟧ᶠ (Fix g)) → B i) → Fᵀ f (μ g) B
-  tabulateF I       h j .unfold = tabulateF h h (j ∘ fold)
-  tabulateF (K a)   h j = tabulate a j
-  tabulateF (f + g) h j = tabulateF f h (j ∘ inl) , tabulateF g h (j ∘ inr)
-  tabulateF (f * g) h j = tabulateF f h λ i₁ → tabulateF g h λ i₂ → j (i₁ , i₂)
+mutual
+  lookup : ∀ a b {B} → *ᵀ a B b → ⟦ a ⟧ → Maybe B
+  lookup a     true  t     i     = nothing
+  lookup ⊤     false t     i     = just t
+  lookup (μ f) false ⟨ t ⟩ ⟨ i ⟩ = lookupF f f t i 
+
+  lookupF : ∀ f g {B} → Fᵀ f (μ g) B → ⟦ f ⟧ᶠ (⟦μ⟧ g) → Maybe B
+  lookupF I       h ⟨ t ⟩      ⟨ i ⟩     = lookupF h h t i
+  lookupF (K a)   h t          i         = lookup a false t i
+  lookupF (f + g) h (left l)   (inl i)   = lookupF f h l i
+  lookupF (f + g) h (left l)   (inr i)   = nothing
+  lookupF (f + g) h (right r)  (inl i)   = nothing
+  lookupF (f + g) h (right r)  (inr i)   = lookupF g h r i
+  lookupF (f + g) h (both l r) (inl i)   = lookupF f h l i
+  lookupF (f + g) h (both l r) (inr i)   = lookupF g h r i
+  lookupF (f × g) h t          (il , ir) = lookupF f h t il >>= (λ t' → lookupF g h t' ir)
+
+mutual
+  single : ∀ a {B} → ⟦ a ⟧ → B → *ᵀ a B false
+  single ⊤     i     v = v
+  single (μ f) ⟨ i ⟩ v = ⟨ singleF f f i v ⟩
+
+  singleF : ∀ f g {B} → ⟦ f ⟧ᶠ (⟦μ⟧ g) → B → Fᵀ f (μ g) B
+  singleF I       h ⟨ i ⟩     v = ⟨ singleF h h i v ⟩ 
+  singleF (K a)   h i         v = single a i v
+  singleF (f + g) h (inl i)   v = left (singleF f h i v)
+  singleF (f + g) h (inr i)   v = right (singleF g h i v)
+  singleF (f × g) h (il , ir) v = singleF f h il (singleF g h ir v)
+
+mutual
+  insert' : ∀ a b {B} → *ᵀ a B b → ⟦ a ⟧ → B → (B → B) → *ᵀ a B false
+  insert' a     true  t     i     v m = single a i v  
+  insert' ⊤     false t     i     v m = m t
+  insert' (μ f) false ⟨ t ⟩ ⟨ i ⟩ v m = ⟨ insertF' f f t i v m ⟩
+
+  insertF' : ∀ f g {B} → Fᵀ f (μ g) B → ⟦ f ⟧ᶠ (⟦μ⟧ g) → B → (B → B) → Fᵀ f (μ g) B
+  insertF' I       h ⟨ t ⟩       ⟨ i ⟩     v m = ⟨ insertF' h h t i v m ⟩
+  insertF' (K a)   h t           i         v m = insert' a false t i v m
+  insertF' (f + g) h (left l)    (inl i)   v m = left (insertF' f h l i v m)
+  insertF' (f + g) h (left l)    (inr i)   v m = both l (singleF g h i v)
+  insertF' (f + g) h (right r)   (inl i)   v m = both (singleF f h i v) r
+  insertF' (f + g) h (right r)   (inr i)   v m = right (insertF' g h r i v m)
+  insertF' (f + g) h (both l r)  (inl i)   v m = both (insertF' f h l i v m) r
+  insertF' (f + g) h (both l r)  (inr i)   v m = both l (insertF' g h r i v m)
+  insertF' (f × g) h t           (il , ir) v m = insertF' f h t il (singleF g h ir v) (λ t → insertF' g h t ir v m)
+
+insert : ∀ a b {B} → *ᵀ a B b → ⟦ a ⟧ → B → *ᵀ a B false
+insert a b t i v = insert' a b t i v (λ _ → v)
+
+mutual
+  delete' : ∀ a b {B} → *ᵀ a B b → ⟦ a ⟧ → ∃ (*ᵀ a B)
+  delete' a     true  t i = true , tt  
+  delete' ⊤     false t i = true , tt
+  delete' (μ f) false t i = {!!}
+  -- insert' a     true  t     i     v m = single a i v  
+  -- insert' ⊤     false t     i     v m = m t
+  -- insert' (μ f) false ⟨ t ⟩ ⟨ i ⟩ v m = ⟨ insertF' f f t i v m ⟩
+
+  deleteF' : ∀ f g {B} → Fᵀ f (μ g) B → ⟦ f ⟧ᶠ (⟦μ⟧ g) → B → (B → B) → Fᵀ f (μ g) B
+  deleteF' = {!!}
+  -- insertF' I       h ⟨ t ⟩       ⟨ i ⟩     v m = ⟨ insertF' h h t i v m ⟩
+  -- insertF' (K a)   h t           i         v m = insert' a false t i v m
+  -- insertF' (f + g) h (left l)    (inl i)   v m = left (insertF' f h l i v m)
+  -- insertF' (f + g) h (left l)    (inr i)   v m = both l (singleF g h i v)
+  -- insertF' (f + g) h (right r)   (inl i)   v m = both (singleF f h i v) r
+  -- insertF' (f + g) h (right r)   (inr i)   v m = right (insertF' g h r i v m)
+  -- insertF' (f + g) h (both l r)  (inl i)   v m = both (insertF' f h l i v m) r
+  -- insertF' (f + g) h (both l r)  (inr i)   v m = both l (insertF' g h r i v m)
+  -- insertF' (f × g) h t           (il , ir) v m = insertF' f h t il (singleF g h ir v) (λ t → insertF' g h t ir v m)
+
+--------------------------------------------------------------------------------
 

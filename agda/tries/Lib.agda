@@ -3,6 +3,7 @@
 module Lib where
 
 open import Level
+open import Relation.Binary.PropositionalEquality public
 
 infix 3 _∋_
 _∋_ : ∀ {α}(A : Set α) → A → A
@@ -13,13 +14,6 @@ _∘_ : ∀ {a b c}
         (∀ {x} (y : B x) → C y) → (g : (x : A) → B x) →
         ((x : A) → C (g x))
 f ∘ g = λ x → f (g x)
-
-data _≡_ {i}{A : Set i} (x : A) : A → Set i where
-  refl : x ≡ x
-infix 4 _≡_
-
-{-# BUILTIN EQUALITY _≡_ #-}
-{-# BUILTIN REFL refl #-}
 
 _◾_ : ∀{i}{A : Set i}{x y z : A} → x ≡ y → y ≡ z → x ≡ z
 refl ◾ refl = refl
@@ -108,16 +102,6 @@ ind⊎ : {A B : Set}(P : A ⊎ B → Set) → ((a : A) → P (inl a)) → ((b : 
      → (w : A ⊎ B) → P w
 ind⊎ P ca cb (inl a) = ca a
 ind⊎ P ca cb (inr b) = cb b
-
-record Reveal_·_is_ {a b} {A : Set a} {B : A → Set b}
-                    (f : (x : A) → B x) (x : A) (y : B x) :
-                    Set (a ⊔ b) where
-  constructor pack
-  field eq : f x ≡ y
-
-inspect : ∀ {a b} {A : Set a} {B : A → Set b}
-          (f : (x : A) → B x) (x : A) → Reveal f · x is f x
-inspect f x = pack refl
 
 postulate
   ext  : ∀{i j}{A : Set i}{B : A → Set j}{f g : (x : A) → B x}
