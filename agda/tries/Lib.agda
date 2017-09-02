@@ -15,6 +15,16 @@ _∘_ : ∀ {a b c}
         ((x : A) → C (g x))
 f ∘ g = λ x → f (g x)
 
+infix 0 case_return_of_ case_of_
+
+case_return_of_ :
+  ∀ {a b} {A : Set a}
+  (x : A) (B : A → Set b) → ((x : A) → B x) → B x
+case x return B of f = f x
+
+case_of_ : ∀ {a b} {A : Set a} {B : Set b} → A → (A → B) → B
+case x of f = case x return _ of f
+
 _◾_ : ∀{i}{A : Set i}{x y z : A} → x ≡ y → y ≡ z → x ≡ z
 refl ◾ refl = refl
 infixr 4 _◾_
@@ -80,6 +90,16 @@ infixr 4 _×_
 ,Σ≡ : ∀{i j}{A : Set i}{B : A → Set j}{a a' : A}{b : B a}{b' : B a'}
      (p : a ≡ a') → coe (B & p) b ≡ b' → (Σ A B ∋ (a , b)) ≡ (a' , b')
 ,Σ≡ refl refl = refl
+
+curry : ∀ {a b c} {A : Set a} {B : A → Set b} {C : Σ A B → Set c} →
+        ((p : Σ A B) → C p) →
+        ((x : A) → (y : B x) → C (x , y))
+curry f x y = f (x , y)
+
+uncurry : ∀ {a b c} {A : Set a} {B : A → Set b} {C : Σ A B → Set c} →
+          ((x : A) → (y : B x) → C (x , y)) →
+          ((p : Σ A B) → C p)
+uncurry f (x , y) = f x y
 
 record ⊤ : Set where
   constructor tt
