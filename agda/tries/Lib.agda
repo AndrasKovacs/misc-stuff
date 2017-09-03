@@ -4,6 +4,7 @@ module Lib where
 
 open import Level
 open import Relation.Binary.PropositionalEquality public
+open import Data.Empty public
 
 infix 3 _∋_
 _∋_ : ∀ {α}(A : Set α) → A → A
@@ -14,6 +15,12 @@ _∘_ : ∀ {a b c}
         (∀ {x} (y : B x) → C y) → (g : (x : A) → B x) →
         ((x : A) → C (g x))
 f ∘ g = λ x → f (g x)
+
+id : ∀ {a} {A : Set a} → A → A
+id x = x
+
+const : ∀ {a b} {A : Set a} {B : Set b} → A → B → A
+const x = λ _ → x
 
 infix 0 case_return_of_ case_of_
 
@@ -103,11 +110,6 @@ uncurry f (x , y) = f x y
 
 record ⊤ : Set where
   constructor tt
-
-data ⊥ : Set where
-
-⊥-elim : ∀{i}{A : Set i} → ⊥ → A
-⊥-elim ()
 
 data _⊎_ (A B : Set) : Set where
   inl : A → A ⊎ B

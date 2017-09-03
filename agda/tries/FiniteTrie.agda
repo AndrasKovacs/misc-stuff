@@ -128,49 +128,96 @@ mutual
 
 --------------------------------------------------------------------------------
 
--- open import Data.List
+open import Relation.Nullary
+open import Relation.Nullary.Decidable hiding (map)
 
--- List1 : Set → Set
--- List1 A = A L.× List A
+Injective : ∀ {A B : Set} → (A → B) → Set
+Injective f = ∀ {x y} → f x ≡ f y → x ≡ y
 
--- map1 : ∀ {A B} → (A → B) → List1 A → List1 B
--- map1 f (a , as) = f a , map f as
+Dec≡-cong :
+  ∀ {A B : Set}{f : A → B} → Injective f → ∀ {x y} → Dec (x ≡ y) → Dec (f x ≡ f y)
+Dec≡-cong {f = f} inj (yes p) = yes (f & p)
+Dec≡-cong {f = f} inj (no ¬p) = no (¬p ∘ inj)
 
--- _++1_ : ∀ {A} → List1 A → List1 A → List1 A
--- (x , xs) ++1 (y , ys) = x , xs ++ (y ∷ ys)
+⟨⟩-inj : ∀ {f} → Injective (⟦μ⟧.⟨_⟩ {f})
+⟨⟩-inj refl = refl
 
--- _∷1_ : ∀ {A} → A → List1 A → List1 A
--- a ∷1 (a' , as) = a , a' ∷ as
+inl-inj : ∀ {A B} → Injective (inl {A}{B})
+inl-inj refl = refl
 
--- concat1 : ∀ {A} → List1 (List1 A) → List1 A
--- concat1 ((a , as) , ass) = a , as ++ concatMap (uncurry _∷_) ass
+inr-inj : ∀ {A B} → Injective (inr {A}{B})
+inr-inj refl = refl
 
--- unzip1 : ∀ {A B} → List1 (A ⊎ B) → AtLeastOne (List1 A) (List1 B)
--- unzip1 (inl a , []) = left (a , [])
--- unzip1 (inr b , []) = right (b , [])
--- unzip1 (ab , ab' ∷ abs) = case unzip1 (ab , abs) of λ {
---   (left as)    → case ab of λ {(inl a) → left (a ∷1 as); (inr b) → both as (b , [])};
---   (right bs)   → case ab of λ {(inl a) → both (a , []) bs; (inr b) → right (b ∷1 bs)};
---   (both as bs) → case ab of λ {(inl a) → both (a ∷1 as) bs; (inr b) → both as (b ∷1 bs)}}
+_,-inj : ∀ {A B : Set}(t : A) → Injective ((B → A L.× B) ∋ _,_ t)
+_,-inj t refl = refl
 
--- first : ∀ {A B C : Set} → (A → C) → A L.× B → C L.× B
--- first f (a , b) = (f a , b)
+mutual
+  eq? : ∀ a (t u : ⟦ a ⟧) → Dec (t ≡ u)
+  eq? ⊤     t     u     = yes refl
+  eq? (μ f) ⟨ t ⟩ ⟨ u ⟩ = Dec≡-cong ⟨⟩-inj (eqF? f f t u)
 
--- Assocs : * → Set → Set
--- Assocs a B = List1 (⟦ a ⟧ L.× B)
+  eqF? : ∀ f g (t u : ⟦ f ⟧ᶠ (⟦μ⟧ g)) → Dec (t ≡ u)
+  eqF? I h ⟨ t ⟩ ⟨ u ⟩ = Dec≡-cong ⟨⟩-inj (eqF? h h t u)
+  eqF? (K a) h t u = eq? a t u
+  eqF? (f + g) h (inl t) (inl u) = Dec≡-cong inl-inj (eqF? f h t u)
+  eqF? (f + g) h (inl t) (inr u) = no (λ ())
+  eqF? (f + g) h (inr t) (inl u) = no (λ ())
+  eqF? (f + g) h (inr t) (inr u) = Dec≡-cong inr-inj (eqF? g h t u)
+  eqF? (f × g) h (t₁ , t₂) (u₁ , u₂) with eqF? f h t₁ u₁
+  ... | yes refl = Dec≡-cong (t₁ ,-inj) (eqF? g h t₂ u₂)
+  ... | no ¬p    = no (λ {refl → ¬p refl})
 
--- {-# TERMINATING #-}
--- OrdKeys : ∀ {a B} → Assocs a B → Set
--- OrdKeys (a , [])                     = L.⊤
--- OrdKeys ((a , _) , ((a' , v) ∷ abs)) = lt _ a a' L.× OrdKeys ((a' , v) , abs)
+--------------------------------------------------------------------------------
 
--- AssocsF : F → F → Set → Set
--- AssocsF f g B = List1 (⟦ f ⟧ᶠ (⟦μ⟧ g) L.× B)
+open import Data.List
 
--- {-# TERMINATING #-}
--- OrdKeysF : ∀ {f g B} → AssocsF f g B → Set
--- OrdKeysF ((a , v) , []) = L.⊤
--- OrdKeysF {f}{g}((a , _) , (a' , v) ∷ abs) = ltF f g a a' L.× OrdKeysF {f}{g}((a' , v) , abs)
+List1 : Set → Set
+List1 A = A L.× List A
+
+map1 : ∀ {A B} → (A → B) → List1 A → List1 B
+map1 f (a , as) = f a , map f as
+
+_++1_ : ∀ {A} → List1 A → List1 A → List1 A
+(x , xs) ++1 (y , ys) = x , xs ++ (y ∷ ys)
+
+_∷1_ : ∀ {A} → A → List1 A → List1 A
+a ∷1 (a' , as) = a , a' ∷ as
+
+concat1 : ∀ {A} → List1 (List1 A) → List1 A
+concat1 ((a , as) , ass) = a , as ++ concatMap (uncurry _∷_) ass
+
+unzip1 : ∀ {A B} → List1 (A ⊎ B) → AtLeastOne (List1 A) (List1 B)
+unzip1 (inl a , []) = left (a , [])
+unzip1 (inr b , []) = right (b , [])
+unzip1 (ab , ab' ∷ abs) = case unzip1 (ab , abs) of λ {
+  (left as)    → case ab of λ {(inl a) → left (a ∷1 as); (inr b) → both as (b , [])};
+  (right bs)   → case ab of λ {(inl a) → both (a , []) bs; (inr b) → right (b ∷1 bs)};
+  (both as bs) → case ab of λ {(inl a) → both (a ∷1 as) bs; (inr b) → both as (b ∷1 bs)}}
+
+first : ∀ {A B C : Set} → (A → C) → A L.× B → C L.× B
+first f (a , b) = (f a , b)
+
+Assocs : * → Set → Set
+Assocs a B = List1 (⟦ a ⟧ L.× B)
+
+{-# TERMINATING #-}
+OrdKeys : ∀ {a B} → Assocs a B → Set
+OrdKeys (a , [])                     = L.⊤
+OrdKeys ((a , _) , ((a' , v) ∷ abs)) = lt _ a a' L.× OrdKeys ((a' , v) , abs)
+
+AssocsF : F → F → Set → Set
+AssocsF f g B = List1 (⟦ f ⟧ᶠ (⟦μ⟧ g) L.× B)
+
+{-# TERMINATING #-}
+OrdKeysF : ∀ {f g B} → AssocsF f g B → Set
+OrdKeysF ((a , v) , []) = L.⊤
+OrdKeysF {f}{g}((a , _) , (a' , v) ∷ abs) = ltF f g a a' L.× OrdKeysF {f}{g}((a' , v) , abs)
+
+group : ∀ {A B} → List1 (⟦ A ⟧ L.× B) → List1 (⟦ A ⟧ L.× List1 B)
+group ((k , v) , [])             = (k , v , []) , []
+group ((k , v) , (k' , v') ∷ ys) with eq? _ k k'
+... | yes _    = {!!}
+... | no ¬p    = {!!}
 
 -- --------------------------------------------------------------------------------
 
@@ -331,28 +378,28 @@ true = ⟨ inl tt ⟩
 false : ⟦ Bool ⟧
 false = ⟨ inr tt ⟩
 
-List : * → *
-List A = μ (K ⊤ + K A × I)
+-- List : * → *
+-- List A = μ (K ⊤ + K A × I)
 
-nil : ∀ {a} → ⟦ List a ⟧
-nil = ⟨ inl tt ⟩
+-- nil : ∀ {a} → ⟦ List a ⟧
+-- nil = ⟨ inl tt ⟩
 
-_∷_ : ∀ {a} → ⟦ a ⟧ → ⟦ List a ⟧ → ⟦ List a ⟧
-a ∷ as = ⟨ inr (a , as) ⟩
-infixr 5 _∷_
+-- _∷_ : ∀ {a} → ⟦ a ⟧ → ⟦ List a ⟧ → ⟦ List a ⟧
+-- a ∷ as = ⟨ inr (a , as) ⟩
+-- infixr 5 _∷_
 
-Nat : *
-Nat = μ (K ⊤ + I)
+-- Nat : *
+-- Nat = μ (K ⊤ + I)
 
-zero : ⟦ Nat ⟧
-zero = ⟨ inl tt ⟩
+-- zero : ⟦ Nat ⟧
+-- zero = ⟨ inl tt ⟩
 
-suc : ⟦ Nat ⟧ → ⟦ Nat ⟧
-suc n = ⟨ inr n ⟩
+-- suc : ⟦ Nat ⟧ → ⟦ Nat ⟧
+-- suc n = ⟨ inr n ⟩
 
-k1 : ⟦ List Bool ⟧
-k1 = true ∷ nil
+-- k1 : ⟦ List Bool ⟧
+-- k1 = true ∷ nil
 
-t1 = insert (true ∷ true ∷ nil) (suc zero) (insert nil zero (singleton k1 (suc (suc zero))))
-l1 = lookup k1 t1
+-- t1 = insert (true ∷ true ∷ nil) (suc zero) (insert nil zero (singleton k1 (suc (suc zero))))
+-- l1 = lookup k1 t1
 
