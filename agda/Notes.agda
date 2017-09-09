@@ -1,18 +1,39 @@
 
+
 open import Lib
 
-data ℕ : Set where
-  zero : ℕ
-  suc  : ℕ → ℕ
 
-data Vec (A : Set) : ℕ → Set where
-  []  : Vec A zero
-  _∷_ : ∀ {n} → A → Vec A n → Vec A (suc n)
-
-zipwith : ∀ {A B C n} → (A → B → C) → Vec A n → Vec B n → Vec C n
-zipwith f []       bs       = []
-zipwith f (a ∷ as) (b ∷ bs) = f a b ∷ zipwith f as bs
-
-infixr 5 _∷_
+ap : {A B : Set}(f : A → B){t u : A} → t ≡ u → f u ≡ f t
+ap f {t}{u} eq = coe ((λ x → f x ≡ f t) & eq) (refl {_}{_}{f t}) -- J (λ {u} _ → f t ≡ f u) (refl {_}{_}{f t}) eq
 
 
+-- open import Relation.Binary.PropositionalEquality
+
+-- data ℕ : Set where
+--   zero : ℕ
+--   suc  : ℕ → ℕ
+
+-- foo : ℕ
+-- foo = _
+
+-- bar : foo ≡ zero
+-- bar = refl
+
+-- foo : Set
+-- foo = a
+--   where
+--   a : Set
+--   a = _
+
+--   data ℕ : Set where
+--     zero : ℕ
+--     suc  : ℕ → ℕ
+
+--   b : a
+--   b = zero
+
+-- a : Set
+-- a = _
+
+-- b : a
+-- b = zero

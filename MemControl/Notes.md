@@ -40,13 +40,229 @@ raw closed `El A → U` functions for codomains/second
 projections. However, closedness is a severe limitation and I had a
 hard time making things work that way.
 
-Formally: TODO
+##### Source language, Tarski-style
+```
+Γ ⊢          Context well-formedness
+Γ ⊢ A        Type well-formedness
+Γ ⊢ t : A    Typing
+
+─────
+Γ ⊢ U
+
+─────────
+Γ ⊢ ⊥ : U
+
+Γ ⊢ A : U
+─────────
+Γ ⊢ El A
+
+Γ ⊢ A   Γ ⊢ t : El ⊥
+────────────────────
+ Γ ⊢ ⊥-elim t : A
+
+─────────
+Γ ⊢ ⊤ : U
+
+─────────────
+Γ ⊢ tt : El ⊤
+
+Γ ⊢ A : U   Γ, a : El A ⊢ B : U
+───────────────────────────────
+     Γ ⊢ (a : A) → B : U
+
+Γ ⊢ A : U   Γ, a : El A ⊢ B : U
+───────────────────────────────
+     Γ ⊢ (a : A, B) : U
+
+ Γ, a : El A ⊢ t : El B
+────────────────────────
+Γ ⊢ λ a. t : (a : A) → B
+
+Γ ⊢ t : El A   Γ, a : El A ⊢ B : U   Γ ⊢ u : El (B[a ⊢> t])
+─────────────────────────────────────────────────────────
+           Γ ⊢ (t, u) : El (t : A, B)
+
+Γ ⊢ t : El ((a : A) → B)   Γ ⊢ u : El A
+───────────────────────────────────────
+      Γ ⊢ t u : El (B[a ⊢> u])
+
+        Γ ⊢ t : El (a : A, B)
+───────────────────────────────────────
+Γ ⊢ π₁ t : El A   Γ ⊢ π₂ t : El (B[a ⊢> π₁ t])
+
+────────────
+Γ ⊢ Bool : U
+
+────────────────────────────────────────
+Γ ⊢ true : El Bool   Γ ⊢ false : El Bool
+
+                Γ, x : El Bool ⊢ B
+Γ ⊢ t : El (B[x ⊢> true])   Γ ⊢ u : El (B[x ⊢> false])
+                 Γ ⊢ b : El Bool
+────────────────────────────────────────────────────────
+       Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
+```
+
+##### Source language, Russell-style
+
+We can see this version just as a shorthand for the Tarski-style universes, with elided `El` noise
+
 
 ```
-Source language
+Γ ⊢          Context well-formedness
+Γ ⊢ A        Type well-formedness
+Γ ⊢ t : A    Typing
 
-Judgements
-    Γ ⊢          Context well-formedness
-    Γ ⊢ A        Type well-formedness
-    Γ ⊢ t : A    Typing
+─────
+Γ ⊢ U
+
+Γ ⊢ A : U
+─────────
+Γ ⊢ A
+
+─────────
+Γ ⊢ ⊥ : U
+
+Γ ⊢ A  Γ ⊢ t : ⊥
+────────────────
+Γ ⊢ ⊥-elim t : A
+
+─────────
+Γ ⊢ ⊤ : U
+
+─────────────
+Γ ⊢ tt : ⊤
+
+Γ ⊢ A : U   Γ, a : A ⊢ B : U
+─────────────────────────────
+     Γ ⊢ (a : A) → B : U
+
+   Γ, a : A ⊢ t : B
+────────────────────────
+Γ ⊢ λ a. t : (a : A) → B
+
+Γ ⊢ t : (a : A) → B   Γ ⊢ u : A
+───────────────────────────────
+    Γ ⊢ t u : B[a ⊢> u]
+
+Γ ⊢ A : U   Γ, a : A ⊢ B : U
+────────────────────────────
+     Γ ⊢ (a : A, B) : U
+
+Γ ⊢ t : A   Γ, a : A ⊢ B : U   Γ ⊢ u : B[a ⊢> t]
+────────────────────────────────────────────────
+          Γ ⊢ (t, u) : (t : A, B)
+
+         Γ ⊢ t : (a : A, B)
+──────────────────────────────────────
+Γ ⊢ π₁ t : A   Γ ⊢ π₂ t : B[a ⊢> π₁ t]
+
+────────────
+Γ ⊢ Bool : U
+
+──────────────────────────────────
+Γ ⊢ true : Bool   Γ ⊢ false : Bool
+
+            Γ, x : Bool ⊢ B
+Γ ⊢ t : B[x ⊢> true]   Γ ⊢ u : B[x ⊢> false]
+            Γ ⊢ b : El Bool
+────────────────────────────────────────────
+   Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
+```
+
+##### Target language
+
+```
+Γ ⊢          Context well-formedness
+Γ ⊢ A        Type well-formedness
+Γ ⊢ t : A    Typing
+
+─────
+Γ ⊢ U
+
+Γ ⊢ A : U
+─────────
+Γ ⊢ El A
+
+─────
+Γ ⊢ ⊤
+
+──────────
+Γ ⊢ tt : ⊤
+
+─────
+Γ ⊢ ⊥
+
+Γ ⊢ A   Γ ⊢ t : ⊥
+─────────────────
+Γ ⊢ ⊥-elim t : A
+
+Γ ⊢ A : U   Γ, a : El A ⊢ B : U
+───────────────────────────────
+      Γ ⊢ (a : A) → B
+
+Γ ⊢ A : U   Γ, a : El A ⊢ B : U
+───────────────────────────────
+      Γ ⊢ (a : A, B)
+
+────────
+Γ ⊢ Bool
+
+──────────────────────────────────
+Γ ⊢ true : Bool   Γ ⊢ false : Bool
+
+                Γ, x : Bool ⊢ B
+Γ ⊢ t : El (B[x ⊢> true])   Γ ⊢ u : El (B[x ⊢> false])
+                 Γ ⊢ b : Bool
+────────────────────────────────────────────────────────
+       Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
+
+
+
+
+
+
+
+
+
+─────────
+Γ ⊢ ⊤ : U
+
+
+
+Γ ⊢ A : U   Γ, a : El A ⊢ B : U
+───────────────────────────────
+     Γ ⊢ (a : A) → B : U
+
+Γ ⊢ A : U   Γ, a : El A ⊢ B : U
+───────────────────────────────
+     Γ ⊢ (a : A, B) : U
+
+ Γ, a : El A ⊢ t : El B
+────────────────────────
+Γ ⊢ λ a. t : (a : A) → B
+
+Γ ⊢ t : El A   Γ, a : El A ⊢ B : U   Γ ⊢ u : El (B[a ⊢> t])
+─────────────────────────────────────────────────────────
+           Γ ⊢ (t, u) : El (t : A, B)
+
+Γ ⊢ t : El ((a : A) → B)   Γ ⊢ u : El A
+───────────────────────────────────────
+      Γ ⊢ t u : El (B[a ⊢> u])
+
+        Γ ⊢ t : El (a : A, B)
+───────────────────────────────────────
+Γ ⊢ π₁ t : El A   Γ ⊢ π₂ t : El (B[a ⊢> π₁ t])
+
+────────────
+Γ ⊢ Bool : U
+
+────────────────────────────────────────
+Γ ⊢ true : El Bool   Γ ⊢ false : El Bool
+
+                Γ, x : El Bool ⊢ B
+Γ ⊢ t : El (B[x ⊢> true])   Γ ⊢ u : El (B[x ⊢> false])
+                 Γ ⊢ b : El Bool
+────────────────────────────────────────────────────────
+       Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
 ```
