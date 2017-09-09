@@ -101,6 +101,12 @@ Tm-ₑ∘ₛ σ δ (lam t) =
   lam & ((λ x → Tmₛ (x , var zero) t) & assₑₛₑ σ δ wk ◾ Tm-ₑ∘ₛ (keep σ) (keepₛ δ) t)
 Tm-ₑ∘ₛ σ δ (app f a) = app & Tm-ₑ∘ₛ σ δ f ⊗ Tm-ₑ∘ₛ σ δ a
 
+Ty-ₑ∘ₛ : ∀ {Γ Δ Σ}(σ : OPE Δ Σ)(δ : Sub Γ Δ)(A : Ty Σ) → Tyₛ (σ ₑ∘ₛ δ) A ≡ Tyₛ δ (Tyₑ σ A)
+Ty-ₑ∘ₛ σ δ U       = refl
+Ty-ₑ∘ₛ σ δ (El t)  = El & Tm-ₑ∘ₛ σ δ t
+Ty-ₑ∘ₛ σ δ (Π A B) = Π & Ty-ₑ∘ₛ σ δ A ⊗
+  (((λ x → Tyₛ (x , var zero) B) & assₑₛₑ σ δ wk ◾ Ty-ₑ∘ₛ (keep σ) (keepₛ δ) B))
+
 ∈-ₛ∘ₑ : ∀ {Γ Δ Σ}(σ : Sub Δ Σ)(δ : OPE Γ Δ)(v : Fin Σ) → ∈ₛ (σ ₛ∘ₑ δ) v ≡ Tmₑ δ (∈ₛ σ v)
 ∈-ₛ∘ₑ (σ , _) δ zero    = refl
 ∈-ₛ∘ₑ (σ , _) δ (suc v) = ∈-ₛ∘ₑ σ δ v
@@ -152,6 +158,15 @@ Tm-∘ₛ σ δ (lam t)   =
     ◾ Tm-∘ₛ (keepₛ σ) (keepₛ δ) t)
 Tm-∘ₛ σ δ (app f a) = app & Tm-∘ₛ σ δ f ⊗ Tm-∘ₛ σ δ a
 
+Ty-∘ₛ : ∀ {Γ Δ Σ}(σ : Sub Δ Σ)(δ : Sub Γ Δ)(A : Ty Σ) → Tyₛ (σ ∘ₛ δ) A ≡ Tyₛ δ (Tyₛ σ A)
+Ty-∘ₛ σ δ U       = refl
+Ty-∘ₛ σ δ (El t)  = El & Tm-∘ₛ σ δ t
+Ty-∘ₛ σ δ (Π A B) = Π & Ty-∘ₛ σ δ A ⊗
+    ((λ x → Tyₛ (x , var zero) B) &
+        (assₛₛₑ σ δ wk
+      ◾ (σ ∘ₛ_) & (idlₑₛ  (dropₛ δ) ⁻¹) ◾ assₛₑₛ σ wk (keepₛ δ) ⁻¹)
+  ◾ Ty-∘ₛ (keepₛ σ) (keepₛ δ) B)
+
 ∈-idₛ : ∀ {Γ}(v : Fin Γ) → ∈ₛ idₛ v ≡ var v
 ∈-idₛ zero    = refl
 ∈-idₛ (suc v) = ∈-ₛ∘ₑ idₛ wk v ◾ Tmₑ wk & ∈-idₛ v ◾ (var ∘ suc) & ∈-idₑ v
@@ -179,4 +194,3 @@ assₛ :
   → (σ ∘ₛ δ) ∘ₛ ν ≡ σ ∘ₛ (δ ∘ₛ ν)
 assₛ ∙       δ ν = refl
 assₛ (σ , t) δ ν = _,_ & assₛ σ δ ν ⊗ (Tm-∘ₛ δ ν t ⁻¹)
-

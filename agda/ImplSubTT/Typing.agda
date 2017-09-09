@@ -35,6 +35,4 @@ data _⊢_∈_ {n} Γ where
   var  : ∀ {x A} → x , A ∈ Γ → Γ ⊢ var x ∈ A
   app  : ∀ {t u A B} → Γ ⊢ t ∈ Π A B → Γ ⊢ u ∈ A → Γ ⊢ app t u ∈ Tyₛ (idₛ , u) B
   lam  : ∀ {t A B} → Γ ⊢ A → Γ ▷ A ⊢ t ∈ B → Γ ⊢ lam t ∈ Π A B
-  conv : ∀ {t A B} → Γ ⊢ A → Γ ⊢ B → A ~ₜ B → Γ ⊢ t ∈ A → Γ ⊢ t ∈ B
-
-
+  conv : ∀ {t A B} → Γ ⊢ B → A ~ₜ B → Γ ⊢ t ∈ A → Γ ⊢ t ∈ B
