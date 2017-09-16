@@ -21,7 +21,7 @@ open import Typing
 -- note : Sub⊢ Γ Δ σ  does not imply  Δ ⊢
 data Sub⊢ {n}(Γ : Con n) : ∀ {m} → Con m → Sub n m → Set where
   ∙    : Γ ⊢ → Sub⊢ Γ ∙ ∙
-  cons : ∀ {m Δ A t σ} → Γ ⊢ t ⇓ Tyₛ σ A → Sub⊢ Γ {m} Δ σ → Sub⊢ Γ (Δ ▷ A) (σ , t)
+  cons : ∀ {m Δ A t σ} → Γ ⊢ t ⇑ Tyₛ σ A → Sub⊢ Γ {m} Δ σ → Sub⊢ Γ (Δ ▷ A) (σ , t)
 
 -- note : OPE⊢ Γ Δ σ  does not imply  Δ ⊢
 data OPE⊢ : ∀ {n m} → Con n → Con m → OPE n m → Set where
@@ -113,14 +113,16 @@ mutual
 Sub⊢ₑ : ∀ {n m k Γ Δ Σ σ δ} → Sub⊢ {n} Γ {m} Δ σ → OPE⊢ Σ Γ δ → Sub⊢ {k} Σ {m} Δ (σ ₛ∘ₑ δ)
 Sub⊢ₑ (∙ Γ) δw = ∙ (OPE⊢?Δσ δw Γ)
 Sub⊢ₑ {Σ = Σ} {δ = δ} (cons {Δ = Δ} {A} {t} {σ} tw σw) δw =
-  cons ((coe ((Σ ⊢ Tmₑ δ t ⇓_) & (Ty-ₛ∘ₑ σ δ A ⁻¹)) (Γ⊢t⇓Aₑ δw tw))) (Sub⊢ₑ σw δw)
+  cons
+    ((coe ((Σ ⊢ Tmₑ δ t ⇑_) & (Ty-ₛ∘ₑ σ δ A ⁻¹)) (Γ⊢t⇑Aₑ δw tw)))
+    (Sub⊢ₑ σw δw)
 
 Sub⊢-idₛ : ∀ {n Γ} → Γ ⊢ → Sub⊢ {n} Γ Γ idₛ
 Sub⊢-idₛ ∙       = ∙ ∙
 Sub⊢-idₛ (_▷_ {Γ = Γ} {A} Γw Aw) =
   cons
-    (coe (((Γ ▷ A) ⊢ var zero ⇓_) & (Tyₑ wk & (Ty-idₛ A ⁻¹) ◾ Ty-ₛ∘ₑ idₛ wk A ⁻¹))
-         (⇑⇓ (var zero (Γw ▷ Aw))))
+    (coe (((Γ ▷ A) ⊢ var zero ⇑_) & (Tyₑ wk & (Ty-idₛ A ⁻¹) ◾ Ty-ₛ∘ₑ idₛ wk A ⁻¹))
+         (var zero (Γw ▷ Aw)))
     (Sub⊢ₑ (Sub⊢-idₛ Γw) (drop Aw (OPE⊢-idₑ Γw)))
 
 --------------------------------------------------------------------------------
@@ -137,24 +139,25 @@ mutual
     Π (Γ⊢Aₛ σw Aw)
       (Γ⊢Aₛ
         (cons
-          (coe (((Γ ▷ Tyₛ σ A) ⊢ var zero ⇓_) & (Ty-ₛ∘ₑ σ wk A ⁻¹))
-               (⇑⇓ (var zero (Sub⊢?Δσ σw (?⊢A Aw) ▷ Γ⊢Aₛ σw Aw))))
+          (coe (((Γ ▷ Tyₛ σ A) ⊢ var zero ⇑_) & (Ty-ₛ∘ₑ σ wk A ⁻¹))
+               (var zero (Sub⊢?Δσ σw (?⊢A Aw) ▷ Γ⊢Aₛ σw Aw)))
           (Sub⊢ₑ σw (drop (Γ⊢Aₛ σw Aw) (OPE⊢-idₑ (Sub⊢?Δσ σw (?⊢A Aw)))))) Bw)
 
   lookupₛ :
     ∀ {n m Γ Δ σ} → Sub⊢ {n} Γ {m} Δ σ → ∀ x → Δ ⊢ → Γ ⊢ ∈ₛ σ x ⇑ Tyₛ σ (lookup x Δ)
   lookupₛ {Δ = Δ ▷ A} (cons tw σw) zero (Δw ▷ Aw) =
     {!!}
-  lookupₛ {Δ = Δ ▷ A} (cons tw σw) (suc x) (Δw ▷ Aw) = {!!}
+  lookupₛ {Δ = Δ ▷ A} (cons tw σw) (suc x) (Δw ▷ Aw) =
+    {!!}
 
   Γ⊢t⇑Aₛ : ∀ {n m Γ Δ t A σ} → Sub⊢ {n} Γ {m} Δ σ → Δ ⊢ t ⇑ A → Γ ⊢ Tmₛ σ t ⇑ Tyₛ σ A
-  Γ⊢t⇑Aₛ σw (var x Δw)  = {!!} -- lookupₛ σw x Δw
+  Γ⊢t⇑Aₛ σw (var x Δw)  = lookupₛ σw x Δw
   Γ⊢t⇑Aₛ {Γ = Γ} {σ = σ} σw (lam {A} Aw tw) =
     lam (Γ⊢Aₛ σw Aw)
         (Γ⊢t⇑Aₛ
           (cons
-            ((coe (((Γ ▷ Tyₛ σ A) ⊢ var zero ⇓_) & (Ty-ₛ∘ₑ σ wk A ⁻¹))
-               (⇑⇓ (var zero (Sub⊢?Δσ σw (?⊢A Aw) ▷ Γ⊢Aₛ σw Aw)))))
+            ((coe (((Γ ▷ Tyₛ σ A) ⊢ var zero ⇑_) & (Ty-ₛ∘ₑ σ wk A ⁻¹))
+               (var zero (Sub⊢?Δσ σw (?⊢A Aw) ▷ Γ⊢Aₛ σw Aw))))
             ((Sub⊢ₑ σw (drop (Γ⊢Aₛ σw Aw) (OPE⊢-idₑ (Sub⊢?Δσ σw (?⊢A Aw))))))) tw)
   Γ⊢t⇑Aₛ {Γ = Γ} {σ = σ} σw (app {t} {u} {A} {B} tw uw) =
     coe
@@ -180,5 +183,7 @@ mutual
 Γ⊢t⇑? (var x Γw)  = Γ⊢lookupxΓ x Γw
 Γ⊢t⇑? (lam Aw tw) = Π Aw (Γ⊢t⇑? tw)
 Γ⊢t⇑? {Γ = Γ} (app {t} {u} {A} {B} tw uw) =
-  Γ⊢Aₛ (cons (coe ((Γ ⊢ u ⇓_) & (Ty-idₛ A ⁻¹)) uw)
-       (Sub⊢-idₛ (?⊢A (Γ⊢Π?B (Γ⊢t⇑? tw))))) (Γ⊢ΠA? (Γ⊢t⇑? tw))
+  Γ⊢Aₛ (cons
+         {!!}
+         -- (coe ((Γ ⊢ u ⇓_) & (Ty-idₛ A ⁻¹)) uw)
+         (Sub⊢-idₛ (?⊢A (Γ⊢Π?B (Γ⊢t⇑? tw))))) (Γ⊢ΠA? (Γ⊢t⇑? tw))
