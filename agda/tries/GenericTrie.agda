@@ -51,13 +51,13 @@ open μᵀ
 mutual
   lookup : ∀ a {B} → *ᵀ a B → (⟦ a ⟧ → B)
   lookup ⊤     t i        = t
-  lookup (μ f) t (fold i) = lookupF f f (t .unfold) i 
+  lookup (μ f) t (fold i) = lookupF f f (t .unfold) i
 
   lookupF : ∀ f g {B} → Fᵀ f (μ g) B → ⟦ f ⟧ᶠ (Fix g) → B
-  lookupF I       h t (fold i)  = lookupF h h (t .unfold) i 
+  lookupF I       h t (fold i)  = lookupF h h (t .unfold) i
   lookupF (K a)   h t i         = lookup a t i
   lookupF (f + g) h t (inl i)   = lookupF f h (t .proj₁) i
-  lookupF (f + g) h t (inr i)   = lookupF g h (t .proj₂) i  
+  lookupF (f + g) h t (inr i)   = lookupF g h (t .proj₂) i
   lookupF (f × g) h t (i₁ , i₂) = lookupF g h (lookupF f h t i₁) i₂
 
 mutual
@@ -114,3 +114,7 @@ test = sizeᵀ .unfold .proj₂ .unfold .proj₂ .unfold
 -- todo: investigate fixed points of (* → *) → (* → *)
 -- see if nice induction for nested types falls out
 
+-- F = K ⊤ + (I × I)
+
+-- Fᵀ = (λ A X → X × (Aᵀ (Aᵀ X)))
+--

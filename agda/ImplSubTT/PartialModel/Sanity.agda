@@ -96,9 +96,9 @@ mutual
 
   Γ⊢t∈Aₑ : ∀ {n m Γ Δ t A σ} → OPE⊢ {n}{m} Γ Δ σ → Δ ⊢ t ∈ A → Γ ⊢ Tmₑ σ t ∈ Tyₑ σ A
   Γ⊢t∈Aₑ σ (var x)          = var (x,A∈Γₑ σ x)
-  Γ⊢t∈Aₑ {Γ = Γ} {σ = σ} σw (app {t} {u} {B = B} tw uw) =
+  Γ⊢t∈Aₑ {Γ = Γ} {σ = σ} σw (app {t} {u} {A}{B} tw uw) =
     coe
-      ((Γ ⊢ app (Tmₑ σ t) (Tmₑ σ u) ∈_) &
+      ((Γ ⊢ app (Tyₑ σ A) (Tyₑ (keep σ) B) (Tmₑ σ t) (Tmₑ σ u) ∈_) &
             (Ty-ₑ∘ₛ (keep σ) (idₛ , Tmₑ σ u) B ⁻¹
           ◾ (λ x → Tyₛ (x , Tmₑ σ u) B) & (idrₑₛ σ ◾ idlₛₑ σ ⁻¹)
           ◾ Ty-ₛ∘ₑ (idₛ , u) σ B))
@@ -157,7 +157,7 @@ mutual
   Γ⊢t∈Aₛ σw (var x) = x,A∈Γₛ σw x
   Γ⊢t∈Aₛ {Γ = Γ} {σ = σ} σw (app {t} {u} {A} {B} tw uw) =
     coe
-      ((Γ ⊢ app (Tmₛ σ t) (Tmₛ σ u) ∈_) &
+      ((Γ ⊢ app (Tyₛ σ A) (Tyₛ (keepₛ σ) B) (Tmₛ σ t) (Tmₛ σ u) ∈_) &
           (Ty-∘ₛ (keepₛ σ) (idₛ , Tmₛ σ u) B ⁻¹
         ◾ (λ x → Tyₛ (x , Tmₛ σ u) B) &
              (assₛₑₛ σ wk (idₛ , Tmₛ σ u)

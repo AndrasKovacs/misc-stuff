@@ -48,4 +48,3 @@ p01 f n decrf =
         (inj₁ p) → i , p;
         (inj₂ (i' , p)) → rec (f i') (≤⇒≤′ $ subst (f i' <_) eq p) i' refl}))
     (f 0) 0 refl
-

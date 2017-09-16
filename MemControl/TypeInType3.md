@@ -103,8 +103,8 @@ El U' ≡ U
 ───────────────────────────────
     Γ ⊢ (a : A) → B : U
 
- Γ, a : El A ⊢ t : El B
-────────────────────────
+   Γ, a : El A ⊢ t : El B
+────────────────────────────
 Γ ⊢ λ a. t : El ((a : A) → B)
 
 Γ ⊢ t : (a : A) → B   Γ ⊢ u : El A
@@ -215,12 +215,12 @@ Non-code types
 Γ ⊢ true : Bool   Γ ⊢ false : Bool
 
                Γ, x : Bool ⊢ B
-Γ ⊢ t : B[x ⊢> true]   Γ ⊢ u : B[x ⊢> false]
+Γ ⊢ t : B[x ⊢> true]   Γ ⊢ f : B[x ⊢> false]
                Γ ⊢ b : Bool
 ────────────────────────────────────────────
    Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
 
-Bool-elim (x.B) t f true ≡ t
+Bool-elim (x.B) t f true  ≡ t
 Bool-elim (x.B) t f false ≡ f
 
 Γ ⊢ E   Γ ⊢ e* : E   Γ ⊢ A   Γ, a : A ⊢ B
@@ -233,15 +233,15 @@ Bool-elim (x.B) t f false ≡ f
 
 Closure-converted functions
 
-                Γ ⊢ A   Γ, a : A ⊢ B
-──────────────────────────────────────────────────────────
-(a : A) →⁺ B := (E : U, e* : E, code: [e* : E](a : A) → B)
+                   Γ ⊢ A   Γ, a : A ⊢ B
+────────────────────────────────────────────────────────────────
+(a : A) →⁺ B := (E : U, e* : El E, code: [e* : El E](a : A) → B)
 
-  Γ ⊢ t : (a : A) →⁺ B   Γ ⊢ u : A
-──────────────────────────────────────
-capp(t, u) := t.code (t.e*, u) : B[a ⊢> u]
+   Γ ⊢ t : (a : A) →⁺ B   Γ ⊢ u : A
+──────────────────────────────────────────
+appᶜ(t, u) := t.code (t.e*, u) : B[a ⊢> u]
 
-Codes
+Codes (Strongly Tarski)
 
 ──────────
 Γ ⊢ U' : U
@@ -313,7 +313,10 @@ Bool⁺ = Bool'
 
 ((a : A) → B)⁺ = ?
 (λ a. t)⁺      = ?
-(a : A, B)⁺    = (A⁺; (λ a.B)⁺)
+(a : A, B)⁺    = (A⁺; (λ a. B)⁺)
+                 (λ a . B) : El ((a : A) → U')
+
+
 (t u)⁺         = appᶜ(t⁺, u⁺)
 
 (π₁ t)⁺                  = π₁ t⁺
@@ -322,6 +325,56 @@ Bool⁺ = Bool'
 true⁺                    = true
 false⁺                   = false
 (Bool-elim (x.B) t f b)⁺ = Bool-elim (x⁺.B⁺) t⁺ f⁺ b⁺
+```
+
+- We must be able to convert from types to codes, in an "inverse"
+  operation to El. We need this because in every closure Γ must be
+  reflected down to a code and stored there.
+
+- We should be able to translate from a Russell-style U:U source
+  language.  There are still separate translations for types and
+  codes, and we have to determine from context which one to use, in
+  the absence of El. If we have this kind of source language, there is
+  less back-and-forth "churn" in closure conversion, because
+  types-as-types can be directly translated to types, instead of first
+  translating to codes and the El-ing to types. However, translating
+  types-as-codes to codes can't be avoided in general.
+
+- (El ((a : A) → B)⁺) must be equal to ((a : A) →⁺ B).
+
+- We must be able to trim contexts to the minimal dependencies of a term.
+  It's not just FreeVars(t). We need to recursively consider variables, types of
+  variables and variables inside types of variables.
 
 
+-- (λ a. t)⁺
+------------------------------------------------------------
+
+Γ, a : El A ⊢ B : U
+Γ, a : El A ⊢ t : El B
+Γ⁺, a⁺ : El A⁺ ⊢ B⁺ : U
+Γ⁺, a⁺ : El A⁺ ⊢ t⁺ : El B⁺
+
+First without trimming
+
+Goal type : `(E : U, e* : El E, code : [e* : El E](a : El A⁺) → El B⁺)`
+
+  E := quote(Γ⁺)
+  e* := vars(Γ⁺) : quote(Γ⁺)
+
+Inner type of code:
+
+  code : (x : (e : E, El A⁺[xᵢ ⊢> πᵢ e])) → El B⁺[xᵢ ⊢> πᵢ x]
+
+Therefore:
+```
+  code :
+    [vars(Γ⁺) : quote(Γ⁺)]
+	(a : El (A⁺[xᵢ ⊢> πᵢ e][e ⊢> vars(Γ⁺)]))
+	→ El (B⁺[xᵢ ⊢> πᵢ x][x ⊢> (vars(Γ⁺), a)])
+
+  code :
+    [vars(Γ⁺) : quote(Γ⁺)]
+	(a : El (A⁺[xᵢ ⊢> πᵢ (vars(Γ⁺))]))
+	→ El (B⁺[xᵢ ⊢> πᵢ x][x ⊢> (vars(Γ⁺), a)])
 ```
