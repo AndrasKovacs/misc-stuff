@@ -27,3 +27,12 @@ postulate
     ∀ {α β A P embedᴾ truncᴾ x y}
     → (∣∣-rec {α}{β}{A}{P} embedᴾ truncᴾ & (trunc x y))
     ≡ truncᴾ (∣∣-rec embedᴾ truncᴾ x) (∣∣-rec embedᴾ truncᴾ y)
+
+infixl 9 _∣&∣_
+infixl 8 _∣⊗∣_
+
+_∣&∣_ : ∀ {α β}{A : Set α}{B : Set β} → (A → B) → ∣ A ∣ → ∣ B ∣
+_∣&∣_ f a = ∣∣-rec (embed ∘ f) trunc a
+
+_∣⊗∣_ : ∀ {α β}{A : Set α}{B : Set β} → ∣ (A → B) ∣ → ∣ A ∣ → ∣ B ∣
+_∣⊗∣_ f a = ∣∣-rec (λ f → ∣∣-rec (λ a → embed (f a)) trunc a) trunc f

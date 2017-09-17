@@ -10,6 +10,7 @@ open import Conversion
 open import Typing
 open import Sanity
 open import SyntaxSet
+open import PropTrunc
 open import UIP
 
 Conᴹ :
@@ -31,8 +32,12 @@ Tyᴹ Γw U         γ = Uᴹ
 Tyᴹ Γw (El tw)   γ = Elᴹ {!!}
 Tyᴹ Γw (Π Aw Bw) γ = (α : Tyᴹ Γw Aw γ) → Tyᴹ (Γw ▷ Aw) Bw (γ , α)
 
+lookupᴹ : ∀ {n Γ} Γw x (Aw : Γ ⊢ lookup x Γ) → (γ : Conᴹ {n}{Γ} Γw) → Tyᴹ Γw Aw γ
+lookupᴹ (Γw ▷ Aw) zero    _ (γ , t) = {!!}
+lookupᴹ (Γw ▷ Aw) (suc x) _ (γ , t) = {!!}
+
 Tm⇑ᴹ Γw Aw        (var x)    γ = {!!}
 Tm⇑ᴹ Γw (Π Aw Bw) (lam _ tw) γ = λ α → Tm⇑ᴹ (Γw ▷ Aw) Bw tw (γ , α)
-Tm⇑ᴹ Γw Aw        (app tw x) γ = {!Tm⇑ᴹ Γw ? tw!}
+Tm⇑ᴹ Γw Aw        (app tw x) γ = {!Tm⇑ᴹ Γw!}
 
 Tm⇓ᴹ Γw Aw tw = {!!}
