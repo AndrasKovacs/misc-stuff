@@ -1,13 +1,13 @@
 
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --without-K #-}
 
 module PropTrunc where
 open import Lib
 
-private
-  postulate
-      _⊢>_ : ∀ {α}{A : Set α} → A → A → Set α
-  {-# BUILTIN REWRITE _⊢>_ #-}
+-- private
+--   postulate
+--       _⊢>_ : ∀ {α}{A : Set α} → A → A → Set α
+--   {-# BUILTIN REWRITE _⊢>_ #-}
 
 postulate
   ∣_∣   : ∀ {α} → Set α → Set α
@@ -19,8 +19,8 @@ postulate
 
 postulate
   ∣∣-rec-embed :
-    ∀ {α β A P embedᴾ truncᴾ a} → ∣∣-rec {α}{β}{A}{P} embedᴾ truncᴾ (embed a) ⊢> embedᴾ a
-{-# REWRITE ∣∣-rec-embed #-}
+    ∀ {α β A P embedᴾ truncᴾ a} → ∣∣-rec {α}{β}{A}{P} embedᴾ truncᴾ (embed a) ≡ embedᴾ a
+-- {-# REWRITE ∣∣-rec-embed #-}
 
 postulate
   ∣∣-rec-trunc :
