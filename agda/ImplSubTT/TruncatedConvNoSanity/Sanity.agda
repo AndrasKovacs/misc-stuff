@@ -169,3 +169,11 @@ mutual
   Γ⊢t⇓Aprop : ∀ {n}{Γ : Con n}{t A} → Prop (Γ ⊢ t ⇓ A)
   Γ⊢t⇓Aprop (A , tw , p) (A' , tw' , p') with ⇑unique tw tw' | p | p'
   ... | refl | p* | p'* rewrite Γ⊢t⇑Aprop tw tw' | trunc p* p'* = refl
+
+--------------------------------------------------------------------------------
+
+-- Γ⊢t⇑? : ∀ {n}{Γ : Con n}{t A} → Γ ⊢ → Γ ⊢ t ⇑ A → Γ ⊢ A
+-- Γ⊢t⇑? Γw (var x)     = {!!}
+-- Γ⊢t⇑? Γw (lam Aw tw) = Π Aw (Γ⊢t⇑? (Γw ▷ Aw) tw)
+-- Γ⊢t⇑? Γw (app tw (A' , uw , p)) with Γ⊢t⇑? Γw tw
+-- ... | Π Aw Bw = {!!}
