@@ -1,4 +1,3 @@
-
 {-# OPTIONS --without-K #-}
 
 open import Relation.Binary.PropositionalEquality
@@ -11,7 +10,7 @@ _&_ = cong
 _⁻¹ = sym
 _◾_ = trans
 
-coe : ∀ {A B : Set} → A ≡ B → A → B
+coe : {A B : Set} → A ≡ B → A → B
 coe refl a = a
 
 _⊗_ : ∀ {A B : Set}{f g : A → B}{a a'} → f ≡ g → a ≡ a' → f a ≡ g a'
@@ -48,7 +47,7 @@ data Tm Γ : Ty → Set where
 -- Embedding
 --------------------------------------------------------------------------------
 
--- order-preserving embedding
+-- Order-preserving embedding
 data OPE : Con → Con → Set where
   ∙    : OPE ∙ ∙
   drop : ∀ {A Γ Δ} → OPE Γ Δ → OPE (Γ , A) Δ
@@ -121,8 +120,7 @@ Tm-∘ₑ σ δ (var v)   = var & ∈-∘ₑ σ δ v
 Tm-∘ₑ σ δ (lam t)   = lam & Tm-∘ₑ (keep σ) (keep δ) t
 Tm-∘ₑ σ δ (app f a) = app & Tm-∘ₑ σ δ f ⊗ Tm-∘ₑ σ δ a
 
--- Substitution
--- (Satisfies the usual category-with-families equations except the β and η conversions)
+-- Theory of substitution & embedding
 --------------------------------------------------------------------------------
 
 infixr 6 _ₑ∘ₛ_ _ₛ∘ₑ_ _∘ₛ_
@@ -131,9 +129,6 @@ data Sub (Γ : Con) : Con → Set where
   ∙   : Sub Γ ∙
   _,_ : ∀ {A : Ty}{Δ : Con} → Sub Γ Δ → Tm Γ A → Sub Γ (Δ , A)
 
--- σ : Sub Γ Δ   --- a Tm Γ _ for each free variable in Δ
-
--- Left and right compositions with embedding
 _ₛ∘ₑ_ : ∀ {Γ Δ Σ} → Sub Δ Σ → OPE Γ Δ → Sub Γ Σ
 ∙       ₛ∘ₑ δ = ∙
 (σ , t) ₛ∘ₑ δ = σ ₛ∘ₑ δ , Tmₑ δ t
@@ -143,7 +138,6 @@ _ₑ∘ₛ_ : ∀ {Γ Δ Σ} → OPE Δ Σ → Sub Γ Δ → Sub Γ Σ
 drop σ ₑ∘ₛ (δ , t) = σ ₑ∘ₛ δ
 keep σ ₑ∘ₛ (δ , t) = σ ₑ∘ₛ δ , t
 
--- Inject OPE into Sub
 dropₛ : ∀ {A Γ Δ} → Sub Γ Δ → Sub (Γ , A) Δ
 dropₛ σ = σ ₛ∘ₑ wk
 
@@ -155,7 +149,6 @@ keepₛ σ = dropₛ σ , var vz
 ⌜ drop σ ⌝ᵒᵖᵉ = dropₛ ⌜ σ ⌝ᵒᵖᵉ
 ⌜ keep σ ⌝ᵒᵖᵉ = keepₛ ⌜ σ ⌝ᵒᵖᵉ
 
--- Action on ∈ and Tm
 ∈ₛ : ∀ {A Γ Δ} → Sub Γ Δ → A ∈ Δ → Tm Γ A
 ∈ₛ (σ , t) vz     = t
 ∈ₛ (σ  , t)(vs v) = ∈ₛ σ v
@@ -165,16 +158,14 @@ Tmₛ σ (var v)   = ∈ₛ σ v
 Tmₛ σ (lam t)   = lam (Tmₛ (keepₛ σ) t)
 Tmₛ σ (app f a) = app (Tmₛ σ f) (Tmₛ σ a)
 
--- Identity and composition
 idₛ : ∀ {Γ} → Sub Γ Γ
 idₛ {∙}     = ∙
-idₛ {Γ , A} = (idₛ {Γ} ₛ∘ₑ drop idₑ) , var vz -- keepₛ idₛ
+idₛ {Γ , A} = (idₛ {Γ} ₛ∘ₑ drop idₑ) , var vz
 
 _∘ₛ_ : ∀ {Γ Δ Σ} → Sub Δ Σ → Sub Γ Δ → Sub Γ Σ
 ∙       ∘ₛ δ = ∙
 (σ , t) ∘ₛ δ = σ ∘ₛ δ , Tmₛ δ t
 
--- Functor laws for (Tm _ A) and (A ∈ _).
 assₛₑₑ :
   ∀ {Γ Δ Σ Ξ}(σ : Sub Σ Ξ)(δ : OPE Δ Σ)(ν : OPE Γ Δ)
   → (σ ₛ∘ₑ δ) ₛ∘ₑ ν ≡ σ ₛ∘ₑ (δ ∘ₑ ν)
@@ -272,8 +263,6 @@ Tm-∘ₛ σ δ (lam t)   =
     ◾ Tm-∘ₛ (keepₛ σ) (keepₛ δ) t)
 Tm-∘ₛ σ δ (app f a) = app & Tm-∘ₛ σ δ f ⊗ Tm-∘ₛ σ δ a
 
--- category laws
-
 idrₛ : ∀ {Γ Δ}(σ : Sub Γ Δ) → σ ∘ₛ idₛ ≡ σ
 idrₛ ∙       = refl
 idrₛ (σ , t) = _,_ & idrₛ σ ⊗ Tm-idₛ t
@@ -281,12 +270,6 @@ idrₛ (σ , t) = _,_ & idrₛ σ ⊗ Tm-idₛ t
 idlₛ : ∀ {Γ Δ}(σ : Sub Γ Δ) → idₛ ∘ₛ σ ≡ σ
 idlₛ ∙       = refl
 idlₛ (σ , t) = (_, t) & (assₛₑₛ idₛ wk (σ , t) ◾ (idₛ ∘ₛ_) & idlₑₛ σ ◾ idlₛ σ)
-
-assₛ :
-  ∀ {Γ Δ Σ Ξ}(σ : Sub Σ Ξ)(δ : Sub Δ Σ)(ν : Sub Γ Δ)
-  → (σ ∘ₛ δ) ∘ₛ ν ≡ σ ∘ₛ (δ ∘ₛ ν)
-assₛ ∙       δ ν = refl
-assₛ (σ , t) δ ν = _,_ & assₛ σ δ ν ⊗ (Tm-∘ₛ δ ν t ⁻¹)
 
 -- Reduction
 --------------------------------------------------------------------------------
@@ -345,7 +328,7 @@ Tmₑ~> {t = app (app f a) a'}  (app₁ step) with Tmₑ~> step
 Tmₑ~> {t = app (app f a) a''} (app₂ step) with Tmₑ~> step
 ... | t'' , (p , refl) = app (app f a) t'' , app₂ p , refl
 
--- Strong normalization definition
+-- Strong normalization/neutrality definition
 --------------------------------------------------------------------------------
 
 data SN {Γ A} (t : Tm Γ A) : Set where
@@ -394,10 +377,12 @@ Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Tmᴾₑ σ tᴾ
 ~>ᴾ {A = A ⇒ B} t~>t' tᴾ       = λ σ aᴾ → ~>ᴾ (app₁ (~>ₑ σ t~>t')) (tᴾ σ aᴾ)
 
 mutual
+  -- quote
   qᴾ : ∀ {Γ A}{t : Tm Γ A} → Tmᴾ t → SN t
   qᴾ {A = ι}     tᴾ = tᴾ
   qᴾ {A = A ⇒ B} tᴾ = SNₑ← wk $ SN-app₁ (qᴾ $ tᴾ wk (uᴾ (var vz) (λ ())))
 
+  -- unquote
   uᴾ : ∀ {Γ A}(t : Tm Γ A){nt : neu t} → (∀ {t'} → t ~> t' → Tmᴾ t') → Tmᴾ t
   uᴾ {Γ} {A = ι} t      f     = sn f
   uᴾ {Γ} {A ⇒ B} t {nt} f {Δ} σ {a} aᴾ =
@@ -416,31 +401,31 @@ mutual
       go t nt f a aᴾ (sn aˢⁿ) (app₂ {a' = a'} step) =
         uᴾ (app t a') (go t nt f a' (~>ᴾ step aᴾ) (aˢⁿ step))
 
-eval-∈ : ∀ {Γ A}(v : A ∈ Γ) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (∈ₛ σ v)
-eval-∈ vz     (σᴾ , tᴾ) = tᴾ
-eval-∈ (vs v) (σᴾ , tᴾ) = eval-∈ v σᴾ
+fundThm-∈ : ∀ {Γ A}(v : A ∈ Γ) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (∈ₛ σ v)
+fundThm-∈ vz     (σᴾ , tᴾ) = tᴾ
+fundThm-∈ (vs v) (σᴾ , tᴾ) = fundThm-∈ v σᴾ
 
-eval-lam :
+fundThm-lam :
   ∀ {Γ A B}
     (t : Tm (Γ , A) B)
   → SN t
   → (∀ {a} → Tmᴾ a → Tmᴾ (Tmₛ (idₛ , a) t))
   → ∀ a → SN a → Tmᴾ a → Tmᴾ (app (lam t) a)
-eval-lam {Γ} t (sn tˢⁿ) hyp a (sn aˢⁿ) aᴾ = uᴾ (app (lam t) a)
+fundThm-lam {Γ} t (sn tˢⁿ) hyp a (sn aˢⁿ) aᴾ = uᴾ (app (lam t) a)
   λ {(β _ _) → hyp aᴾ;
      (app₁ (lam {t' = t'} t~>t')) →
-       eval-lam t' (tˢⁿ t~>t') (λ aᴾ → ~>ᴾ (~>ₛ _ t~>t') (hyp aᴾ)) a (sn aˢⁿ) aᴾ;
+       fundThm-lam t' (tˢⁿ t~>t') (λ aᴾ → ~>ᴾ (~>ₛ _ t~>t') (hyp aᴾ)) a (sn aˢⁿ) aᴾ;
      (app₂ a~>a') →
-       eval-lam t (sn tˢⁿ) hyp _ (aˢⁿ a~>a') (~>ᴾ a~>a' aᴾ)}
+       fundThm-lam t (sn tˢⁿ) hyp _ (aˢⁿ a~>a') (~>ᴾ a~>a' aᴾ)}
 
-eval : ∀ {Γ A}(t : Tm Γ A) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (Tmₛ σ t)
-eval (var v) σᴾ = eval-∈ v σᴾ
-eval (lam {A} t) {σ = σ} σᴾ δ {a} aᴾ
+fundThm : ∀ {Γ A}(t : Tm Γ A) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (Tmₛ σ t)
+fundThm (var v) σᴾ = fundThm-∈ v σᴾ
+fundThm (lam {A} t) {σ = σ} σᴾ δ {a} aᴾ
   rewrite Tm-ₛ∘ₑ (keepₛ σ) (keep δ) t ⁻¹ | assₛₑₑ σ (wk {A}) (keep δ) | idlₑ δ
-  = eval-lam
+  = fundThm-lam
       (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
-      (qᴾ (eval t (Subᴾₑ (drop δ) σᴾ , uᴾ (var vz) (λ ()))))
-      (λ aᴾ → coe (Tmᴾ & sub-sub-lem) (eval t (Subᴾₑ δ σᴾ , aᴾ)))
+      (qᴾ (fundThm t (Subᴾₑ (drop δ) σᴾ , uᴾ (var vz) (λ ()))))
+      (λ aᴾ → coe (Tmᴾ & sub-sub-lem) (fundThm t (Subᴾₑ δ σᴾ , aᴾ)))
       a (qᴾ aᴾ) aᴾ
   where
     sub-sub-lem : ∀ {a} → Tmₛ (σ ₛ∘ₑ δ , a) t ≡ Tmₛ (idₛ , a) (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
@@ -448,14 +433,13 @@ eval (lam {A} t) {σ = σ} σᴾ δ {a} aᴾ
         (λ x → Tmₛ (x , a) t) &
           (idrₛ (σ ₛ∘ₑ δ) ⁻¹ ◾ assₛₑₛ σ δ idₛ ◾ assₛₑₛ σ (drop δ) (idₛ , a) ⁻¹)
       ◾ Tm-∘ₛ (σ ₛ∘ₑ drop δ , var vz) (idₛ , a) t
-eval (app f a) {σ = σ} σᴾ
+fundThm (app f a) {σ = σ} σᴾ
   rewrite Tm-idₑ (Tmₛ σ f) ⁻¹
-  = eval f σᴾ idₑ (eval a σᴾ)
+  = fundThm f σᴾ idₑ (fundThm a σᴾ)
 
 idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
 idₛᴾ {∙}     = ∙
 idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , uᴾ (var vz) (λ ())
 
 strongNorm : ∀ {Γ A}(t : Tm Γ A) → SN t
-strongNorm t = qᴾ (coe (Tmᴾ & Tm-idₛ t) (eval t idₛᴾ))
-
+strongNorm t = qᴾ (coe (Tmᴾ & Tm-idₛ t) (fundThm t idₛᴾ))

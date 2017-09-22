@@ -69,8 +69,24 @@ Tyᴹ Γw U         γ = Uᴹ
 Tyᴹ Γw (El tw)   γ = Elᴹ (Tm⇓ᴹ Γw U tw γ)
 Tyᴹ Γw (Π Aw Bw) γ = (α : Tyᴹ Γw Aw γ) → Tyᴹ (Γw ▷ Aw) Bw (γ , α)
 
+OPEᴹ Γw        ∙         ∙         γ       = tt
+OPEᴹ (Γw ▷ Aw) Δw        (drop σw) (γ , t) = OPEᴹ Γw Δw σw γ
+OPEᴹ (_▷_ {Γ = Γ} Γw Aw) (_▷_ {Γ = Δ} {A} Δw Aw') (keep {σ = σ} σw) (γ , t)
+  = (OPEᴹ Γw Δw σw γ) ,
+    coe ((λ x → Tyᴹ Γw x γ) & Γ⊢Aprop Aw (Γ⊢Aₑ σw Aw')
+  ◾ Tyₑᴹ Γw Δw Aw' σw γ) t
+
+OPEᴹ-idₑ : ∀ {n Γ} Γw γ → OPEᴹ {n}{Γ} Γw Γw idₑ⊢ γ ≡ γ
+OPEᴹ-idₑ ∙         γ = refl
+OPEᴹ-idₑ (_▷_ {Γ = Γ} {A} Γw Aw) (γ , t) = {!(coe ((λ x → OPE⊢ (Γ ▷ x) (Γ ▷ A) (keep idₑ)) & Ty-idₑ A))!}
+
 lookupᴹ : ∀ {n Γ} Γw x (Aw : Γ ⊢ lookup x Γ) → (γ : Conᴹ {n}{Γ} Γw) → Tyᴹ Γw Aw γ
-lookupᴹ (Γw ▷ Aw) zero    Aw' (γ , t) = {!!}   -- Aw' is Γ⊢Aₑ wk⊢ Aw: need semantic wk
+lookupᴹ (Γw ▷ Aw) zero    Aw' (γ , t) =
+  -- why is it not reducing ?
+  coe ((Tyᴹ Γw Aw & (OPEᴹ-idₑ Γw γ ⁻¹ ◾ agda-bug ⁻¹) ◾ Tyₑᴹ (Γw ▷ Aw) Γw Aw wk⊢ (γ , t) ⁻¹) ◾ (λ x → Tyᴹ (Γw ▷ Aw) x (γ , t)) & Γ⊢Aprop Aw' (Γ⊢Aₑ wk⊢ Aw) ⁻¹) t
+  where
+    postulate agda-bug : OPEᴹ (Γw ▷ Aw) Γw (drop idₑ⊢) (γ , t) ≡ OPEᴹ Γw Γw idₑ⊢ γ
+
 lookupᴹ (Γw ▷ Aw) (suc x) _   (γ , t) = {!!}
 
 Tm⇑ₑᴹ Γw Δw Aw σw (var x)     γ = {!!}
@@ -87,12 +103,7 @@ Tyₛᴹ Γw Δw U         σw γ = refl
 Tyₛᴹ Γw Δw (El x)    σw γ = Elᴹ & {!!}
 Tyₛᴹ Γw Δw (Π Aw Bw) σw γ = {!!}
 
-OPEᴹ Γw        ∙         ∙         γ       = tt
-OPEᴹ (Γw ▷ Aw) Δw        (drop σw) (γ , t) = OPEᴹ Γw Δw σw γ
-OPEᴹ (_▷_ {Γ = Γ} Γw Aw) (_▷_ {Γ = Δ} {A} Δw Aw') (keep {σ = σ} σw) (γ , t)
-  = (OPEᴹ Γw Δw σw γ) ,
-    coe ((λ x → Tyᴹ Γw x γ) & Γ⊢Aprop Aw (Γ⊢Aₑ σw Aw')
-  ◾ Tyₑᴹ Γw Δw Aw' σw γ) t
+
 
 Subᴹ Γw ∙         ∙        γ = tt
 Subᴹ Γw (Δw ▷ Aw) (σw , t) γ =
