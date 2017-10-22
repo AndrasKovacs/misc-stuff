@@ -376,70 +376,85 @@ Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Tmᴾₑ σ tᴾ
 ~>ᴾ {A = ι}     t~>t' (sn tˢⁿ) = tˢⁿ t~>t'
 ~>ᴾ {A = A ⇒ B} t~>t' tᴾ       = λ σ aᴾ → ~>ᴾ (app₁ (~>ₑ σ t~>t')) (tᴾ σ aᴾ)
 
-mutual
-  -- quote
-  qᴾ : ∀ {Γ A}{t : Tm Γ A} → Tmᴾ t → SN t
-  qᴾ {A = ι}     tᴾ = tᴾ
-  qᴾ {A = A ⇒ B} tᴾ = SNₑ← wk $ SN-app₁ (qᴾ $ tᴾ wk (uᴾ (var vz) (λ ())))
+-- mutual
+--   qᴾ : ∀ {Γ A}{t : Tm Γ A} → Tmᴾ t → SN t
+--   qᴾ {A = ι}     tᴾ = tᴾ
+--   qᴾ {A = A ⇒ B} tᴾ = SNₑ← wk $ SN-app₁ $ qᴾ $ tᴾ wk (uᴾ (var vz) (sn λ ()))
 
-  -- unquote
-  uᴾ : ∀ {Γ A}(t : Tm Γ A){nt : neu t} → (∀ {t'} → t ~> t' → Tmᴾ t') → Tmᴾ t
-  uᴾ {Γ} {A = ι} t      f     = sn f
-  uᴾ {Γ} {A ⇒ B} t {nt} f {Δ} σ {a} aᴾ =
-    uᴾ (app (Tmₑ σ t) a) (go (Tmₑ σ t) (neuₑ σ t nt) f' a aᴾ (qᴾ aᴾ))
-    where
-      f' : ∀ {t'} → Tmₑ σ t ~> t' → Tmᴾ t'
-      f' step δ aᴾ with Tmₑ~> step
-      ... | t'' , step' , refl rewrite Tm-∘ₑ σ δ t'' ⁻¹ = f step' (σ ∘ₑ δ) aᴾ
+--   uᴾ : ∀ {Γ A}(t : Tm Γ A){nt : neu t} → SN t → Tmᴾ t
+--   uᴾ {A = ι}     t {nt} snt = snt
+--   uᴾ {A = A ⇒ B} t {nt} (sn snt) σ {a} aᴾ =
+--     uᴾ (app (Tmₑ σ t) a) {!!}
+--     where
+--       f : ∀ {t}
 
-      go :
-        ∀ {Γ A B}(t : Tm Γ (A ⇒ B)) → neu t → (∀ {t'} → t ~> t' → Tmᴾ t')
-        → ∀ a → Tmᴾ a → SN a → ∀ {t'} → app t a ~> t' → Tmᴾ t'
-      go _ () _ _ _ _ (β _ _)
-      go t nt f a aᴾ sna (app₁ {f' = f'} step) =
-        coe ((λ x → Tmᴾ (app x a)) & Tm-idₑ f') (f step idₑ aᴾ)
-      go t nt f a aᴾ (sn aˢⁿ) (app₂ {a' = a'} step) =
-        uᴾ (app t a') (go t nt f a' (~>ᴾ step aᴾ) (aˢⁿ step))
 
-fundThm-∈ : ∀ {Γ A}(v : A ∈ Γ) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (∈ₛ σ v)
-fundThm-∈ vz     (σᴾ , tᴾ) = tᴾ
-fundThm-∈ (vs v) (σᴾ , tᴾ) = fundThm-∈ v σᴾ
 
-fundThm-lam :
-  ∀ {Γ A B}
-    (t : Tm (Γ , A) B)
-  → SN t
-  → (∀ {a} → Tmᴾ a → Tmᴾ (Tmₛ (idₛ , a) t))
-  → ∀ a → SN a → Tmᴾ a → Tmᴾ (app (lam t) a)
-fundThm-lam {Γ} t (sn tˢⁿ) hyp a (sn aˢⁿ) aᴾ = uᴾ (app (lam t) a)
-  λ {(β _ _) → hyp aᴾ;
-     (app₁ (lam {t' = t'} t~>t')) →
-       fundThm-lam t' (tˢⁿ t~>t') (λ aᴾ → ~>ᴾ (~>ₛ _ t~>t') (hyp aᴾ)) a (sn aˢⁿ) aᴾ;
-     (app₂ a~>a') →
-       fundThm-lam t (sn tˢⁿ) hyp _ (aˢⁿ a~>a') (~>ᴾ a~>a' aᴾ)}
 
-fundThm : ∀ {Γ A}(t : Tm Γ A) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (Tmₛ σ t)
-fundThm (var v) σᴾ = fundThm-∈ v σᴾ
-fundThm (lam {A} t) {σ = σ} σᴾ δ {a} aᴾ
-  rewrite Tm-ₛ∘ₑ (keepₛ σ) (keep δ) t ⁻¹ | assₛₑₑ σ (wk {A}) (keep δ) | idlₑ δ
-  = fundThm-lam
-      (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
-      (qᴾ (fundThm t (Subᴾₑ (drop δ) σᴾ , uᴾ (var vz) (λ ()))))
-      (λ aᴾ → coe (Tmᴾ & sub-sub-lem) (fundThm t (Subᴾₑ δ σᴾ , aᴾ)))
-      a (qᴾ aᴾ) aᴾ
-  where
-    sub-sub-lem : ∀ {a} → Tmₛ (σ ₛ∘ₑ δ , a) t ≡ Tmₛ (idₛ , a) (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
-    sub-sub-lem {a} =
-        (λ x → Tmₛ (x , a) t) &
-          (idrₛ (σ ₛ∘ₑ δ) ⁻¹ ◾ assₛₑₛ σ δ idₛ ◾ assₛₑₛ σ (drop δ) (idₛ , a) ⁻¹)
-      ◾ Tm-∘ₛ (σ ₛ∘ₑ drop δ , var vz) (idₛ , a) t
-fundThm (app f a) {σ = σ} σᴾ
-  rewrite Tm-idₑ (Tmₛ σ f) ⁻¹
-  = fundThm f σᴾ idₑ (fundThm a σᴾ)
+-- mutual
+--   -- quote
+--   qᴾ : ∀ {Γ A}{t : Tm Γ A} → Tmᴾ t → SN t
+--   qᴾ {A = ι}     tᴾ = tᴾ
+--   qᴾ {A = A ⇒ B} tᴾ = SNₑ← wk $ SN-app₁ (qᴾ $ tᴾ wk (uᴾ (var vz) (λ ())))
 
-idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
-idₛᴾ {∙}     = ∙
-idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , uᴾ (var vz) (λ ())
+--   -- unquote
+--   uᴾ : ∀ {Γ A}(t : Tm Γ A){nt : neu t} → (∀ {t'} → t ~> t' → Tmᴾ t') → Tmᴾ t
+--   uᴾ {Γ} {A = ι} t      f     = sn f
+--   uᴾ {Γ} {A ⇒ B} t {nt} f {Δ} σ {a} aᴾ =
+--     uᴾ (app (Tmₑ σ t) a) (go (Tmₑ σ t) (neuₑ σ t nt) f' a aᴾ (qᴾ aᴾ))
+--     where
+--       f' : ∀ {t'} → Tmₑ σ t ~> t' → Tmᴾ t'
+--       f' step δ aᴾ with Tmₑ~> step
+--       ... | t'' , step' , refl rewrite Tm-∘ₑ σ δ t'' ⁻¹ = f step' (σ ∘ₑ δ) aᴾ
 
-strongNorm : ∀ {Γ A}(t : Tm Γ A) → SN t
-strongNorm t = qᴾ (coe (Tmᴾ & Tm-idₛ t) (fundThm t idₛᴾ))
+--       go :
+--         ∀ {Γ A B}(t : Tm Γ (A ⇒ B)) → neu t → (∀ {t'} → t ~> t' → Tmᴾ t')
+--         → ∀ a → Tmᴾ a → SN a → ∀ {t'} → app t a ~> t' → Tmᴾ t'
+--       go _ () _ _ _ _ (β _ _)
+--       go t nt f a aᴾ sna (app₁ {f' = f'} step) =
+--         coe ((λ x → Tmᴾ (app x a)) & Tm-idₑ f') (f step idₑ aᴾ)
+--       go t nt f a aᴾ (sn aˢⁿ) (app₂ {a' = a'} step) =
+--         uᴾ (app t a') (go t nt f a' (~>ᴾ step aᴾ) (aˢⁿ step))
+
+-- fundThm-∈ : ∀ {Γ A}(v : A ∈ Γ) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (∈ₛ σ v)
+-- fundThm-∈ vz     (σᴾ , tᴾ) = tᴾ
+-- fundThm-∈ (vs v) (σᴾ , tᴾ) = fundThm-∈ v σᴾ
+
+-- fundThm-lam :
+--   ∀ {Γ A B}
+--     (t : Tm (Γ , A) B)
+--   → SN t
+--   → (∀ {a} → Tmᴾ a → Tmᴾ (Tmₛ (idₛ , a) t))
+--   → ∀ a → SN a → Tmᴾ a → Tmᴾ (app (lam t) a)
+-- fundThm-lam {Γ} t (sn tˢⁿ) hyp a (sn aˢⁿ) aᴾ = uᴾ (app (lam t) a)
+--   λ {(β _ _) → hyp aᴾ;
+--      (app₁ (lam {t' = t'} t~>t')) →
+--        fundThm-lam t' (tˢⁿ t~>t') (λ aᴾ → ~>ᴾ (~>ₛ _ t~>t') (hyp aᴾ)) a (sn aˢⁿ) aᴾ;
+--      (app₂ a~>a') →
+--        fundThm-lam t (sn tˢⁿ) hyp _ (aˢⁿ a~>a') (~>ᴾ a~>a' aᴾ)}
+
+-- fundThm : ∀ {Γ A}(t : Tm Γ A) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (Tmₛ σ t)
+-- fundThm (var v) σᴾ = fundThm-∈ v σᴾ
+-- fundThm (lam {A} t) {σ = σ} σᴾ δ {a} aᴾ
+--   rewrite Tm-ₛ∘ₑ (keepₛ σ) (keep δ) t ⁻¹ | assₛₑₑ σ (wk {A}) (keep δ) | idlₑ δ
+--   = fundThm-lam
+--       (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
+--       (qᴾ (fundThm t (Subᴾₑ (drop δ) σᴾ , uᴾ (var vz) (λ ()))))
+--       (λ aᴾ → coe (Tmᴾ & sub-sub-lem) (fundThm t (Subᴾₑ δ σᴾ , aᴾ)))
+--       a (qᴾ aᴾ) aᴾ
+--   where
+--     sub-sub-lem : ∀ {a} → Tmₛ (σ ₛ∘ₑ δ , a) t ≡ Tmₛ (idₛ , a) (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
+--     sub-sub-lem {a} =
+--         (λ x → Tmₛ (x , a) t) &
+--           (idrₛ (σ ₛ∘ₑ δ) ⁻¹ ◾ assₛₑₛ σ δ idₛ ◾ assₛₑₛ σ (drop δ) (idₛ , a) ⁻¹)
+--       ◾ Tm-∘ₛ (σ ₛ∘ₑ drop δ , var vz) (idₛ , a) t
+-- fundThm (app f a) {σ = σ} σᴾ
+--   rewrite Tm-idₑ (Tmₛ σ f) ⁻¹
+--   = fundThm f σᴾ idₑ (fundThm a σᴾ)
+
+-- idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
+-- idₛᴾ {∙}     = ∙
+-- idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , uᴾ (var vz) (λ ())
+
+-- strongNorm : ∀ {Γ A}(t : Tm Γ A) → SN t
+-- strongNorm t = qᴾ (coe (Tmᴾ & Tm-idₛ t) (fundThm t idₛᴾ))

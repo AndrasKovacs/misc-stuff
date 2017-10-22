@@ -68,4 +68,3 @@ Quote {A ⇒ B}{t} (t' , p , q) = lam t' , (λ _ → p)
 
 whnf : ∀ {A}(t : Tm ∙ A) → Reducible t
 whnf t = coe (Reducible & Tm-idₛ t) (Quote (eval t ∙))
-

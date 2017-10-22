@@ -1,43 +1,44 @@
 
+
 {-# OPTIONS --without-K #-}
 
-open import Data.Empty
-open import Data.Unit
-open import Data.Bool
-open import Data.Nat
-open import Data.Product
 open import Relation.Binary.PropositionalEquality
 
-data Type′ (U : Set) (El : U → Set) : Set
-⟦_⟧′ : {U : Set} {El : U → Set} → Type′ U El → Set
+transp : {A : Set}(P : A → Set){x y : A} → x ≡ y → P x → P y
+transp P refl x = x
 
-data Type′ U El where
-  `Type : Type′ U El
-  `⟦_⟧ : U → Type′ U El
-  `⊥ `⊤ `Bool : Type′ U El
-  `Π `Σ : (τ : Type′ U El) (τ′ : ⟦ τ ⟧′ → Type′ U El) → Type′ U El
+transp₂ : {A : Set}{B : A → Set}(C : ∀ a (b : B a) → Set){x y : A}{b : B x}(p : x ≡ y)
+          → C x b → C y (transp B p b)
+transp₂ C refl x = x
 
-⟦_⟧′ {U = U} `Type = U
-⟦_⟧′ {El = El} `⟦ τ ⟧ = El τ
-⟦ `⊥ ⟧′ = ⊥
-⟦ `⊤ ⟧′ = ⊤
-⟦ `Bool ⟧′ = Bool
-⟦ `Π τ τ′ ⟧′ = (v : ⟦ τ ⟧′) → ⟦ τ′ v ⟧′
-⟦ `Σ τ τ′ ⟧′ = Σ ⟦ τ ⟧′ λ v → ⟦ τ′ v ⟧′
+contract : {A : Set}(P : A → Set){x y : A}(p : x ≡ y) → transp (x ≡_) p refl ≡ p
+contract P refl = refl
 
-Type : {n : ℕ} → Set
-_⟦_⟧ : (n : ℕ) → Type {n} → Set
 
-Type {zero}  = Type′ ⊥ ⊥-elim
-Type {suc n} = Type′ (Type {n}) (_⟦_⟧ n)
 
-_⟦_⟧ (zero)  e = ⟦ e ⟧′
-_⟦_⟧ (suc n) e = ⟦ e ⟧′
+-- {-# OPTIONS --without-K #-}
 
-------------------------------------------------------------
+-- open import Relation.Binary.PropositionalEquality
+-- open import Data.Product
+-- open import Data.Bool
 
-idt : ∀ {U El} → Type′ U El
-idt = `Π `Type λ A → `Π `⟦ A ⟧ λ _ → `⟦ A ⟧
+-- postulate ext : ∀ {α β} → Extensionality α β
 
-id : ∀ {n} → suc n ⟦ idt ⟧
-id = λ A x → x
+-- contr : Set → Set
+-- contr A = Σ A λ a → ∀ a' → a ≡ a'
+
+-- if' : ∀ {A : Set}(b : Bool) → (b ≡ true → A) → (b ≡ false → A) → A
+-- if' {A} false t f = f refl
+-- if' {A} true  t f = t refl
+
+-- if'-true : ∀ {A} b t f (p : b ≡ true) → if' {A} b t f ≡ t p
+-- if'-true false t f ()
+-- if'-true true t f refl = refl
+
+-- thm : ∀ A B (P : A → Bool) → contr (A → B) → contr ((Σ A λ a → P a ≡ true) → B)
+-- thm A B P (f , fp) =
+--   (λ w → f (proj₁ w)) ,
+--   λ g → ext λ {(a , pa) →
+--     trans
+--       (cong (λ f → f a) (fp λ a → if' (P a) (λ pa → g (a , pa)) (λ _ → f a)))
+--       (if'-true (P a) (λ pa → g (a , pa)) (λ _ →  f a) pa ) }

@@ -27,7 +27,7 @@ mutual
     _∘ₛ_ : ∀{Γ Δ Σ} → Tms Δ Σ → Tms Γ Δ → Tms Γ Σ
     _,_  : ∀{Γ Δ}(δ : Tms Γ Δ){A : Ty} → Tm Γ A → Tms Γ (Δ , A)
     π₁   : ∀{Γ Δ}{A : Ty} → Tms Γ (Δ , A) →  Tms Γ Δ
-  
+
   data Tm : Con → Ty → Set where
     _[_] : ∀{Γ Δ}{A : Ty} → Tm Δ A → Tms Γ Δ → Tm Γ A
     π₂   : ∀{Γ Δ}{A : Ty} → Tms Γ (Δ , A) → Tm Γ A
@@ -64,7 +64,7 @@ data _∈_ (A : Ty) : Con → Set where
 
 mutual
   data Nf (Γ : Con) : Ty → Set where
-    ne   : Ne Γ ι → Nf Γ ι
+    ne   : ∀ {A} → Ne Γ A → Nf Γ A
     lamₙ : ∀ {A B} → Nf (Γ , A) B → Nf Γ (A ⇒ B)
 
   data Ne (Γ : Con) : Ty → Set where
@@ -81,7 +81,7 @@ mutual
   Nf↑ : ∀ {Γ Δ A} → Γ ⊆ Δ → Nf Γ A → Nf Δ A
   Nf↑ r (ne n)   = ne (Ne↑ r n)
   Nf↑ r (lamₙ t) = lamₙ (Nf↑ (keep r) t)
-  
+
   Ne↑ : ∀ {Γ Δ A} → Γ ⊆ Δ → Ne Γ A → Ne Δ A
   Ne↑ r (var v)  = var (∈↑ r v)
   Ne↑ r (n $ₙ t) = Ne↑ r n $ₙ Nf↑ r t

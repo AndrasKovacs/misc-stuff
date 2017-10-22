@@ -54,7 +54,14 @@ Tm⇑ₑᴹ :
 ~⇑ᴹ :
   ∀ {n Γ} Γw {A} Aw {t} tw {t'} tw'
   → t ~ t' → Tm⇑ᴹ {n}{Γ} Γw {A} Aw {t} tw ≡ Tm⇑ᴹ Γw Aw {t'} tw'
-~⇑ᴹ = {!!}
+~⇑ᴹ Γw Aw (app (lam x₁ tw) x) tw' (β A t u) =
+  ext λ γ → {!!}
+~⇑ᴹ Γw Aw tw tw' (η A t) = {!tw'!}
+~⇑ᴹ Γw Aw tw tw' (app t~t' t~t'') = {!!}
+~⇑ᴹ Γw Aw tw tw' (lam x t~t') = {!!}
+~⇑ᴹ Γw Aw tw tw' ~refl = Tm⇑ᴹ Γw Aw & Γ⊢t⇑Aprop tw tw'
+~⇑ᴹ Γw Aw tw tw' (t~t' ~⁻¹) = ~⇑ᴹ Γw Aw tw' tw t~t' ⁻¹
+~⇑ᴹ Γw Aw tw tw' (t~t' ~◾ t~t'') = {!!} -- bleh
 
 ~ₜᴹ Γw (El tw) (El tw') (El t) = {!!}
 ~ₜᴹ Γw (Π Aw Bw) (Π Aw' Bw') (Π A B) = {!!}
@@ -102,7 +109,6 @@ Tyₑᴹ Γw Δw (Π Aw Bw) σw γ = {!!}
 Tyₛᴹ Γw Δw U         σw γ = refl
 Tyₛᴹ Γw Δw (El x)    σw γ = Elᴹ & {!!}
 Tyₛᴹ Γw Δw (Π Aw Bw) σw γ = {!!}
-
 
 
 Subᴹ Γw ∙         ∙        γ = tt
