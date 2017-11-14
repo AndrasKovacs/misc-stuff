@@ -8,7 +8,7 @@ infix 3 _↦_
 postulate
   I : Set
   ₀ ₁ : I
-  _[_-_] : I → I → I → I  
+  _[_-_] : I → I → I → I
 
 infix 3 _≡_
 data _≡_ {A : Set} : A → A → Set where
@@ -80,7 +80,7 @@ postulate
     → coe (⟨ i ⟩ (_≡_ {A i} (x i) (y i))) p ↦
        ⟨ i ⟩ coe (⟨ j ⟩ (A (i [ ₁ - j ]))) (x (i [ ₁ - ₀ ]))
      ∙ ⟨ i ⟩ coe (path A) (p $ i)
-     ∙ ⟨ i ⟩ coe (⟨ j ⟩ (A (i [ j - ₁ ]))) (y i) 
+     ∙ ⟨ i ⟩ coe (⟨ j ⟩ (A (i [ j - ₁ ]))) (y i)
 
   coe-∙  : (A B C : Set)(p : A ≡ B)(q : B ≡ C) → coe (p ∙ q) ↦ (λ a → coe q (coe p a))
   refl-∙ : (A : Set)(x y : A)(p : x ≡ y) → refl ∙ p ↦ p
@@ -110,28 +110,36 @@ infixr 4 _◾_
 _◾_ : ∀ {A}{a b c : A} → a ≡ b → b ≡ c → a ≡ c
 _◾_ {a = a} {b} {c} p q = p ∙ q
 
+J : ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ {a'} (p : a ≡ a') → P a' p
+J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ i [ ₀ - j ]))) refl*
+
 transp : ∀ {A}(P : A → Set){a b : A} → a ≡ b → P a → P b
-transp P p = coe (P & p)
+transp P p x = J (λ b _ → P b) x p
+
+_◾'_ : ∀ {A}{a b c : A} → a ≡ b → b ≡ c → a ≡ c
+_◾'_ {a = a} {b} {c} p q = transp (λ c → a ≡ c) q p
+
+lem : (λ {A}{a}{b}{c} → _◾_ {A}{a}{b}{c}) ≡ _◾'_
+lem = refl
 
 ext : ∀ {A}{B : A → Set}{f g : ∀ a → B a} → (∀ a → f a ≡ g a) → f ≡ g
 ext {f = f} {g} p = ⟨ i ⟩ (λ a → p a $ i)
 
-J : ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ {a'} (p : a ≡ a') → P a' p
-J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ i [ ₀ - j ]))) refl*
+
 
 J-refl :
   ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) refl* → J P refl* refl ≡ refl*
-J-refl P refl* = ⟨ _ ⟩ refl*  
+J-refl P refl* = refl
 
 --------------------------------------------------------------------------------
 
 ap2 : ∀ {A B C}(f : A → B → C){a a' b b'} → a ≡ a' → b ≡ b' → f a b ≡ f a' b'
 ap2 f {a} {a'} {b} {b'} p q = ⟨ i ⟩ f (p $ i) (q $ i)
 
--- foo :
---   ∀ (A : Set) A' B B' (p : A ≡ A')(q : B ≡ B')(r : A ≡ B)
---   → coe (ap2 _≡_ p q) r ≡ p ⁻¹ ◾ r ◾ q
--- foo A A' B B' = λ _ _ _ → refl
+foo :
+  ∀ (A : Set) A' B B' (p : A ≡ A')(q : B ≡ B')(r : A ≡ B)
+  → coe (ap2 _≡_ p q) r ≡ p ⁻¹ ◾ r ◾ q
+foo A A' B B' = λ _ _ _ → refl
   -- J (λ _ p₁ →
   --      (q₁ : B ≡ B') (r₁ : A ≡ B) →
   --      coe (ap2 _≡_ p₁ q₁) r₁ ≡ p₁ ⁻¹ ◾ r₁ ◾ q₁)
@@ -141,7 +149,7 @@ ap2 f {a} {a'} {b} {b'} p q = ⟨ i ⟩ f (p $ i) (q $ i)
 
 
 
-    
+
 -- foo :
 --     (A : I → Set) (B : I → Set)(p : A ₀ ≡ B ₀)
 --   → coe (⟨ i ⟩ (A i ≡ B i)) p ≡ (⟨ i ⟩ A (i [ ₁ - ₀ ])) ◾ p ◾ ⟨ i ⟩ B i
@@ -163,10 +171,10 @@ ap2 f {a} {a'} {b} {b'} p q = ⟨ i ⟩ f (p $ i) (q $ i)
 -- h : ∀ n → f n
 -- h = λ n → n
 
--- coe-→ :
---   ∀ A A' (p : A ≡ A') B B' (q : B ≡ B') (f : A → B)
---   → coe (⟨ i ⟩ (p $ i → q $ i)) f ≡ (λ a' → coe q (f (coe (p ⁻¹) a')))
--- coe-→ A =
+coe-→ :
+  ∀ A A' (p : A ≡ A') B B' (q : B ≡ B') (f : A → B)
+  → coe (⟨ i ⟩ (p $ i → q $ i)) f ≡ (λ a' → coe q (f (coe (p ⁻¹) a')))
+coe-→ A = λ A' p B B' q f → refl
 --   J
 --   (λ A'' p₁ →
 --      ∀ B B' (q : B ≡ B') (f₁ : A → B) →
@@ -176,7 +184,7 @@ ap2 f {a} {a'} {b} {b'} p q = ⟨ i ⟩ f (p $ i) (q $ i)
 --            (λ B' q →
 --               (f₁ : A → B) →
 --               coe (path (λ i → A → q $ i)) f₁ ≡ (λ a' → coe q (f₁ a')))
---            (λ f₁ → refl))     
+--            (λ f₁ → refl))
 
 -- i : ∀ n → g n
 -- i = coe (⟨ i ⟩ ((n : ℕ) → (p $ i) n)) h
@@ -213,6 +221,3 @@ bar n p = refl
 
 -- q : p ≡ refl
 -- q = {!⟨ i ⟩ !}
-
-
-

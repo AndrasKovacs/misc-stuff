@@ -14,6 +14,22 @@ transp₂ C refl x = x
 contract : {A : Set}(P : A → Set){x y : A}(p : x ≡ y) → transp (x ≡_) p refl ≡ p
 contract P refl = refl
 
+J : {A : Set} {x : A} (P : (y : A) → x ≡ y → Set) → P _ refl → {y : A} → (w : x ≡ y) → P _ w
+J P pr eq = transp (P _) (contract (λ _ → P _ refl) eq) (transp₂ P eq pr)
+
+
+path-ext :
+  (A : Set)(x y : A)(p q : x ≡ y)
+  → ((P : ∀ y → x ≡ y → Set)(px : P x refl)(h : p ≡ q) → transp (P y) h (J P px p) ≡ J P px q) → p ≡ q
+path-ext A x y p q h = {!!}
+
+-- path-ext :
+--   (A : Set)(x y : A)(p q : x ≡ y)
+--   → ((P : A → Set)(px : P x) → transp P p px ≡ transp P q px) → p ≡ q
+-- path-ext A x y p q h = {!!}
+
+
+
 
 
 -- {-# OPTIONS --without-K #-}

@@ -41,7 +41,7 @@ postulate
 {-#  REWRITE ₀∧      #-}
 {-#  REWRITE ∧₀      #-}
 {-#  REWRITE ₁∧      #-}
-{-#  REWRITE ∧₁      #-}  
+{-#  REWRITE ∧₁      #-}
 {-#  REWRITE path-η  #-}
 
 postulate
@@ -63,7 +63,7 @@ transport P p = coe (ap P p)
 
 ext : ∀ {A}{B : A → Set}{f g : ∀ a → B a} → (∀ a → f a ≡ g a) → f ≡ g
 ext p = ⟨ i ⟩ (λ a → p a $ i)
-  
+
 J : ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ {a'} (p : a ≡ a') → P a' p
 J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ (i ∧ j)))) refl*
 
@@ -76,7 +76,7 @@ J-refl {A}{a} P refl* = refl
 
 infix 5 _⁻¹
 _⁻¹ : ∀ {A}{x y : A} → x ≡ y → y ≡ x
-_⁻¹ {x = x}{y} = J (λ y p → y ≡ x) refl
+_⁻¹ {A}{x}{y} p = transport (_≡ x) p refl
 
 -- --------------------------------------------------------------------------------
 
@@ -100,5 +100,3 @@ q = ap (λ f → f 10) p
 
 works : q ≡ refl
 works = refl
-
-
