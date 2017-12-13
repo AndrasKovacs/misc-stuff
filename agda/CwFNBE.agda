@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K #-}
 
--- NbE for simple type theory with Categories-with-families syntax
+-- NbE for simple type theory with categories-with-families syntax
 
 open import Function
 open import Data.Product
@@ -22,35 +22,34 @@ data Con : Set where
   _,_ : Con → Ty → Con
 
 mutual
-  data Tms : Con → Con → Set where
-    idₛ  : ∀ {Γ} → Tms Γ Γ
-    _∘ₛ_ : ∀{Γ Δ Σ} → Tms Δ Σ → Tms Γ Δ → Tms Γ Σ
-    _,_  : ∀{Γ Δ}(δ : Tms Γ Δ){A : Ty} → Tm Γ A → Tms Γ (Δ , A)
-    π₁   : ∀{Γ Δ}{A : Ty} → Tms Γ (Δ , A) →  Tms Γ Δ
+  data Sub : Con → Con → Set where
+    idₛ  : ∀ {Γ} → Sub Γ Γ
+    _∘ₛ_ : ∀{Γ Δ Σ} → Sub Δ Σ → Sub Γ Δ → Sub Γ Σ
+    _,_  : ∀{Γ Δ}(δ : Sub Γ Δ){A : Ty} → Tm Γ A → Sub Γ (Δ , A)
+    π₁   : ∀{Γ Δ}{A : Ty} → Sub Γ (Δ , A) →  Sub Γ Δ
 
   data Tm : Con → Ty → Set where
-    _[_] : ∀{Γ Δ}{A : Ty} → Tm Δ A → Tms Γ Δ → Tm Γ A
-    π₂   : ∀{Γ Δ}{A : Ty} → Tms Γ (Δ , A) → Tm Γ A
+    _[_] : ∀{Γ Δ}{A : Ty} → Tm Δ A → Sub Γ Δ → Tm Γ A
+    π₂   : ∀{Γ Δ}{A : Ty} → Sub Γ (Δ , A) → Tm Γ A
     app  : ∀{Γ A B} → Tm Γ (A ⇒ B) → Tm (Γ , A) B
     lam  : ∀{Γ A B} → Tm (Γ , A) B → Tm Γ (A ⇒ B)
 
--- Renaming
+-- Embedding
 --------------------------------------------------------------------------------
 
-infix 3 _⊆_
-infixr 9 _∘ᵣ_
+infixr 9 _∘ₑ_
 
-data _⊆_ : Con → Con → Set where
-  idᵣ : ∀ {Γ} → Γ ⊆ Γ
-  add  : ∀ {Γ Δ A} → Γ ⊆ Δ → Γ     ⊆ Δ , A
-  keep : ∀ {Γ Δ A} → Γ ⊆ Δ → Γ , A ⊆ Δ , A
+data OPE : Con → Con → Set where
+  idₑ  : ∀ {Γ} → OPE Γ Γ
+  drop : ∀ {Γ Δ A} → OPE Γ Δ → OPE (Γ , A) Δ
+  keep : ∀ {Γ Δ A} → OPE Γ Δ → OPE (Γ , A) (Δ , A)
 
-_∘ᵣ_ : ∀ {Γ Δ Ξ} → Δ ⊆ Ξ → Γ ⊆ Δ → Γ ⊆ Ξ
-idᵣ    ∘ᵣ o'      = o'
-add o  ∘ᵣ o'      = add (o ∘ᵣ o')
-keep o ∘ᵣ idᵣ     = keep o
-keep o ∘ᵣ add o'  = add (o ∘ᵣ o')
-keep o ∘ᵣ keep o' = keep (o ∘ᵣ o')
+_∘ₑ_ : ∀ {Γ Δ Σ} → OPE Δ Σ → OPE Γ Δ → OPE Γ Σ
+σ      ∘ₑ idₑ    = σ
+σ      ∘ₑ drop δ = drop (σ ∘ₑ δ)
+idₑ    ∘ₑ keep δ = keep δ
+drop σ ∘ₑ keep δ = drop (σ ∘ₑ δ)
+keep σ ∘ₑ keep δ = keep (σ ∘ₑ δ)
 
 -- Normal forms
 --------------------------------------------------------------------------------
@@ -71,71 +70,65 @@ mutual
     var  : ∀ {A} → A ∈ Γ → Ne Γ A
     _$ₙ_ : ∀ {A B} → Ne Γ (A ⇒ B) → Nf Γ A → Ne Γ B
 
-∈↑ : ∀ {Γ Δ A} → Γ ⊆ Δ → A ∈ Γ → A ∈ Δ
-∈↑ idᵣ      v      = v
-∈↑ (add r)  v      = vs (∈↑ r v)
-∈↑ (keep r) vz     = vz
-∈↑ (keep r) (vs v) = vs (∈↑ r v)
+∈ₑ : ∀ {Γ Δ} → OPE Γ Δ → ∀ {A} → A ∈ Δ → A ∈ Γ
+∈ₑ idₑ      v      = v
+∈ₑ (drop r) v      = vs (∈ₑ r v)
+∈ₑ (keep r) vz     = vz
+∈ₑ (keep r) (vs v) = vs (∈ₑ r v)
 
 mutual
-  Nf↑ : ∀ {Γ Δ A} → Γ ⊆ Δ → Nf Γ A → Nf Δ A
-  Nf↑ r (ne n)   = ne (Ne↑ r n)
-  Nf↑ r (lamₙ t) = lamₙ (Nf↑ (keep r) t)
+  Nfₑ : ∀ {Γ Δ} → OPE Γ Δ → ∀ {A} → Nf Δ A → Nf Γ A
+  Nfₑ r (ne n)   = ne (Neₑ r n)
+  Nfₑ r (lamₙ t) = lamₙ (Nfₑ (keep r) t)
 
-  Ne↑ : ∀ {Γ Δ A} → Γ ⊆ Δ → Ne Γ A → Ne Δ A
-  Ne↑ r (var v)  = var (∈↑ r v)
-  Ne↑ r (n $ₙ t) = Ne↑ r n $ₙ Nf↑ r t
+  Neₑ : ∀ {Γ Δ} → OPE Γ Δ → ∀ {A} → Ne Δ A → Ne Γ A
+  Neₑ r (var v)  = var (∈ₑ r v)
+  Neₑ r (n $ₙ t) = Neₑ r n $ₙ Nfₑ r t
 
 -- Normalization
 --------------------------------------------------------------------------------
 
-PSh : Set → Set₁
-PSh S = S → Set
+Tyᴹ : Ty → Con → Set
+Tyᴹ ι       Γ = Nf Γ ι
+Tyᴹ (A ⇒ B) Γ = ∀ Δ → OPE Δ Γ → Tyᴹ A Δ → Tyᴹ B Δ
 
-_∸>_ : ∀ {α β γ}{I : Set α} → (I → Set β) → (I → Set γ) → Set _
-A ∸> B = ∀ {i} → A i → B i
+Conᴹ : Con → Con → Set
+Conᴹ ∙       Δ = ⊤
+Conᴹ (Γ , A) Δ = Conᴹ Γ Δ × Tyᴹ A Δ
 
-⟦_⟧Ty : Ty → PSh Con
-⟦ ι     ⟧Ty Γ = Nf Γ ι
-⟦ A ⇒ B ⟧Ty Γ = ∀ Δ → Γ ⊆ Δ → ⟦ A ⟧Ty Δ → ⟦ B ⟧Ty Δ
+Tyᴹₑ : ∀ {A Γ Δ} → OPE Γ Δ → Tyᴹ A Δ → Tyᴹ A Γ
+Tyᴹₑ {ι}     σ Aᴹ   = Nfₑ σ Aᴹ
+Tyᴹₑ {A ⇒ B} σ A⇒Bᴹ = λ Σ δ → A⇒Bᴹ Σ (σ ∘ₑ δ)
 
-⟦_⟧Con : Con → PSh Con
-⟦ ∙     ⟧Con Δ = ⊤
-⟦ Γ , A ⟧Con Δ = ⟦ Γ ⟧Con Δ × ⟦ A ⟧Ty Δ
-
-⟦Ty⟧↑ : ∀ {A Γ Δ} → Γ ⊆ Δ → ⟦ A ⟧Ty Γ → ⟦ A ⟧Ty Δ
-⟦Ty⟧↑ {ι}     r ⟦A⟧   = Nf↑ r ⟦A⟧
-⟦Ty⟧↑ {A ⇒ B} r ⟦A⇒B⟧ = λ Σ r' → ⟦A⇒B⟧ Σ (r' ∘ᵣ r)
-
-⟦Con⟧↑ : ∀ {Σ Γ Δ} → Γ ⊆ Δ → ⟦ Σ ⟧Con Γ → ⟦ Σ ⟧Con Δ
-⟦Con⟧↑ {∙}     r ⟦Σ⟧         = tt
-⟦Con⟧↑ {Σ , A} r (⟦Σ⟧ , ⟦A⟧) = ⟦Con⟧↑ r ⟦Σ⟧ , ⟦Ty⟧↑ r ⟦A⟧
+Conᴹₑ : ∀ {Σ Γ Δ} → OPE Γ Δ → Conᴹ Σ Δ → Conᴹ Σ Γ
+Conᴹₑ {∙}     σ Σᴹ        = tt
+Conᴹₑ {Σ , A} σ (Σᴹ , Aᴹ) = Conᴹₑ σ Σᴹ , Tyᴹₑ {A} σ Aᴹ
 
 mutual
-  ⟦_⟧Tms : ∀ {Γ Δ} → Tms Γ Δ → ⟦ Γ ⟧Con ∸> ⟦ Δ ⟧Con
-  ⟦ idₛ    ⟧Tms = id
-  ⟦ σ ∘ₛ δ ⟧Tms = ⟦ σ ⟧Tms ∘ ⟦ δ ⟧Tms
-  ⟦ σ , t  ⟧Tms = _,_ ∘ ⟦ σ ⟧Tms ˢ ⟦ t ⟧Tm
-  ⟦ π₁ σ   ⟧Tms = proj₁ ∘ ⟦ σ ⟧Tms
+  Subᴹ : ∀ {Γ Δ} → Sub Γ Δ → ∀ {Σ} → Conᴹ Γ Σ → Conᴹ Δ Σ
+  Subᴹ idₛ      Γᴹ = Γᴹ
+  Subᴹ (σ ∘ₛ δ) Γᴹ = Subᴹ σ (Subᴹ δ Γᴹ)
+  Subᴹ (σ , t)  Γᴹ = Subᴹ σ Γᴹ , Tmᴹ t Γᴹ
+  Subᴹ (π₁ σ)   Γᴹ = proj₁ (Subᴹ σ Γᴹ)
 
-  ⟦_⟧Tm : ∀ {Γ A} → Tm Γ A → ⟦ Γ ⟧Con ∸> ⟦ A ⟧Ty
-  ⟦ t [ σ ] ⟧Tm Γᴹ        = ⟦ t ⟧Tm (⟦ σ ⟧Tms Γᴹ)
-  ⟦ π₂ σ    ⟧Tm Γᴹ        = proj₂ (⟦ σ ⟧Tms Γᴹ)
-  ⟦ app t   ⟧Tm (Γᴹ , Aᴹ) = ⟦ t ⟧Tm Γᴹ _ idᵣ Aᴹ
-  ⟦ lam t   ⟧Tm Γᴹ Δ r aᴹ = ⟦ t ⟧Tm (⟦Con⟧↑ r Γᴹ , aᴹ)
+  Tmᴹ : ∀ {Γ A} → Tm Γ A → ∀ {Σ} → Conᴹ Γ Σ → Tyᴹ A Σ
+  Tmᴹ (t [ σ ]) Γᴹ = Tmᴹ t (Subᴹ σ Γᴹ)
+  Tmᴹ (π₂ σ)    Γᴹ = proj₂ (Subᴹ σ Γᴹ)
+  Tmᴹ (app t)   Γᴹ = Tmᴹ t (proj₁ Γᴹ) _ idₑ (proj₂ Γᴹ)
+  Tmᴹ (lam t)   Γᴹ = λ Δ σ Aᴹ → Tmᴹ t (Conᴹₑ σ Γᴹ , Aᴹ)
 
 mutual
-  q : ∀ A {Γ} → ⟦ A ⟧Ty Γ → Nf Γ A
+  q : ∀ A {Γ} → Tyᴹ A Γ → Nf Γ A
   q ι       Aᴹ = Aᴹ
-  q (A ⇒ B) Aᴹ = lamₙ (q B (Aᴹ _ (add idᵣ) (u A (var vz))))
+  q (A ⇒ B) Aᴹ = lamₙ (q B (Aᴹ _ (drop idₑ) (u A (var vz))))
 
-  u : ∀ A {Γ} → Ne Γ A → ⟦ A ⟧Ty Γ
+  u : ∀ A {Γ} → Ne Γ A → Tyᴹ A Γ
   u ι       n = ne n
-  u (A ⇒ B) n = λ Δ r aᴹ → u B (Ne↑ r n $ₙ q A aᴹ)
+  u (A ⇒ B) n = λ Δ r aᴹ → u B (Neₑ r n $ₙ q A aᴹ)
 
-u-Con : ∀ Γ → ⟦ Γ ⟧Con Γ
+u-Con : ∀ Γ → Conᴹ Γ Γ
 u-Con ∙       = tt
-u-Con (Γ , A) = ⟦Con⟧↑ (add idᵣ) (u-Con Γ) , u A (var vz)
+u-Con (Γ , A) = Conᴹₑ (drop idₑ) (u-Con Γ) , u A (var vz)
 
 nf : ∀ {Γ A} → Tm Γ A → Nf Γ A
-nf {Γ}{A} t = q A (⟦ t ⟧Tm (u-Con Γ))
+nf {Γ}{A} t = q A (Tmᴹ t (u-Con Γ))
