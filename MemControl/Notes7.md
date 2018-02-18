@@ -243,10 +243,27 @@ x⁺             = x
 (t u)⁺         = t⁺ u⁺
 
 
--- El (quote A) ≡ A     misc proofs
+-- Lemma 1: quote A [σ] ≡ quote (A [σ])
 ------------------------------------------------------------
 
-1. to show: El (quote (a : A, B)) ≡ (a : A, B)
+case U: OK
+case ⊤: OK
+case (El A): OK
+case ((a : A) → B):
+  goal :
+     (quote A →' (λ {a}. quote B)) [σ] ≡ quote (((a : A) → B) [σ])
+   = (quote A →' (λ {a}. quote B)) [σ] ≡ quote ((a : A [σ]) → B [σ, a ↦ a])
+   = (quote A →' (λ {a}. quote B)) [σ] ≡ quote (A [σ]) →' (λ {a}. quote (B [σ, a ↦ a]))
+   = quote A [σ] →' (λ {a}. (quote B) [σ, a ↦ a]) ≡ quote (A [σ]) →' (λ {a}. quote (B [σ, a ↦ a]))
+   = quote A [σ] →' (λ {a}. (quote B) [σ, a ↦ a]) ≡ quote A [σ] →' (λ {a}. quote B [σ, a ↦ a]) OK
+
+likewise for other cases
+
+
+-- Lemma 2: El (quote A) ≡ A
+------------------------------------------------------------
+
+To show: El (quote (a : A, B)) ≡ (a : A, B)
 
   hyp: ∙ ⊢ A
        ∙, a : A ⊢ B
@@ -258,7 +275,7 @@ x⁺             = x
        = (a : El (quote A) , El (quote B))    -- by def.
        = (a : A, B)                           -- by inductive hypothesis
 
-2. to show: Γ, a : A ⊢ El ((λ {a}. quote B) a) ≡ B
+To show: Γ, a : A ⊢ El ((λ {a}. quote B) a) ≡ B
 
   hyp:
     Γ, a : A ⊢ B
@@ -268,9 +285,10 @@ x⁺             = x
     = El ((pack (quote (Γ', a : A)) vars (λ env. quote B [uncurry (Γ', a : A)])) a) -- by def.
     = El ((λ env. quote B [uncurry (Γ', a : A)]) (vars, a))                         -- by def.
     = El (quote B [uncurry (Γ', a : A)] [env ⊢> (vars, a)])                         -- by def.
-    = El (quote (B [uncurry (Γ', a : A)][env ⊢> (vars, a)]))  -- quote-[] lemma (TODO)
+    = El (quote (B [uncurry (Γ', a : A)][env ⊢> (vars, a)]))  -- quote A [σ] lemma
     = El (quote B)                                            -- uncurry-vars lemma (TODO)
     = B
 
+for other cases, use (El ((λ {a}. quote B) a) ≡ B)
 
 ```
