@@ -21,7 +21,7 @@ infix 6 _▹_
 data _∈_ (τ : ⋆) : Cx ⋆ → Set where
   zero : ∀ {Γ}           → τ ∈ Γ ▹ τ
   suc  : ∀ {Γ σ} → τ ∈ Γ → τ ∈ Γ ▹ σ
-infix 4 _∈_  
+infix 4 _∈_
 
 data _⊢_ (Γ : Cx ⋆) : ⋆ → Set where
   var :
@@ -40,7 +40,7 @@ data _⊢_ (Γ : Cx ⋆) : ⋆ → Set where
     ∀ {σ τ}
     → Γ ⊢ σ ⇒ τ → Γ ⊢ σ
     --------------------
-    → Γ ⊢ τ    
+    → Γ ⊢ τ
 infix 3 _⊢_
 
 ⟦_⟧⋆ : ⋆ → Set
@@ -128,7 +128,7 @@ lambda :
   → Γ ⊢ σ ⇒ τ
 lambda {Γ} f =
   lam (f (λ {Δ} {Ξ} {{q}}
-    → subst (λ Γ → Γ ⊢ _) (lem Δ Γ (_ ∷ Ξ) q) (var (weak Ξ zero))))  
+    → subst (λ Γ → Γ ⊢ _) (lem Δ Γ (_ ∷ Ξ) q) (var (weak Ξ zero))))
 
 -- myTest : 𝓔 ⊢ (ι ⇒ ι) ⇒ (ι ⇒ ι)
 -- myTest = lambda λ f → lambda λ x → app f (app f x)
@@ -159,7 +159,7 @@ zero  ≠ i'     = suc i'
 suc i ≠ zero   = zero
 suc i ≠ suc i' = suc (i ≠ i')
 
-mutual 
+mutual
   renNm : ∀ {Γ Δ τ} → Ren Γ Δ → Γ ⊨ τ → Δ ⊨ τ
   renNm r (lam t)  = lam (renNm (wkr r) t)
   renNm r (i $ sp) = r i $ renSp r sp
@@ -180,7 +180,7 @@ veq? (suc i) (suc i') with veq? i i'
 veq? (suc i) (suc .i)        | same    = same
 veq? (suc i) (suc .(i ≠ i')) | diff i' = diff (suc i')
 
-mutual 
+mutual
   ⟨_⟶_⟩_ : ∀ {Γ σ τ}(i : σ ∈ Γ) → Γ - i ⊨ σ → Γ ⊨ τ → Γ - i ⊨ τ
   ⟨ i ⟶ s ⟩ lam t    = lam (⟨ suc i ⟶ renNm suc s ⟩ t)
   ⟨ i ⟶ s ⟩ (i' $ ts) with veq? i i'
@@ -212,10 +212,10 @@ expand : ∀ {Γ} τ → intros Γ τ ⊨ ι → Γ ⊨ τ
 expand ι       t = t
 expand (τ ⇒ σ) t = lam (expand σ t)
 
-mutual 
+mutual
   η : ∀ {Γ τ} → τ ∈ Γ → Γ ⊨ τ
   η {Γ}{τ} i = expand τ (renIntros Γ τ i $ mkSpine Γ τ)
-  
+
   mkSpine : ∀ Γ τ → intros Γ τ ⊨⋆ τ
   mkSpine Γ ι       = []
   mkSpine Γ (τ ⇒ σ) = η (renIntros (Γ ▹ τ) σ zero) , mkSpine (Γ ▹ τ) σ
@@ -262,7 +262,7 @@ stopSp : ∀ {Γ τ} → Stop Γ τ → Γ ⊨⋆ τ → Γ ⊨ ι
 stopSp (var x) sp = x $ sp
 stopSp (u $ x) sp = stopSp u (x , sp)
 
-mutual 
+mutual
   Val : Cx ⋆ → ⋆ → Set
   Val Γ τ = Go Γ τ ⊎ Stop Γ τ
 
@@ -299,4 +299,3 @@ eval (app f x) γ = apply (eval f γ) (eval x γ)
 
 normByEval : ∀ {Γ τ} → Γ ⊢ τ → Γ ⊨ τ
 normByEval {Γ}{τ} t = quo τ (eval t (idEnv Γ))
-

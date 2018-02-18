@@ -78,19 +78,6 @@ can also name the last field of a nested `Σ`.
 
 El U' ≡ U
 
-─────────
-Γ ⊢ ⊥ : U
-
-Γ ⊢ A : U   Γ ⊢ t : El ⊥
-────────────────────────
-Γ ⊢ ⊥-elim A t : El A
-
-─────────
-Γ ⊢ ⊤ : U
-
-─────────────
-Γ ⊢ tt : El ⊤
-
 Γ ⊢ A : U   Γ, a : El A ⊢ B : U
 ───────────────────────────────
     Γ ⊢ (a : A) → B : U
@@ -104,35 +91,6 @@ El U' ≡ U
     Γ ⊢ t u : El (B[a ⊢> u])
 
 (λ a. t) u ≡ t[a ⊢> u]
-
-Γ ⊢ A : U   Γ, a : El A ⊢ B : U
-───────────────────────────────
-     Γ ⊢ (a : A, B) : U
-
-Γ ⊢ t : El A   Γ, a : El A ⊢ B : U   Γ ⊢ u : El (B[a ⊢> t])
-───────────────────────────────────────────────────────────
-          Γ ⊢ (t, u) : El (t : A, B)
-
-         Γ ⊢ t : (a : A, B)
-──────────────────────────────────────────────
-Γ ⊢ π₁ t : El A   Γ ⊢ π₂ t : El (B[a ⊢> π₁ t])
-
-π₁ (t, u) ≡ t   π₂ (t, u) ≡ u
-
-────────────
-Γ ⊢ Bool : U
-
-──────────────────────────────────
-Γ ⊢ true : El Bool   Γ ⊢ false : El Bool
-
-            Γ, x : El Bool ⊢ B : U
-Γ ⊢ t : El (B[x ⊢> true])   Γ ⊢ u : El (B[x ⊢> false])
-            Γ ⊢ b : El Bool
-────────────────────────────────────────────
-   Γ ⊢ Bool-elim (x.B) t f b : El (B[x ⊢> b])
-
-Bool-elim (x.B) t f true ≡ t
-Bool-elim (x.B) t f false ≡ f
 
 ```
 
@@ -165,13 +123,6 @@ Non-code types
 ──────────
 Γ ⊢ tt : ⊤
 
-─────
-Γ ⊢ ⊥
-
-Γ ⊢ A  Γ ⊢ t : ⊥
-─────────────────
-Γ ⊢ ⊥-elim t : A
-
 Γ ⊢ A   Γ, a : A ⊢ B
 ────────────────────
   Γ ⊢ (a : A) → B
@@ -199,21 +150,6 @@ Non-code types
 Γ ⊢ π₁ t : A   Γ ⊢ π₂ t : B[a ⊢> π₁ t]
 
 π₁ (t, u) ≡ t   π₂ (t, u) ≡ u
-
-────────
-Γ ⊢ Bool
-
-──────────────────────────────────
-Γ ⊢ true : Bool   Γ ⊢ false : Bool
-
-               Γ, x : Bool ⊢ B
-Γ ⊢ t : B[x ⊢> true]   Γ ⊢ f : B[x ⊢> false]
-               Γ ⊢ b : Bool
-────────────────────────────────────────────
-   Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
-
-Bool-elim (x.B) t f true  ≡ t
-Bool-elim (x.B) t f false ≡ f
 
 Γ ⊢ E   Γ ⊢ e* : E   Γ ⊢ A   Γ, a : A ⊢ B
 ─────────────────────────────────────────
@@ -246,16 +182,6 @@ El U' ≡ U
 Γ ⊢ ⊤' : U
 
 El ⊤' ≡ ⊤
-
-──────────
-Γ ⊢ ⊥' : U
-
-El ⊥' ≡ ⊥
-
-─────────────
-Γ ⊢ Bool' : U
-
-El Bool' ≡ Bool
 
 Γ ⊢ A : U   Γ ⊢ B : El A →⁺ U
 ──────────────────────────
@@ -300,28 +226,47 @@ U⁺      = U
 ────────────
 Γ⁺ ⊢ t⁺ : A⁺
 
-x⁺    = x⁺
-⊤⁺    = ⊤'
-⊥⁺    = ⊥'
-U'⁺   = U'
-Bool⁺ = Bool'
+U'⁺ = U'
 
-((a : A) → B)⁺ = ?
+((a : A) → B)⁺ =
+  hyp:
+    Γ⁺ ⊢ A⁺ : U
+    Γ⁺, a⁺ : El A⁺ ⊢ B⁺ : U
+  goal:
+    Γ⁺ ⊢ _ : U
+
+
+λU⁺ definition:
+  hyp:
+    Γ, a : El A ⊢ t : U
+    Γ⁺ ⊢ A⁺ : U
+    Γ⁺, a⁺ : El A⁺ ⊢ t⁺ : U
+  goal:
+    Γ ⊢ _ : El A⁺ →⁺ U
+    Γ ⊢ _ : (E : U, e* : El E, code: [e* : El E](a : El A⁺) → U)
+
+    let E   : U    = quoteEnv Γ t
+        e*  : El E = idEnv Γ t
+        El E ⊢ t⁺' = uncurry Γ t⁺
+
+
+
+
+
+
 (λ a. t)⁺      = ?
-(a : A, B)⁺    = (A⁺; (λ a. B)⁺)
-                 (λ a . B) : El ((a : A) → U')
+  hyp:
+    Γ, a : El A ⊢ t : El B
+    Γ⁺ ⊢ A⁺ : U
+    Γ⁺, a⁺ : El A⁺ ⊢ B⁺ : U
+    Γ⁺, a⁺ : El A⁺ ⊢ t⁺ : El B⁺
+  goal:
+    Γ⁺ ⊢ _ : (a : El A⁺) →⁺ El B⁺
 
-<!-- (E : U, e* : El E, code: [e* : El E](a : A) → B) -->
+(t u)⁺  = appᶜ(t⁺, u⁺)
+x⁺      = x⁺
 
 
-(t u)⁺         = appᶜ(t⁺, u⁺)
-
-(π₁ t)⁺                  = π₁ t⁺
-(π₂ t)⁺                  = π₂ t⁺
-(t, u)⁺                  = (t⁺, u⁺)
-true⁺                    = true
-false⁺                   = false
-(Bool-elim (x.B) t f b)⁺ = Bool-elim (x⁺.B⁺) t⁺ f⁺ b⁺
 ```
 
 - We must be able to convert from types to codes, in an "inverse"

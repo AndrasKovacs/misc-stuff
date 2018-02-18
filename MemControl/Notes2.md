@@ -56,7 +56,6 @@ can also name the last field of a nested `Σ`.
 
 ```
 Γ ⊢          Context formation
-Γ ⊢ A        Type formation
 Γ ⊢ t : A    Typing
 
 ───
@@ -66,56 +65,47 @@ can also name the last field of a nested `Σ`.
 ───────────
 Γ, a : A ⊢
 
-─────
-Γ ⊢ U
-
-Γ ⊢ A : U
 ─────────
-Γ ⊢ El A
-
-──────────
-Γ ⊢ U' : U
-
-El U' ≡ U
+Γ ⊢ U : U
 
 ─────────
 Γ ⊢ ⊥ : U
 
-Γ ⊢ A : U   Γ ⊢ t : El ⊥
-────────────────────────
-Γ ⊢ ⊥-elim A t : El A
+Γ ⊢ A : U   Γ ⊢ t : ⊥
+─────────────────────
+Γ ⊢ ⊥-elim A t : A
 
 ─────────
 Γ ⊢ ⊤ : U
 
-─────────────
-Γ ⊢ tt : El ⊤
+──────────
+Γ ⊢ tt : ⊤
 
-Γ ⊢ A : U   Γ, a : El A ⊢ B : U
-───────────────────────────────
-    Γ ⊢ (a : A) → B : U
-
-   Γ, a : El A ⊢ t : El B
+Γ ⊢ A : U   Γ, a : A ⊢ B : U
 ────────────────────────────
-Γ ⊢ λ a. t : El ((a : A) → B)
+   Γ ⊢ (a : A) → B : U
 
-Γ ⊢ t : (a : A) → B   Γ ⊢ u : El A
-──────────────────────────────────
-    Γ ⊢ t u : El (B[a ⊢> u])
+    Γ, a : A ⊢ t : B
+────────────────────────────
+Γ ⊢ λ a. t : ((a : A) → B)
+
+Γ ⊢ t : (a : A) → B   Γ ⊢ u : A
+───────────────────────────────
+    Γ ⊢ t u : B[a ⊢> u]
 
 (λ a. t) u ≡ t[a ⊢> u]
 
-Γ ⊢ A : U   Γ, a : El A ⊢ B : U
-───────────────────────────────
-     Γ ⊢ (a : A, B) : U
+Γ ⊢ A : U   Γ, a : A ⊢ B : U
+────────────────────────────
+    Γ ⊢ (a : A, B) : U
 
-Γ ⊢ t : El A   Γ, a : El A ⊢ B : U   Γ ⊢ u : El (B[a ⊢> t])
-───────────────────────────────────────────────────────────
-          Γ ⊢ (t, u) : El (t : A, B)
+Γ ⊢ t : A   Γ, a : A ⊢ B : U   Γ ⊢ u : B[a ⊢> t]
+────────────────────────────────────────────────
+       Γ ⊢ (t, u) : (t : A, B)
 
          Γ ⊢ t : (a : A, B)
-──────────────────────────────────────────────
-Γ ⊢ π₁ t : El A   Γ ⊢ π₂ t : El (B[a ⊢> π₁ t])
+──────────────────────────────────────
+Γ ⊢ π₁ t : A   Γ ⊢ π₂ t : B[a ⊢> π₁ t]
 
 π₁ (t, u) ≡ t   π₂ (t, u) ≡ u
 
@@ -123,13 +113,13 @@ El U' ≡ U
 Γ ⊢ Bool : U
 
 ──────────────────────────────────
-Γ ⊢ true : El Bool   Γ ⊢ false : El Bool
+Γ ⊢ true : Bool   Γ ⊢ false : Bool
 
-            Γ, x : El Bool ⊢ B : U
-Γ ⊢ t : El (B[x ⊢> true])   Γ ⊢ u : El (B[x ⊢> false])
-            Γ ⊢ b : El Bool
+          Γ, x : Bool ⊢ B : U
+Γ ⊢ t : B[x ⊢> true]   Γ ⊢ u : B[x ⊢> false]
+            Γ ⊢ b : Bool
 ────────────────────────────────────────────
-   Γ ⊢ Bool-elim (x.B) t f b : El (B[x ⊢> b])
+   Γ ⊢ Bool-elim (x.B) t f b : B[x ⊢> b]
 
 Bool-elim (x.B) t f true ≡ t
 Bool-elim (x.B) t f false ≡ f
@@ -219,11 +209,12 @@ Bool-elim (x.B) t f false ≡ f
 ─────────────────────────────────────────
         Γ ⊢ [e* : E](a : A) → B
 
+-- note : this breaks unique typing
+
    Γ ⊢ e* : E   Γ ⊢ t : (x : (e : E, A)) → B
 ─────────────────────────────────────────────────
 Γ ⊢ t : [e* : E](a : A[e ⊢> e*]) → B[x ⊢> (e*, a)]
 
--- note : this breaks unique typing
 
 Closure-converted functions
 
@@ -233,7 +224,10 @@ Closure-converted functions
 
    Γ ⊢ t : (a : A) →⁺ B   Γ ⊢ u : A
 ──────────────────────────────────────────
-appᶜ t u := t.code (t.e*, u) : B[a ⊢> u]
+appᶜ(t, u) := t.code (t.e*, u) : B[a ⊢> u]
+
+-- this is valid since (t.code : [t.e* : El t.E](a : A) → B)
+-- implies that some A' and B' exists s. t. (A ≡ A'[e ⊢> e*] ∧ (B ≡ (λ a. B'[x ⊢> (e*, a)]))
 
 Codes (Strongly Tarski)
 
@@ -258,70 +252,69 @@ El ⊥' ≡ ⊥
 El Bool' ≡ Bool
 
 Γ ⊢ A : U   Γ ⊢ B : El A →⁺ U
-──────────────────────────
+─────────────────────────────
     Γ ⊢ A →' B : U
 
-El (A →' B) ≡ (a : El A) → El (appᶜ B a)
+El (A →' B) ≡ (a : El A) → El appᶜ(B, a)
 
 Γ ⊢ A : U   Γ ⊢ B : El A →⁺ U
 ──────────────────────────
    Γ ⊢ (a : A; B) : U
 
-El (A; B) ≡ (a : El A, El (appᶜ B a))
+El (A; B) ≡ (a : El A, El appᶜ(B, a))
 
-Γ ⊢ E : U   Γ ⊢ e* : El E   Γ ⊢ A : U   Γ ⊢ B : El A →⁺ U
-─────────────────────────────────────────────────────────
-             Γ ⊢ [e : E*] A →' B : U
+<!-- Γ ⊢ E : U   Γ ⊢ e* : El E   Γ ⊢ A : U   Γ ⊢ B : El A →⁺ U -->
+<!-- ───────────────────────────────────────────────────────── -->
+<!--              Γ ⊢ [e* : E] A →' B : U -->
 
-El ([e* : E] A →' B : U) ≡ [e* : El E](a : El A) → El (appᶜ B a)
+<!-- El ([e* : E] A →' B : U) ≡ [e* : El E](a : El A) → El appᶜ(B, a) -->
 
 ```
-
 
 ##### Closure conversion (TODO)
 
-```
+Translating types to target types: _ᵀ
 
+```
 Γ ⊢
 ────
-Γ⁺ ⊢
+Γᵀ ⊢
 
-∙⁺          = ∙
-(Γ, a : A)⁺ = (Γ⁺, a⁺ : A⁺)
+∙ᵀ          = ∙
+(Γ, a : A)ᵀ = (Γᵀ, aᵀ : Aᵀ)
 
-Γ ⊢ A
-───────
-Γ⁺ ⊢ A⁺
+Γ ⊢ A : U
+─────────
+ Γᵀ ⊢ Aᵀ
 
-U⁺      = U
-(El A)⁺ = El A⁺
+Uᵀ             = U
+⊤ᵀ             = ⊤
+⊥ᵀ             = ⊥
+Boolᵀ          = Bool
+((a : A) → B)ᵀ = ((aᵀ : Aᵀ) →⁺ Bᵀ)
+(a : A, B)⁺    = (aᵀ : Aᵀ, Bᵀ)
+Aᵀ             = El Aᵗ  if A is neutral
+```
 
+Translating terms to terms and types to codes
+```
  Γ ⊢ t : A
 ────────────
-Γ⁺ ⊢ t⁺ : A⁺
-
-x⁺    = x⁺
-⊤⁺    = ⊤'
-⊥⁺    = ⊥'
-U'⁺   = U'
-Bool⁺ = Bool'
-
-((a : A) → B)⁺ = ?
-(λ a. t)⁺      = ?
-(a : A, B)⁺    = (A⁺; (λ a. B)⁺)
-                 (λ a . B) : El ((a : A) → U')
-
-<!-- (E : U, e* : El E, code: [e* : El E](a : A) → B) -->
+Γᵀ ⊢ tᵗ : Aᵀ
 
 
-(t u)⁺         = appᶜ(t⁺, u⁺)
 
-(π₁ t)⁺                  = π₁ t⁺
-(π₂ t)⁺                  = π₂ t⁺
-(t, u)⁺                  = (t⁺, u⁺)
-true⁺                    = true
-false⁺                   = false
-(Bool-elim (x.B) t f b)⁺ = Bool-elim (x⁺.B⁺) t⁺ f⁺ b⁺
+
+```
+
+
+<!-- (t u)⁺                   = appᶜ(t⁺, u⁺) -->
+<!-- (π₁ t)⁺                  = π₁ t⁺ -->
+<!-- (π₂ t)⁺                  = π₂ t⁺ -->
+<!-- (t, u)⁺                  = (t⁺, u⁺) -->
+<!-- true⁺                    = true -->
+<!-- false⁺                   = false -->
+<!-- (Bool-elim (x.B) t f b)⁺ = Bool-elim (x⁺.B⁺) t⁺ f⁺ b⁺ -->
 ```
 
 - We must be able to convert from types to codes, in an "inverse"
@@ -378,103 +371,3 @@ Therefore:
 	(a : El (A⁺[xᵢ ⊢> πᵢ (vars(Γ⁺))]))
 	→ El (B⁺[xᵢ ⊢> πᵢ x][x ⊢> (vars(Γ⁺), a)])
 ```
-
-
-<!-- ##### Closure conversion (TODO) -->
-
-<!-- ``` -->
-
-<!-- Γ ⊢ -->
-<!-- ──── -->
-<!-- Γ⁺ ⊢ -->
-
-<!-- ∙⁺          = ∙ -->
-<!-- (Γ, a : A)⁺ = (Γ⁺, a⁺ : A⁺) -->
-
-<!-- Γ ⊢ A -->
-<!-- ─────── -->
-<!-- Γ⁺ ⊢ A⁺ -->
-
-<!-- U⁺      = U -->
-<!-- (El A)⁺ = El A⁺ -->
-
-<!--  Γ ⊢ t : A -->
-<!-- ──────────── -->
-<!-- Γ⁺ ⊢ t⁺ : A⁺ -->
-
-<!-- x⁺    = x⁺ -->
-<!-- ⊤⁺    = ⊤' -->
-<!-- ⊥⁺    = ⊥' -->
-<!-- U'⁺   = U' -->
-<!-- Bool⁺ = Bool' -->
-
-<!-- ((a : A) → B)⁺ = ? -->
-<!-- (λ a. t)⁺      = ? -->
-<!-- (a : A, B)⁺    = (A⁺; (λ a. B)⁺) -->
-<!--                  (λ a . B) : El ((a : A) → U') -->
-
-
-<!-- (t u)⁺         = appᶜ(t⁺, u⁺) -->
-
-<!-- (π₁ t)⁺                  = π₁ t⁺ -->
-<!-- (π₂ t)⁺                  = π₂ t⁺ -->
-<!-- (t, u)⁺                  = (t⁺, u⁺) -->
-<!-- true⁺                    = true -->
-<!-- false⁺                   = false -->
-<!-- (Bool-elim (x.B) t f b)⁺ = Bool-elim (x⁺.B⁺) t⁺ f⁺ b⁺ -->
-<!-- ``` -->
-
-<!-- - We must be able to convert from types to codes, in an "inverse" -->
-<!--   operation to El. We need this because in every closure Γ must be -->
-<!--   reflected down to a code and stored there. -->
-
-<!-- - We should be able to translate from a Russell-style U:U source -->
-<!--   language. There are still separate translations for types and -->
-<!--   codes, and we have to determine from context which one to use, in -->
-<!--   the absence of El. If we have this kind of source language, there is -->
-<!--   less back-and-forth "churn" in closure conversion, because -->
-<!--   types-as-types can be directly translated to types, instead of first -->
-<!--   translating to codes and the El-ing to types. However, translating -->
-<!--   types-as-codes to codes can't be avoided in general. -->
-
-<!-- - (El ((a : A) → B)⁺) must be equal to ((a : A) →⁺ B). -->
-
-<!-- - We must be able to trim contexts to the minimal dependencies of a term. -->
-<!--   It's not just FreeVars(t). We need to recursively consider variables, types of -->
-<!--   variables and variables inside types of variables. -->
-
-
-<!-- -- Scratchpad -->
-<!-- ------------------------------------------------------------ -->
-
-<!-- -- (λ a. t)⁺ -->
-<!-- ------------------------------------------------------------ -->
-
-<!-- Γ, a : El A ⊢ B : U -->
-<!-- Γ, a : El A ⊢ t : El B -->
-<!-- Γ⁺, a⁺ : El A⁺ ⊢ B⁺ : U -->
-<!-- Γ⁺, a⁺ : El A⁺ ⊢ t⁺ : El B⁺ -->
-
-<!-- First without trimming -->
-
-<!-- Goal type : `(E : U, e* : El E, code : [e* : El E](a : El A⁺) → El B⁺)` -->
-
-<!--   E := quote(Γ⁺) -->
-<!--   e* := vars(Γ⁺) : quote(Γ⁺) -->
-
-<!-- Inner type of code: -->
-
-<!--   code : (x : (e : E, El A⁺[xᵢ ⊢> πᵢ e])) → El B⁺[xᵢ ⊢> πᵢ x] -->
-
-<!-- Therefore: -->
-<!-- ``` -->
-<!--   code : -->
-<!--     [vars(Γ⁺) : quote(Γ⁺)] -->
-<!-- 	(a : El (A⁺[xᵢ ⊢> πᵢ e][e ⊢> vars(Γ⁺)])) -->
-<!-- 	→ El (B⁺[xᵢ ⊢> πᵢ x][x ⊢> (vars(Γ⁺), a)]) -->
-
-<!--   code : -->
-<!--     [vars(Γ⁺) : quote(Γ⁺)] -->
-<!-- 	(a : El (A⁺[xᵢ ⊢> πᵢ (vars(Γ⁺))])) -->
-<!-- 	→ El (B⁺[xᵢ ⊢> πᵢ x][x ⊢> (vars(Γ⁺), a)]) -->
-<!-- ``` -->
