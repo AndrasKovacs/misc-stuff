@@ -1,6 +1,5 @@
 
 TODO:
-  - put type **codes** in closures
   - clear up what properties we need for well-typed -⁺. Maybe we need everything mutually.
   - clean up closure building. Prove properties about env & strengthening renaming.
 
@@ -141,14 +140,13 @@ t ≡ (π₁ t, π₂ t)
       Γ ⊢ t u : B[a ⊢> u]
 
 -- closure β:
-  (pack E env t) u ≡ t (env, u)
+(pack E env t) u ≡ t (env, u)
 
 -- closure η:
-  Γ ⊢ t : Cl (a : A) B
-  Γ ⊢ u : Cl (a : A) B
-  Γ, a : A ⊢ t a ≡ u a
-  ────────────────────
-  Γ ⊢ t ≡ u
+Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : Cl (a : A) B
+          Γ, a : A ⊢ t a ≡ u a
+───────────────────────────────────────────
+              Γ ⊢ t ≡ u
 
 -- Codes (strongly Tarski)
 
@@ -186,6 +184,7 @@ El (Cl' A B) ≡ Cl (a : El A) (El (B a))
 
 ```
 Closure building, uncurrying and quoting are defined by mutual induction
+on CC contexts, types, terms, substitutions and equations
 
 Closure building
 ------------------------------------------------------------
@@ -205,7 +204,7 @@ given Γ, a : A ⊢ t : B, we build Γ ⊢ ? : Cl (a : A) B
 -- Uncurrying
 ------------------------------------------------------------
 
--- uncurry substitution
+-- uncurry substitutions
 
 uncurry Γ : Sub (∙, (e : El (quote Γ))) Γ
 uncurry ∙ = []
@@ -242,6 +241,8 @@ quote ((a : A) → B)  = quote A →' (λ {a}. quote B)
 quote (Cl (a : A) B) = Cl' (quote A) (λ {a}. quote B)
 quote (a : A, B)     = (quote A ,' (λ a. quote B))
 
+TODO: quote action on El equations
+
 Lemma about (El ((a : A) → B)⁺)
 ------------------------------------------------------------
   goal: El ((a : A) → B)⁺ ≡ Cl (a : El A⁺) (El B⁺)
@@ -251,9 +252,10 @@ Lemma about (El ((a : A) → B)⁺)
   goal: El ((λ {a}. B⁺) a) ≡ El B⁺
         El ((pack (quote Γ') vars (λ ea. B⁺ [uncurry (Γ', a: A)])) a) ≡ El B⁺
         El ((λ ea. B⁺ [uncurry (Γ', a: A)]) (vars, a)) ≡ El B⁺
-        El (B⁺ [uncurry (Γ', a: A)][ea ↦ (vars, a)]) ≡ El B⁺ OK -- TODO (uncurry-vars)
+        El (B⁺ [uncurry (Γ', a: A)][ea ↦ (vars, a)]) ≡ El B⁺  -- OK by (uncurry-vars)
 
-Closure conversion
+Closure conversion,
+mutually on contexts, types, terms, substitutions and equations
 ------------------------------------------------------------
 
 Γ ⊢
@@ -273,6 +275,7 @@ Closure conversion
 U⁺             = U
 (El A)⁺        = El A⁺
 x⁺             = x
+U'⁺            = U'
 ((a : A) → B)⁺ = Cl' A⁺ (λ {a}. B⁺)
 (λ a. t)⁺      = λ {a}.t⁺
 (t u)⁺         = t⁺ u⁺
@@ -315,12 +318,12 @@ To show: Γ, a : A ⊢ El ((λ {a}. quote B) a) ≡ B
     Γ, a : A ⊢ B
     Γ, a : A ⊢ El (quote B) ≡ B
 
-      El ((λ {a}. quote B) a) ≡ B
+      El ((λ {a}. quote B) a)
     = El ((pack (quote (Γ', a : A)) vars (λ env. quote B [uncurry (Γ', a : A)])) a) -- by def.
     = El ((λ env. quote B [uncurry (Γ', a : A)]) (vars, a))                         -- by def.
     = El (quote B [uncurry (Γ', a : A)] [env ⊢> (vars, a)])                         -- by def.
     = El (quote (B [uncurry (Γ', a : A)][env ⊢> (vars, a)]))  -- quote A [σ] lemma
-    = El (quote B)                                            -- TODO (uncurry-vars)
+    = El (quote B)                                            -- by uncurry-vars (TODO)
     = B
 
 for other cases, use (El ((λ {a}. quote B) a) ≡ B)
@@ -346,7 +349,7 @@ goal:
   goal invoking closure eta:
        t [uncurry (Γ', a : A)][ea ↦ (vars Γ Γ' [σ], a)]
     ≡  t [σ, a ↦ a][uncurry (Δ', a : A[σ])][ea ↦ (vars Δ Δ', a)]
-    seems OK
+    OK by uncurry-vars
 
 -- Closure conversion on substitutions
 --------------------------------------------------------------------------------
@@ -401,8 +404,20 @@ quote (Cl (a : A) B) = Cl' (quote A) (λ {a}. quote B)
 quote (a : A, B)     = (quote A ,' (λ a. quote B))
 
 
--- Conversion preservation
+-- Translating equalities
 --------------------------------------------------------------------------------
+
+Γ ⊢ A ≡ B
+─────────
+Γ⁺ ⊢ A⁺ ≡ B⁺
+
+ Γ ⊢ t ≡ u : A
+─────────────────
+Γ⁺ ⊢ t⁺ ≡ u⁺ : A⁺
+
+
+Universe decoding (El U' ≡ U):
+  goal : (El U')⁺ ≡ U⁺ OK
 
 Function beta:
 
@@ -412,8 +427,7 @@ goal :
   (λ {a}.t⁺) u⁺ ≡ t⁺ [a ↦ u⁺]
   (pack (quote Γ' vars (λ ea. t⁺ [uncurry (Γ', a : A)])) u⁺ ≡ t⁺ [a ↦ u⁺]
   (λ ea. t⁺ [uncurry (Γ', a : A)]) (vars, u⁺) ≡ t⁺ [a ↦ u⁺]
-  t⁺ [uncurry (Γ', a : A)][ea ↦ (vars, u⁺)] ≡ t⁺ [a ↦ u⁺]  -- by (uncurry-vars)
-  OK
+  t⁺ [uncurry (Γ', a : A)][ea ↦ (vars, u⁺)] ≡ t⁺ [a ↦ u⁺]  -- OK by uncurry-vars
 
 Function eta:
 
@@ -427,7 +441,7 @@ goal:
   t⁺ ≡ pack (quote Γ') vars (λ ea. (t⁺ [uncurry (Γ', a : A)]) (proj₂ ea))
   t⁺ ≡ pack (quote Γ') vars (λ (e, a). (t⁺ [uncurry Γ']) a)
   using closure eta
-  t⁺ a ≡ (t⁺ [uncurry Γ'][e ↦ vars]) a OK (by uncurry-vars TODO)
+  t⁺ a ≡ (t⁺ [uncurry Γ'][e ↦ vars]) a  -- OK by uncurry-vars
 
 
 ```
