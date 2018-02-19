@@ -1,4 +1,22 @@
 
+TODO:
+  - put type **codes** in closures
+  - clear up what properties we need for well-typed -⁺. Maybe we need everything mutually.
+  - clean up closure building. Prove properties about env & strengthening renaming.
+
+dependency structure:
+
+  - quoting, uncurrying, vars (strengthening), closure building defined
+    by mutual induction on typed CC terms and substitutions, along with required equations.
+  - cconv defined mutually on contexts, types and terms
+  - every instance of induction must prove beta-eta preservation
+
+IDEAS:
+  - If we only have applictaion as eliminator for closures, perhaps we can place closures
+    to the univ level of the source function.
+  - Have countable univ hierarchy, then show consistency of CCTT by translating to MLTT
+    where ⟦ Cl (a : A) B ⟧ = ((a : ⟦ A ⟧) → ⟦ B ⟧), at same univ level.
+
 
 ##### Source language
 
@@ -114,29 +132,23 @@ t ≡ (π₁ t, π₂ t)
 ───────────────────────
    Γ ⊢ Cl (a : A) B
 
-  ∙ ⊢ E   Γ ⊢ env : E   ∙ ⊢ t : (ea : (e : E, A)) → B
-───────────────────────────────────────────────────────
-Γ ⊢ pack E env t : Cl (a : A[e ⊢> env])(B[ea ⊢> (env, a)])
+∙ ⊢ E : U   Γ ⊢ env : El E   ∙ ⊢ t : (ea : (e : El E, A)) → B
+─────────────────────────────────────────────────────────────
+  Γ ⊢ pack E env t : Cl (a : A[e ⊢> env])(B[ea ⊢> (env, a)])
 
 Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : A
 ────────────────────────────────
       Γ ⊢ t u : B[a ⊢> u]
 
 -- closure β:
-
   (pack E env t) u ≡ t (env, u)
 
 -- closure η:
-
-  Γ ⊢ env  : E
-  Γ ⊢ env' : E'
-  ∙ ⊢ t    : (ea : (e: E, A)) → B
-  ∙ ⊢ t'   : (ea : (e: E', A')) → B'
-  Γ ⊢ A[e ↦ env] ≡ A'[e ↦ env']
-  Γ, a : A[e ↦ env] ⊢ B[ea ↦ (env, a)] ≡ B'[ea ↦ (env', a)]
-  Γ, a : A[e ↦ env] ⊢ t[ea ↦ (env, a)] ≡ t'[ea ↦ (env', a)]
-  ─────────────────────────────────────────────────────────
-  Γ ⊢ pack E env (λ ea. t) ≡ pack E' env' (λ ea. t')
+  Γ ⊢ t : Cl (a : A) B
+  Γ ⊢ u : Cl (a : A) B
+  Γ, a : A ⊢ t a ≡ u a
+  ────────────────────
+  Γ ⊢ t ≡ u
 
 -- Codes (strongly Tarski)
 
@@ -185,10 +197,10 @@ given Γ, a : A ⊢ t : B, we build Γ ⊢ ? : Cl (a : A) B
   let Γ' be the smallest environment such that Γ', a : A ⊢ t : B
       ∙ ⊢ quote (Γ', a : A) : U
       Γ ⊢ vars : El (quote Γ')
-      ∙, (ea : El (quote (Γ', a : A))) ⊢ t [uncurry (Γ', a : A)] : B [uncurry (Γ', a : A)]
+      ∙, (e : El (quote (Γ', a : A))) ⊢ t [uncurry (Γ', a : A)] : B [uncurry (Γ', a : A)]
 
   Γ ⊢ (λ {a}. t) : Cl (a : A) B
-      (λ {a}. t) := pack (quote Γ') vars (λ ea. t [uncurry (Γ', a : A)])
+      (λ {a}. t) := pack (quote Γ') vars (λ e. t [uncurry (Γ', a : A)])
 
 -- Uncurrying
 ------------------------------------------------------------
@@ -232,10 +244,14 @@ quote (a : A, B)     = (quote A ,' (λ a. quote B))
 
 Lemma about (El ((a : A) → B)⁺)
 ------------------------------------------------------------
-  goal: El ((a : A) → B)⁺ ≡ Cl (a : A⁺) B⁺
-        El (Cl' A⁺ (λ {a}. B⁺)) ≡ Cl (a : A⁺) B⁺
-        Cl (
+  goal: El ((a : A) → B)⁺ ≡ Cl (a : El A⁺) (El B⁺)
+        El (Cl' A⁺ (λ {a}. B⁺)) ≡ Cl (a : El A⁺) (El B⁺)
+        Cl (a : El A⁺) (El ((λ {a}. B⁺) a)) ≡ Cl (a : El A⁺) (El B⁺)
 
+  goal: El ((λ {a}. B⁺) a) ≡ El B⁺
+        El ((pack (quote Γ') vars (λ ea. B⁺ [uncurry (Γ', a: A)])) a) ≡ El B⁺
+        El ((λ ea. B⁺ [uncurry (Γ', a: A)]) (vars, a)) ≡ El B⁺
+        El (B⁺ [uncurry (Γ', a: A)][ea ↦ (vars, a)]) ≡ El B⁺ OK -- TODO (uncurry-vars)
 
 Closure conversion
 ------------------------------------------------------------
@@ -244,24 +260,22 @@ Closure conversion
 ────
 Γ⁺ ⊢
 
-∙⁺          = ∙
-(Γ, a : A)⁺ = (Γ⁺, a : A⁺)
-
-   Γ ⊢ A
-───────────
-Γ⁺ ⊢ A⁺ : U
+Γ ⊢ A
+───────
+Γ⁺ ⊢ A⁺
 
  Γ ⊢ t : A
 ────────────
 Γ⁺ ⊢ t⁺ : A⁺
 
+∙⁺             = ∙
+(Γ, a : A)⁺    = (Γ⁺, a : A⁺)
 U⁺             = U
 (El A)⁺        = El A⁺
 x⁺             = x
 ((a : A) → B)⁺ = Cl' A⁺ (λ {a}. B⁺)
 (λ a. t)⁺      = λ {a}.t⁺
 (t u)⁺         = t⁺ u⁺
-
 
 Lemma 1: quote A [σ] ≡ quote (A [σ])
 ------------------------------------------------------------
@@ -306,7 +320,7 @@ To show: Γ, a : A ⊢ El ((λ {a}. quote B) a) ≡ B
     = El ((λ env. quote B [uncurry (Γ', a : A)]) (vars, a))                         -- by def.
     = El (quote B [uncurry (Γ', a : A)] [env ⊢> (vars, a)])                         -- by def.
     = El (quote (B [uncurry (Γ', a : A)][env ⊢> (vars, a)]))  -- quote A [σ] lemma
-    = El (quote B)                                            -- uncurry-vars lemma (TODO)
+    = El (quote B)                                            -- TODO (uncurry-vars)
     = B
 
 for other cases, use (El ((λ {a}. quote B) a) ≡ B)
@@ -329,11 +343,10 @@ goal:
     (pack (quote (Γ', a : A)) (vars Γ Γ' [σ]) (λ ea. t [uncurry (Γ', a : A)]))
   ≡ pack (quote (Δ', a : A[σ])) (vars Δ Δ') (λ ea. t[σ, a ↦ a][uncurry (Δ', a : A[σ])])
 
-  goal :   t [uncurry (Γ', a : A)] [ea ↦ (vars Γ Γ' [σ], a)]
-         ≡ t [σ, a ↦ a][uncurry (Δ', a : A[σ])][ea ↦ (vars Δ Δ', a)]
-
-  -- seems OK
-
+  goal invoking closure eta:
+       t [uncurry (Γ', a : A)][ea ↦ (vars Γ Γ' [σ], a)]
+    ≡  t [σ, a ↦ a][uncurry (Δ', a : A[σ])][ea ↦ (vars Δ Δ', a)]
+    seems OK
 
 -- Closure conversion on substitutions
 --------------------------------------------------------------------------------
@@ -399,7 +412,7 @@ goal :
   (λ {a}.t⁺) u⁺ ≡ t⁺ [a ↦ u⁺]
   (pack (quote Γ' vars (λ ea. t⁺ [uncurry (Γ', a : A)])) u⁺ ≡ t⁺ [a ↦ u⁺]
   (λ ea. t⁺ [uncurry (Γ', a : A)]) (vars, u⁺) ≡ t⁺ [a ↦ u⁺]
-  t⁺ [uncurry (Γ', a : A)][ea ↦ (vars, u⁺)] ≡ t⁺ [a ↦ u⁺]
+  t⁺ [uncurry (Γ', a : A)][ea ↦ (vars, u⁺)] ≡ t⁺ [a ↦ u⁺]  -- by (uncurry-vars)
   OK
 
 Function eta:
@@ -409,7 +422,12 @@ hyp:
   Γ⁺ ⊢ t⁺ : Cl (a : A⁺) B⁺
 goal:
   t⁺ ≡ (λ a. t a)⁺
-  t⁺ ≡
+  t⁺ ≡ (λ {a}.t⁺ a)
+  t⁺ ≡ pack (quote Γ') vars (λ ea. (t⁺ a) [uncurry (Γ', a : A)])
+  t⁺ ≡ pack (quote Γ') vars (λ ea. (t⁺ [uncurry (Γ', a : A)]) (proj₂ ea))
+  t⁺ ≡ pack (quote Γ') vars (λ (e, a). (t⁺ [uncurry Γ']) a)
+  using closure eta
+  t⁺ a ≡ (t⁺ [uncurry Γ'][e ↦ vars]) a OK (by uncurry-vars TODO)
 
 
 ```
