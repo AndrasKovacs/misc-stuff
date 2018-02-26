@@ -3,10 +3,10 @@
 
 ##### Source language
 
-```
-Γ ⊢          Context formation
-Γ ⊢ A        Type formation
-Γ ⊢ t : A    Typing
+
+Γ ⊢            Context formation
+Γ ⊢ A type i   Type formation
+Γ ⊢ t : A      Typing
 
 ───
 ∙ ⊢
@@ -15,13 +15,16 @@
 ───────────
 Γ, a : A ⊢
 
+────────────────────
+Γ, x : A, Δ ⊢ x : A
+
  i ∈ ℕ
 ───────
-Γ ⊢ U i
+Γ ⊢ U i type (i + 1)
 
 Γ ⊢ A : U i
 ───────────
- Γ ⊢ El A
+ Γ ⊢ El A type i
 
 ────────────────────
 Γ ⊢ U' i : U (1 + i)
@@ -36,18 +39,18 @@ El (U' i) ≡ U i
 ────────────────────────────
 Γ ⊢ λ a. t : El ((a : A) → B)
 
-Γ ⊢ t : (a : A) → B   Γ ⊢ u : El A
-──────────────────────────────────
+Γ ⊢ t : El ((a : A) → B)   Γ ⊢ u : El A
+───────────────────────────────────────
     Γ ⊢ t u : El (B[a ⊢> u])
 
 (λ a. t) u ≡ t[a ⊢> u]
 λ a. t a ≡ t
 
-```
+
 
 ##### Target language
 
-```
+
 Γ ⊢           Context formation
 Γ ⊢ A type i  Type formation at level i
 Γ ⊢ t : A     Typing
@@ -61,6 +64,11 @@ Context
 Γ ⊢   Γ ⊢ A type i
 ──────────────────
 Γ, a : A ⊢
+
+Variables
+
+────────────────────
+Γ, x : A, Δ ⊢ x : A
 
 Substitutions (omitted: category, psh laws)
 
@@ -197,11 +205,11 @@ El (A ,' B) ≡ (a : El A, El (B a))
 
 El (Cl' A B) ≡ Cl (a : El A) (El (B a))
 
-```
+
 
 ### Admissibility of function space in target TT
 
-```
+
 
 -- Context induction motive
 --------------------------------------------------------------------------------
@@ -267,7 +275,10 @@ close Γ ∘ [ e ↦ open Γ ] ≡ id
 -- Admissibility of function space (assuming all inductive hypotheses)
 --------------------------------------------------------------------------------
 
-Closure building:
+We have type formation and application already, we only
+need term formation, β, η and substitution rules
+
+Term formation :
 
        Γ, a : A ⊢ t : B
   ────────────────────────────
@@ -276,6 +287,14 @@ Closure building:
   -- TODO: well-typing proof
   (λ {a}. t) = pack (quote Γ) (open Γ) (λ e. t [close (Γ, a : A)])
 
+λ{}-β : (λ {a}. t) u ≡ t [a ↦ u]
+  (pack (quote Γ) (open Γ) (λ e. t [close (Γ, a : A)])) u ≡ t [a ↦ u]
+  t [close (Γ, a : A)] [e ↦ (open Γ, u)] ≡ t [a ↦ u]
+  [close Γ ∘ [e ↦ π₁ e], a ↦ π₂ e] [e ↦ (open Γ, u)] ≡ [a ↦ u]
+  [close Γ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Γ, u)], a ↦ u] ≡ [a ↦ u]
+  [close Γ ∘ [e ↦ open Γ], a ↦ u] ≡ [a ↦ u]
+  [id, a ↦ u] ≡ [a ↦ u]
+  OK
 
 λ{}-η :
   Γ ⊢ t : Cl (a : A) B
@@ -319,7 +338,6 @@ Closure building:
 
      close Γ ∘ [e ↦ open Γ [σ]]
   ≡  σ ∘ close Δ ∘ [e ↦ open Δ]
-
      close Γ ∘ [e ↦ open Γ [σ]] ≡ σ
      close Γ ∘ [[] ∘ σ, e ↦ open Γ [σ]] ≡ σ
      close Γ ∘ [[], e ↦ open Γ] ∘ σ ≡ σ
@@ -366,9 +384,7 @@ El (quote ((a : A) → B)) ≡ (a : A) → B
    El (quote A →' (λ {a}. quote B)) ≡ (a : A) → B
    ((a : El (quote A)) → El ((λ {a}. quote B) a)) ≡ ((a : A) → B)
    El ((λ {a}. quote B) a) ≡ B
-   El (pack (quote Γ) (open Γ) (λ e. quote B [close (Γ, a : A)]) a) ≡ B
-   El (quote B [close (Γ, a : A)] [e ↦ (open Γ, a)]) ≡ B
-   El (quote B) ≡ B
+   El (quote B) ≡ B  -- λ{}-β
    OK
 
 El (quote (a : A, B)) ≡ (a : A, B)
@@ -408,5 +424,78 @@ quote (Cl (a : A) B) [σ] ≡ quote (Cl (a : A) B [σ])
   in particular, make use of: (λ {a}. quote B) [σ] ≡ (λ {a}. quote (B [σ, a ↦ a]))
   OK
 
-
 ### Closure conversion
+
+By mutual induction on source contexts, types, terms and substitutions
+
+-- Motives
+--------------------------------------------------------------------------------
+
+Γ ⊢
+────
+Γᶜ ⊢
+
+Γ ⊢ σ : Δ
+────────────
+Γᶜ ⊢ σᶜ : Δᶜ
+
+Γ ⊢ A type i
+──────────────
+Γᶜ ⊢ Aᶜ type i
+∀ σ. (A[σ])ᶜ ≡ Aᶜ [σᶜ]
+
+Γ ⊢ t : A
+────────────
+Γᶜ ⊢ tᶜ : Aᶜ
+∀ σ. (t[σ])ᶜ ≡ tᶜ [σᶜ]
+
+
+-- Proofs
+--------------------------------------------------------------------------------
+
+∙ᶜ          = ∙
+(Γ, a : A)ᶜ = (Γᶜ, a : Aᶜ)
+
+[]ᶜ         = []
+[σ, a ↣ t]ᶜ = [σᶜ, a ↦ tᶜ]    -- TODO: well-typing
+
+(U i)ᶜ  = U i
+(El A)ᶜ = El Aᶜ
+
+(U' i)ᶜ     = U' i
+(a : A) → B = Cl' Aᶜ (λ {a}. Bᶜ)
+(λ a. t)ᶜ   = λ {a}. tᶜ
+xᶜ          = x
+(t u)ᶜ      = tᶜ uᶜ
+
+(El (U' i))ᶜ ≡ (U i)ᶜ       OK
+((λ a. t) u)ᶜ ≡ (t[a ↦ u])ᶜ OK -- admissible λ{}-β
+(λ a. t a)ᶜ ≡ tᶜ            OK -- admissible λ{}-η
+
+
+(U i [σ])ᶜ  ≡ (U i)ᶜ [σᶜ] OK
+
+(El A [σ])ᶜ ≡ (El A)ᶜ [σᶜ]
+  El (A [σ])ᶜ ≡ El Aᶜ [σᶜ]
+  El (A [σ])ᶜ ≡ El (Aᶜ [σᶜ])
+  OK
+
+((U' i) [σ])ᶜ ≡ (U' i)ᶜ [σᶜ] OK
+
+(((a : A) → B) [σ])ᶜ ≡ ((a : A) → B)ᶜ [σᶜ]
+  ((a : A[σ]) → B[σ, a ↦ a])ᶜ ≡ (Cl' Aᶜ (λ {a}. Bᶜ)) [σᶜ]
+  (Cl' (A[σ])ᶜ (λ {a}. (B[σ, a ↦ a])ᶜ)) ≡ (Cl' (Aᶜ [σᶜ]) (λ {a}. Bᶜ[σᶜ, a ↦ a]))
+  OK -- by ind hyp.
+
+(x [σ])ᶜ ≡ xᶜ [σᶜ]
+  (x [σ])ᶜ ≡ x [σᶜ]
+  tᶜ ≡ tᶜ   where   x ↦ t ∈ σ, so x ↦ tᶜ ∈ σᶜ
+  OK
+
+(((λ a. t) u) [σ])ᶜ ≡ ((λ a. t) u)ᶜ [σᶜ]
+  ((λ a. t [σ, a ↦ a]) (u [σ]))ᶜ ≡ ((λ {a}. tᶜ) uᶜ) [σᶜ]
+  ((λ a. t [σ, a ↦ a]) (u [σ]))ᶜ ≡ ((λ {a}. tᶜ) uᶜ) [σᶜ]
+  (λ {a}. (t [σ, a ↦ a])ᶜ) (u [σ])ᶜ ≡ ((λ {a}. tᶜ [σᶜ, a ↦ a]) (uᶜ [σᶜ]))
+  OK
+
+--------------------------------------------------------------------------------
