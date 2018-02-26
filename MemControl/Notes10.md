@@ -1,0 +1,412 @@
+
+
+
+##### Source language
+
+```
+Γ ⊢          Context formation
+Γ ⊢ A        Type formation
+Γ ⊢ t : A    Typing
+
+───
+∙ ⊢
+
+Γ ⊢   Γ ⊢ A
+───────────
+Γ, a : A ⊢
+
+ i ∈ ℕ
+───────
+Γ ⊢ U i
+
+Γ ⊢ A : U i
+───────────
+ Γ ⊢ El A
+
+────────────────────
+Γ ⊢ U' i : U (1 + i)
+
+El (U' i) ≡ U i
+
+Γ ⊢ A : U i   Γ, a : El A ⊢ B : U j
+───────────────────────────────────
+    Γ ⊢ (a : A) → B : U (i ⊔ j)
+
+   Γ, a : El A ⊢ t : El B
+────────────────────────────
+Γ ⊢ λ a. t : El ((a : A) → B)
+
+Γ ⊢ t : (a : A) → B   Γ ⊢ u : El A
+──────────────────────────────────
+    Γ ⊢ t u : El (B[a ⊢> u])
+
+(λ a. t) u ≡ t[a ⊢> u]
+λ a. t a ≡ t
+
+```
+
+##### Target language
+
+```
+Γ ⊢           Context formation
+Γ ⊢ A type i  Type formation at level i
+Γ ⊢ t : A     Typing
+Γ ⊢ σ : Δ     Substitutions
+
+Context
+
+───
+∙ ⊢
+
+Γ ⊢   Γ ⊢ A type i
+──────────────────
+Γ, a : A ⊢
+
+Substitutions (omitted: category, psh laws)
+
+Γ ⊢ A type i   Γ ⊢ σ : Δ
+────────────────────────
+   Δ ⊢ A[σ] type i
+
+Γ ⊢ t : A   Γ ⊢ σ : Δ
+─────────────────────
+   Δ ⊢ t[σ] : A[σ]
+
+──────────
+Γ ⊢ [] : ∙
+
+Γ ⊢ σ : Δ   Δ ⊢ A type i   Γ ⊢ t : A[σ]
+───────────────────────────────────────
+    Γ ⊢ [σ, x ↦ t] : (Δ, x : A)
+
+       Γ ⊢ σ : (Δ, a : A)
+─────────────────────────────────
+Γ ⊢ π₁ σ : Δ   Γ ⊢ π₁ σ : A[π₁ σ]
+
+──────────
+Γ ⊢ id : Γ
+
+
+Types
+
+       i ∈ ℕ
+────────────────────
+Γ ⊢ U i type (i + 1)
+
+  Γ ⊢ A : U i
+───────────────
+Γ ⊢ El A type i
+
+────────────
+Γ ⊢ ⊤ type 0
+
+──────────
+Γ ⊢ tt : ⊤
+
+Γ ⊢ t : ⊤
+──────────
+Γ ⊢ t ≡ tt
+
+Γ ⊢ A type i   Γ, a : A ⊢ B type j
+──────────────────────────────────
+  Γ ⊢ (a : A) → B type (max i j)
+
+   ∙, a : A ⊢ t : B
+────────────────────────
+Γ ⊢ λ a. t : (a : A) → B
+
+Γ ⊢ t : (a : A) → B   Γ ⊢ u : A
+───────────────────────────────
+   Γ ⊢ t u : B[a ⊢> u]
+
+(λ a. t) u ≡ t[a ⊢> u]
+t ≡ (λ a. t a)     -- possible only if ∙ ⊢ t : (a : A) → B
+
+-- Σ types
+
+-- We only use Σ to store closed environment types, so we make type formation closed
+-- This makes context quoting simpler, since Σ codes only need to store primitive
+-- functions for second field types as opposed to closures.
+
+∙ ⊢ A type i   ∙, a : A ⊢ B type j
+───────────────────────────────────
+  Γ ⊢ (a : A, B) type (max i j)
+
+∙ ⊢ A type i   ∙, a : A ⊢ B type j   Γ ⊢ t : A   Γ ⊢ u : B[a ⊢> t]
+──────────────────────────────────────────────────────────────────
+                  Γ ⊢ (t, u) : (t : A, B)
+
+        Γ ⊢ t : (a : A, B)
+──────────────────────────────────────
+Γ ⊢ π₁ t : A   Γ ⊢ π₂ t : B[a ⊢> π₁ t]
+
+π₁ (t, u) ≡ t
+π₂ (t, u) ≡ u
+t ≡ (π₁ t, π₂ t)
+
+-- Closures (note that "pack" hides the universe level of the environment!)
+
+ Γ ⊢ A type i   Γ, a : A ⊢ B type j
+───────────────────────────────────
+  Γ ⊢ Cl (a : A) B type (max i j)
+
+∙ ⊢ E : U i   Γ ⊢ env : El E   ∙ ⊢ t : (ea : (e : El E, A)) → B
+───────────────────────────────────────────────────────────────
+  Γ ⊢ pack E env t : Cl (a : A[e ⊢> env]) (B[ea ⊢> (env, a)])
+
+Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : A
+────────────────────────────────
+      Γ ⊢ t u : B[a ⊢> u]
+
+-- closure β:
+(pack E env t) u ≡ t (env, u)
+
+-- closure η:
+Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : Cl (a : A) B
+          Γ, a : A ⊢ t a ≡ u a
+───────────────────────────────────────────
+              Γ ⊢ t ≡ u
+
+-- Codes (strongly Tarski)
+
+────────────────────
+Γ ⊢ U' i : U (i + 1)
+
+El (U' i) ≡ U i
+
+────────────
+Γ ⊢ ⊤' : U 0
+
+El ⊤' ≡ ⊤
+
+Γ ⊢ A : U i   Γ ⊢ B : Cl (El A) (U j)
+─────────────────────────────────────
+      Γ ⊢ A →' B : U (max i j)
+
+El (A →' B) ≡ (a : El A) → El (B a)
+
+∙ ⊢ A : U i   ∙ ⊢ B : El A → U j
+────────────────────────────────
+   Γ ⊢ (A ,' B) : U (max i j)
+
+El (A ,' B) ≡ (a : El A, El (B a))
+
+Γ ⊢ A : U i   Γ ⊢ B : Cl (El A) (U j)
+─────────────────────────────────────
+     Γ ⊢ Cl' A B : U (max i j)
+
+El (Cl' A B) ≡ Cl (a : El A) (El (B a))
+
+```
+
+### Admissibility of function space in target TT
+
+```
+
+-- Context induction motive
+--------------------------------------------------------------------------------
+
+               Γ ⊢
+──────────────────────────────────────
+  level Γ ∈ ℕ
+  ∙ ⊢ quote Γ : U (level Γ)
+  Γ ⊢ open  Γ : El (quote Γ)
+  e : El (quote Γ) ⊢ close Γ : Γ
+  [e ↦ open Γ [ close Γ ]] ≡ id
+  close Γ ∘ [ e ↦ open Γ ] ≡ id
+
+-- Type induction motive
+--------------------------------------------------------------------------------
+
+  Γ ⊢ A type i
+────────────────────
+Γ ⊢ quote A : U i
+Γ ⊢ El (quote A) ≡ A
+∀ σ. quote A [σ] ≡ quote (A [σ])
+
+
+-- Context proofs (TODO: well-typing proofs)
+--------------------------------------------------------------------------------
+
+level ∙          = 0
+level (Γ, a : A) = max (level Γ) i    -- where Γ ⊢ A type i
+
+quote ∙          = ⊤'
+quote (Γ, a : A) = (quote Γ ,' λ e. quote A [close Γ])
+
+close ∙          = []
+close (Γ, a : A) = [(close Γ ∘ [e ↦ π₁ e]), a ↦ π₂ e]
+
+open ∙           = tt
+open (Γ, a : A)  = (open Γ, a)
+
+[e ↦ open ∙ [ close ∙ ]] ≡ id
+  [e ↦ tt] ≡ id  -- by η-rule for ⊤
+  OK
+
+[e ↦ open (Γ, a : A) [ close (Γ, a : A) ]] ≡ id
+  [e ↦ (open Γ, a) [(close Γ ∘ [e ↦ π₁ e]), a ↦ π₂ e]] ≡ id
+  [e ↦ (open Γ [close Γ ∘ [e ↦ π₁ e]], π₂ e)] ≡ id
+  [e ↦ (open Γ [close Γ] [e ↦ π₁ e], π₂ e)] ≡ id
+  [e ↦ (e [e ↦ π₁ e], π₂ e)] ≡ id
+  [e ↦ (π₁ e, π₂ e)] ≡ id
+  [e ↦ e]            ≡ id
+  OK
+
+[] ∘ [ e ↦ tt ] ≡ id
+  [] ≡ id
+  OK
+
+close Γ ∘ [ e ↦ open Γ ] ≡ id
+  [(close Γ ∘ [e ↦ π₁ e]), a ↦ π₂ e] ∘ [e ↦ (open Γ, a)] ≡ id
+  [close Γ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Γ, a)], a → a] ≡ [id, a ↦ a]
+  close Γ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Γ, a)] ≡ id
+  close Γ ∘ [e → open Γ] ≡ id
+  OK
+
+-- Admissibility of function space (assuming all inductive hypotheses)
+--------------------------------------------------------------------------------
+
+Closure building:
+
+       Γ, a : A ⊢ t : B
+  ────────────────────────────
+  Γ ⊢ (λ {a}.t) : Cl (a : A) B
+
+  -- TODO: well-typing proof
+  (λ {a}. t) = pack (quote Γ) (open Γ) (λ e. t [close (Γ, a : A)])
+
+
+λ{}-η :
+  Γ ⊢ t : Cl (a : A) B
+  ────────────────────
+  Γ ⊢ t ≡ (λ {a}. t a)
+
+  t a ≡ (λ {a}. t a) a
+  t a ≡ (pack (quote Γ) (open Γ) (λ e. t a [close (Γ, a : A)])) a
+  t a ≡ t a [close (Γ, a : A)] [e ↦ (open Γ, a)]
+  t a ≡ t a
+  OK
+
+λ{}-substitution : (λ {a}. t) [σ] ≡ (λ {a}. t [σ, a ↦ a])
+
+    pack (quote Γ) (open Γ [σ]) (λ e. t [close (Γ, a : A)])
+  ≡ pack (quote Δ) (open Δ) (λ e. t [σ, a ↦ a]) [close (Δ, a : A[σ])]
+
+    pack (quote Γ) (open Γ [σ]) (λ e. t [close (Γ, a : A)])
+  ≡ pack (quote Δ) (open Δ) (λ e. t [σ, a ↦ a]) [close (Δ, a : A[σ])]
+
+    (pack (quote Γ) (open Γ [σ]) (λ e. t [close (Γ, a : A)])) a
+  ≡ (pack (quote Δ) (open Δ) (λ e. t [σ, a ↦ a]) [close (Δ, a : A[σ])]) a
+
+    t [close (Γ, a : A)] [e ↦ (open Γ [σ], a)]
+  ≡ t [σ, a ↦ a] [close (Δ, a : A[σ])] [e ↦ (open Δ, a)]
+
+    [close (Γ, a : A)] ∘ [e ↦ (open Γ [σ], a)]
+  ≡ [σ, a ↦ a] ∘ [close (Δ, a : A[σ])] ∘ [e ↦ (open Δ, a)]
+
+    [(close Γ ∘ [e ↦ π₁ e]), a ↦ π₂ e] ∘ [e ↦ (open Γ [σ], a)]
+  ≡ [σ, a ↦ a] ∘ [(close Δ ∘ [e ↦ π₁ e]), a ↦ π₂ e] ∘ [e ↦ (open Δ, a)]
+
+    [close Γ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Γ [σ], a)], a ↦ a]
+  ≡ [σ, a ↦ a] ∘ [close Δ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Δ, a)], a ↦ a]
+
+    [close Γ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Γ [σ], a)], a ↦ a]
+  ≡ [σ ∘ close Δ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Δ, a)], a ↦ a]
+
+     close Γ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Γ [σ], a)]
+  ≡  σ ∘ close Δ ∘ [e ↦ π₁ e] ∘ [e ↦ (open Δ, a)]
+
+     close Γ ∘ [e ↦ open Γ [σ]]
+  ≡  σ ∘ close Δ ∘ [e ↦ open Δ]
+
+     close Γ ∘ [e ↦ open Γ [σ]] ≡ σ
+     close Γ ∘ [[] ∘ σ, e ↦ open Γ [σ]] ≡ σ
+     close Γ ∘ [[], e ↦ open Γ] ∘ σ ≡ σ
+     close Γ ∘ [e ↦ open Γ] ∘ σ ≡ σ
+     σ ≡ σ OK
+
+-- Type proofs
+--------------------------------------------------------------------------------
+
+quote (U i)          = U' i
+quote (El A)         = A
+quote ⊤              = ⊤'
+quote ((a : A) → B)  = quote A →' (λ {a}. quote B)
+quote (a : A, B)     = (quote A ,' λ a. quote B)
+quote (Cl (a : A) B) = Cl' (quote A) (λ {a}. quote B)
+
+quote (El (U' i) ≡ U i) OK
+quote (El ⊤' ≡ ⊤)       OK
+
+quote (El (A →' B) ≡ (a : El A) → El (B a))
+           A →' B  ≡ A →' (λ {a}. quote (El (B a)))
+  B ≡ (λ {a}. quote (El (B a))
+  B a ≡ quote (El (B a) -- by λ{}-η
+  B a ≡ B a
+  OK
+
+quote (El (A ,' B) ≡ (a : El A, El (B a)))
+          (A ,' B) ≡ (quote (El A) ,' λ a. quote (El (B a)))
+          (A ,' B) ≡ (A ,' λ a. quote (El (B a)))
+          B ≡ λ a. quote (El (B a))
+          B a ≡ quote (El (B a))   -- by function eta
+          B a ≡ B a
+          OK
+
+quote (El (Cl' A B) ≡ Cl (a : El A) (El (B a)))
+  same as El (A →' B) case
+  OK
+
+El (quote (U i))  ≡ U i    OK
+El (quote (El A)) ≡ El A   OK
+El (quote ⊤)      ≡ ⊤      OK
+
+El (quote ((a : A) → B)) ≡ (a : A) → B
+   El (quote A →' (λ {a}. quote B)) ≡ (a : A) → B
+   ((a : El (quote A)) → El ((λ {a}. quote B) a)) ≡ ((a : A) → B)
+   El ((λ {a}. quote B) a) ≡ B
+   El (pack (quote Γ) (open Γ) (λ e. quote B [close (Γ, a : A)]) a) ≡ B
+   El (quote B [close (Γ, a : A)] [e ↦ (open Γ, a)]) ≡ B
+   El (quote B) ≡ B
+   OK
+
+El (quote (a : A, B)) ≡ (a : A, B)
+  El (quote A ,' λ a. quote B) ≡ (a : A, B)
+  (a : El (quote A), El (quote B)) ≡ (a : A, B)
+  OK
+
+El (quote (Cl (a : A) B)) ≡ Cl (a : A) B
+  same as El (quote ((a : A) → B)) ≡ (a : A) → B
+  OK
+
+quote (U i) [σ]  ≡ quote (U i [σ])  OK
+quote (El A) [σ] ≡ quote (El A [σ]) OK
+quote ⊤ [σ]      ≡ quote (⊤ [σ])    OK
+
+quote ((a : A) → B) [σ] ≡ quote (((a : A) → B) [σ])
+  hyp:
+    Γ ⊢ A type i
+    Γ, a : A ⊢ B type j
+    Δ ⊢ σ : Γ
+
+  (quote A →' (λ {a}. quote B)) [σ] ≡ quote ((a : A[σ]) → B [σ, a ↦ a])
+  (quote A [σ] →' (λ {a}. quote B) [σ]) ≡ (quote (A [σ]) →' (λ {a}. quote (B [σ, a ↦ a])))
+
+  (λ {a}. quote B) [σ] ≡ (λ {a}. quote (B [σ, a ↦ a]))
+  (λ {a}. quote B [σ, a ↦ a]) ≡ (λ {a}. quote (B [σ, a ↦ a]))
+  (λ {a}. quote (B [σ, a ↦ a])) ≡ (λ {a}. quote (B [σ, a ↦ a]))
+  OK
+
+quote (a : A, B) [σ] ≡ quote ((a : A, B) [σ])
+  (quote A ,' λ a. quote B) [σ] ≡ quote (a : A[σ], B[σ, a ↦ a])
+  (quote A [σ] ,' λ a. quote B [σ, a ↦ a]) ≡ (quote (A[σ]) ,' λ a. quote (B[σ, a ↦ a]))
+  OK
+
+quote (Cl (a : A) B) [σ] ≡ quote (Cl (a : A) B [σ])
+  same as in (quote ((a : A) → B) [σ] ≡ quote (((a : A) → B) [σ]))
+  in particular, make use of: (λ {a}. quote B) [σ] ≡ (λ {a}. quote (B [σ, a ↦ a]))
+  OK
+
+
+### Closure conversion
