@@ -1,11 +1,11 @@
 
 
 
-##### Source language
+### Source language
 
 
 Γ ⊢            Context formation
-Γ ⊢ A type i   Type formation
+Γ ⊢ A type i   Type formation at level i ∈ ℕ
 Γ ⊢ t : A      Typing
 
 ───
@@ -13,7 +13,7 @@
 
 Γ ⊢   Γ ⊢ A
 ───────────
-Γ, a : A ⊢
+0Γ, a : A ⊢
 
 ────────────────────
 Γ, x : A, Δ ⊢ x : A
@@ -48,11 +48,11 @@ El (U' i) ≡ U i
 
 
 
-##### Target language
+### Target language
 
 
 Γ ⊢           Context formation
-Γ ⊢ A type i  Type formation at level i
+Γ ⊢ A type i  Type formation at level i ∈ ℕ
 Γ ⊢ t : A     Typing
 Γ ⊢ σ : Δ     Substitutions
 
@@ -210,11 +210,10 @@ El (Cl' A B) ≡ Cl (a : El A) (El (B a))
 ### Admissibility of function space in target TT
 
 
-
 -- Context induction motive
 --------------------------------------------------------------------------------
 
-               Γ ⊢
+  Γ ⊢
 ──────────────────────────────────────
   level Γ ∈ ℕ
   ∙ ⊢ quote Γ : U (level Γ)
@@ -498,4 +497,9 @@ xᶜ          = x
   (λ {a}. (t [σ, a ↦ a])ᶜ) (u [σ])ᶜ ≡ ((λ {a}. tᶜ [σᶜ, a ↦ a]) (uᶜ [σᶜ]))
   OK
 
+--------------------------------------------------------------------------------
+
+### Translation back to source from target (consistency)
+
+-- Context motives
 --------------------------------------------------------------------------------
