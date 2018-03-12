@@ -52,7 +52,7 @@ eval (lam t) {σ} σᴳ =
     (eval t {σ , a} (σᴳ , aᴳ)))
 eval (app t u) {σ} σᴳ with eval t σᴳ
 ... | t' , p , q =
-  Good~>*⁻¹ (trans~>* (app₁* p) (β t' (Tmₛ σ u) ∷ [])) (q (Tmₛ σ u) (eval u σᴳ) )
+o  Good~>*⁻¹ (trans~>* (app₁* p) (β t' (Tmₛ σ u) ∷ [])) (q (Tmₛ σ u) (eval u σᴳ) )
 
 Val : ∀ {A} → Tm ∙ A → Set
 Val (var _)   = ⊥

@@ -184,3 +184,23 @@ idᴺₛ {Γ , A} = Conᴺₑ wk idᴺₛ , uᴺ (var vz)
 
 nf : ∀ {Γ A} → Tm Γ A → Nf Γ A
 nf t = qᴺ (Tmᴺ t idᴺₛ)
+
+-- Canonicity
+------------------------------------------------------------
+
+open import Relation.Binary.PropositionalEquality
+open import Data.Sum
+open import Data.Empty
+
+no-Ne : ∀ {A} → Ne ∙ A → Data.Empty.⊥
+no-Ne {A} (var ())
+no-Ne {A} (app t x) = no-Ne t
+no-Ne {A} (π₁ t) = no-Ne t
+no-Ne {A} (π₂ t) = no-Ne t
+no-Ne {A} (case x x₁ t) = no-Ne t
+no-Ne {A} (⊥-rec t) = no-Ne t
+
++-canonical : ∀ {A B}(t : Nf ∙ (A + B)) → (∃ λ t' → t ≡ inj₁ t') ⊎ (∃ λ t' → t ≡ inj₂ t')
++-canonical (ne+  n) = ⊥-elim (no-Ne n)
++-canonical (inj₁ t) = inj₁ (t , refl)
++-canonical (inj₂ t) = inj₂ (t , refl)

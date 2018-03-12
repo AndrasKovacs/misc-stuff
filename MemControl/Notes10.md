@@ -13,7 +13,7 @@
 
 Γ ⊢   Γ ⊢ A
 ───────────
-0Γ, a : A ⊢
+Γ, a : A ⊢
 
 ────────────────────
 Γ, x : A, Δ ⊢ x : A
@@ -499,7 +499,56 @@ xᶜ          = x
 
 --------------------------------------------------------------------------------
 
-### Translation back to source from target (consistency)
+### Injectivity of ᶜ
 
--- Context motives
---------------------------------------------------------------------------------
+Mutual induction on contexts, types and terms:
+
+                  Γ ⊢
+   ─────────────────────────────────────
+   ∀ Δ. (Δ ⊢) ∧ (Γᶜ ≡ Δᶜ) implies Γ ≡ Δ
+
+                 Γ ⊢ A
+   ────────────────────────────────────────
+   ∀ B. (Γ ⊢ B) ∧ (Aᶜ ≡ Bᶜ) implies A ≡ B
+
+               Γ ⊢ t : A
+   ────────────────────────────────────────
+   ∀ u. (Γ ⊢ u : A) ∧ (tᶜ ≡ uᶜ) implies t ≡ u
+
+Observe that ᶜ returns distinct cxt/type/term formers
+for each input former.
+
+Proof:
+  in each case, by case discrimination on Δ, B, or u,
+  then using induction hypotheses.
+
+### Standard MLTT model of target theory
+
+TODO
+
+only interesting case: Cl
+
+    Γ ⊢ A type i   Γ, a : A ⊢ B type j
+───────────────────────────────────────────
+(Cl (a : A) B)ᴹ γ = (a : Aᴹ γ) → Bᴹ (γ , a)
+
+
+∙ ⊢ E : U i   Γ ⊢ env : El E   ∙ ⊢ t : (ea : (e : El E, A)) → B
+───────────────────────────────────────────────────────────────
+   hyp:
+     tᴹ tt : (ea : (e : Eᴹ tt, Aᴹ (tt, e))) → Bᴹ(tt, ea)
+
+   goal :
+     (a : (A[e ⊢> env])ᴹ γ) →  (B[ea ⊢> (env, a)])ᴹ (γ, a)
+
+   (pack E env t)ᴹ γ = (λ (a : Aᴹ γ). tᴹ tt (envᴹ γ, a))
+     -- Well-typed, universe also OK
+
+Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : A
+────────────────────────────────
+(t uᴹ) γ = tᴹ γ (uᴹ γ)
+
+((pack E env t) u ≡ t (env, u))ᴹ:
+  ((pack E env t)ᴹ γ) (uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))   -- implicit weakening of t to ∙
+  (λ a. tᴹ tt (envᴹ γ, a)) (uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))
+   tᴹ tt (envᴹ γ, uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))
