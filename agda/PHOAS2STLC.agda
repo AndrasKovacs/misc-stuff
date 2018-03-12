@@ -56,7 +56,7 @@ data PH (X : Type → Set) : Type → Set where
   abs : ∀ {A B : Type} → (X A → PH X B) → PH X (A ⇒ B)
   app : ∀ {A B : Type} → PH X (A ⇒ B) → PH X A → PH X B
 
--- logical prediacte on PH
+-- logical predicate on PH
 PHᴾ : ∀ {X}(Xᴾ : ∀ {A} → X A → Set) → ∀ {A} → PH X A → Set
 PHᴾ Xᴾ (var a)   = Xᴾ a
 PHᴾ Xᴾ (abs t)   = ∀ a → Xᴾ a → PHᴾ Xᴾ (t a)
