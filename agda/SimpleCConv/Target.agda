@@ -334,6 +334,31 @@ assₛ :
 assₛ ∙       δ ν = refl
 assₛ (σ , t) δ ν = _,_ & assₛ σ δ ν ⊗ (Tm-∘ₛ δ ν t ⁻¹)
 
+⌜idₑ⌝ : ∀ {Γ} → ⌜ idₑ {Γ} ⌝ᵒᵖᵉ ≡ idₛ
+⌜idₑ⌝ {∙}     = refl
+⌜idₑ⌝ {Γ ▶ A} = (λ x → (x ₛ∘ₑ wk) , var vz) & ⌜idₑ⌝
+
+⌜∈ₑ⌝ : ∀ {Γ Δ A}(σ : OPE Γ Δ)(x : A ∈ Δ) → var (∈ₑ σ x) ≡ ∈ₛ ⌜ σ ⌝ᵒᵖᵉ x
+⌜∈ₑ⌝ ∙ ()
+⌜∈ₑ⌝ (drop σ) x      = (var ∘ vs) & (∈-idₑ _ ⁻¹) ◾ Tmₑ wk & ⌜∈ₑ⌝ σ x ◾ ∈-ₛ∘ₑ ⌜ σ ⌝ᵒᵖᵉ wk x ⁻¹
+⌜∈ₑ⌝ (keep σ) vz     = refl
+⌜∈ₑ⌝ (keep σ) (vs x) = (var ∘ vs) & (∈-idₑ _ ⁻¹) ◾ Tmₑ wk & ⌜∈ₑ⌝ σ x ◾ ∈-ₛ∘ₑ ⌜ σ ⌝ᵒᵖᵉ wk x ⁻¹
+
+⌜Tmₑ⌝ : ∀ {Γ Δ A}(σ : OPE Γ Δ)(t : Tm Δ A) → Tmₑ σ t ≡ Tmₛ ⌜ σ ⌝ᵒᵖᵉ t
+⌜Tmₑ⌝ σ (var x) = ⌜∈ₑ⌝ σ x
+⌜Tmₑ⌝ σ tt = refl
+⌜Tmₑ⌝ σ true = refl
+⌜Tmₑ⌝ σ false = refl
+⌜Tmₑ⌝ σ (if t t₁ t₂) = if & ⌜Tmₑ⌝ σ t ⊗ ⌜Tmₑ⌝ σ t₁ ⊗ ⌜Tmₑ⌝ σ t₂
+⌜Tmₑ⌝ σ (π₁ t) = π₁ & ⌜Tmₑ⌝ σ t
+⌜Tmₑ⌝ σ (π₂ t) = π₂ & ⌜Tmₑ⌝ σ t
+⌜Tmₑ⌝ σ (t , t₁) = _,_ & ⌜Tmₑ⌝ σ t ⊗ ⌜Tmₑ⌝ σ t₁
+⌜Tmₑ⌝ σ (pack t t₁) = pack & ⌜Tmₑ⌝ σ t ⊗ ⌜Tmₑ⌝ σ t₁
+⌜Tmₑ⌝ σ (app⁺ t t₁) = app⁺ & ⌜Tmₑ⌝ σ t ⊗ ⌜Tmₑ⌝ σ t₁
+⌜Tmₑ⌝ σ (lam t) = refl
+⌜Tmₑ⌝ σ (app t t₁) = app & ⌜Tmₑ⌝ σ t ⊗ ⌜Tmₑ⌝ σ t₁
+
+
 -- Conversion
 --------------------------------------------------------------------------------
 
@@ -357,8 +382,8 @@ data _~_ {Γ} : ∀ {A} → Tm Γ A → Tm Γ A → Set where
 
   pack  : ∀ {E A B}{e e' : Tm Γ E}{t t' : Tm Γ (E * A ⇒ B)} → e ~ e' → t ~ t' → pack e t ~ pack e' t'
   app⁺  : ∀ {A B}{t t' : Tm Γ (A ⇒⁺ B)}{u u'} → t ~ t' → u ~ u' → app⁺ t u ~ app⁺ t' u'
-  β⁺    : ∀ {A B E} e t t' → app⁺ (pack {Γ}{A}{B}{E} e t) t' ~ app t (e , t')
-  η⁺    : ∀ {A B}{t t' : Tm Γ (A ⇒⁺ B)} → app⁺ (Tmₑ wk t) (var vz) ~ app⁺ (Tmₑ wk t') (var vz) → t ~ t'
+  βᶜ    : ∀ {A B E} e t t' → app⁺ (pack {Γ}{A}{B}{E} e t) t' ~ app t (e , t')
+  ηᶜ    : ∀ {A B}{t t' : Tm Γ (A ⇒⁺ B)} → app⁺ (Tmₑ wk t) (var vz) ~ app⁺ (Tmₑ wk t') (var vz) → t ~ t'
 
   ~refl : ∀ {A}{t : Tm Γ A} → t ~ t
   _~⁻¹  : ∀ {A}{t t' : Tm Γ A} → t ~ t' → t' ~ t
@@ -375,13 +400,13 @@ infix 6 _~⁻¹
 ~ₑ σ (π₂β t u) = π₂β (Tmₑ σ t) (Tmₑ σ u)
 ~ₑ σ (,η t) = ,η (Tmₑ σ t)
 ~ₑ σ ttη = ttη
-~ₑ σ (β⁺ e t u) = β⁺ (Tmₑ σ e) (Tmₑ σ t) (Tmₑ σ u)
-~ₑ {t = t} {t'} σ (η⁺ {A} {B} p) with ~ₑ (keep σ) p
+~ₑ σ (βᶜ e t u) = βᶜ (Tmₑ σ e) (Tmₑ σ t) (Tmₑ σ u)
+~ₑ {t = t} {t'} σ (ηᶜ {A} {B} p) with ~ₑ (keep σ) p
 ... | hyp rewrite
       Tm-∘ₑ (wk{A}) (keep σ) t ⁻¹
     | Tm-∘ₑ (wk{A}) (keep σ) t' ⁻¹
     | idlₑ σ | idrₑ σ ⁻¹ | Tm-∘ₑ σ (wk{A}) t
-    | Tm-∘ₑ σ (wk{A}) t' = coe ((λ x → Tmₑ x t ~ Tmₑ x t') & (idrₑ σ ⁻¹)) (η⁺ hyp)
+    | Tm-∘ₑ σ (wk{A}) t' = coe ((λ x → Tmₑ x t ~ Tmₑ x t') & (idrₑ σ ⁻¹)) (ηᶜ hyp)
 ~ₑ σ (π₁ t)     = π₁ (~ₑ σ t)
 ~ₑ σ (π₂ t)     = π₂ (~ₑ σ t)
 ~ₑ σ (t , u)    = ~ₑ σ t , ~ₑ σ u
@@ -460,11 +485,11 @@ Tmₛσ~ σ (,η t) = ,η (Tmₛ σ t)
 Tmₛσ~ σ ttη = ttη
 Tmₛσ~ σ (pack p p₁) = pack (Tmₛσ~ σ p) (Tmₛσ~ σ p₁)
 Tmₛσ~ σ (app⁺ p p₁) = app⁺ (Tmₛσ~ σ p) (Tmₛσ~ σ p₁)
-Tmₛσ~ σ (β⁺ e t t') = β⁺ (Tmₛ σ e) (Tmₛ σ t) (Tmₛ σ t')
-Tmₛσ~ σ {t} {t'} (η⁺ {A} {B} p) with Tmₛσ~ (keepₛ σ) p
+Tmₛσ~ σ (βᶜ e t t') = βᶜ (Tmₛ σ e) (Tmₛ σ t) (Tmₛ σ t')
+Tmₛσ~ σ {t} {t'} (ηᶜ {A} {B} p) with Tmₛσ~ (keepₛ σ) p
 ... | hyp rewrite Tm-ₑ∘ₛ (wk{A}) (keepₛ σ) t ⁻¹ | Tm-ₑ∘ₛ (wk{A}) (keepₛ σ) t' ⁻¹
           | idlₑₛ (σ ₛ∘ₑ (wk{A})) | Tm-ₛ∘ₑ σ (wk{A}) t | Tm-ₛ∘ₑ σ (wk{A}) t'
-          = η⁺ hyp
+          = ηᶜ hyp
 Tmₛσ~ σ ~refl = ~refl
 Tmₛσ~ σ (p ~⁻¹) = Tmₛσ~ σ p ~⁻¹
 Tmₛσ~ σ (p ~◾ p₁) = Tmₛσ~ σ p ~◾ Tmₛσ~ σ p₁
@@ -591,8 +616,8 @@ Tmₑhead δ (σ , x) = refl
 ⟦~⟧ (π₂β t u) = refl
 ⟦~⟧ (,η t) = refl
 ⟦~⟧ ttη = refl
-⟦~⟧ (β⁺ e t u) = refl
-⟦~⟧ {Γ}{t = t} {t'} (η⁺ {A}{B} p) with ⟦~⟧ p
+⟦~⟧ (βᶜ e t u) = refl
+⟦~⟧ {Γ}{t = t} {t'} (ηᶜ {A}{B} p) with ⟦~⟧ p
 ... | foo rewrite ⟦Tmₑ⟧ (wk{A}) t | ⟦Tmₑ⟧ (wk{A}) t' | ⟦idₑ⟧{Γ} = curry & foo
 ⟦~⟧ (π₁ t) rewrite ⟦~⟧ t = refl
 ⟦~⟧ (π₂ t) rewrite ⟦~⟧ t = refl

@@ -45,19 +45,19 @@ lam⁺ {Γ} {A} {B} t = pack (head (open' Γ)) (lam (Tmₛ (close (Γ ▶ A)) t)
 
 Tmₛ-lam⁺ : ∀ {Γ Δ A B}(σ : Sub Γ Δ)(t : Tm (Δ ▶ A) B) → Tmₛ σ (lam⁺ t) ~ lam⁺ (Tmₛ (keepₛ σ) t)
 Tmₛ-lam⁺ {Γ}{Δ}{A}{B} σ t with open' Γ | open' Δ | close-open{Γ} | close-open{Δ}
-... | ∙ , hopenΓ | ∙ , hopenΔ | co | oc
+... | ∙ , openΓ | ∙ , openΔ | co | oc
   rewrite Tm-∘ₛ ((σ ₛ∘ₑ (wk{A})) , var vz)
                 ((close _ ∘ₛ (∙ , π₁ (var (vz {_}{∙})))) , π₂ (var vz)) t ⁻¹
         | assₛₑₛ σ (wk{A}) ((close _ ∘ₛ (∙ , π₁ (var (vz{_}{∙})))) , π₂ (var vz))
         | idlₑₛ (close _ ∘ₛ (∙ , π₁ {_} {qCon Γ} {A} (var (vz {_}{∙}))))
   =
-  η⁺ (  β⁺ _ _ _
+  ηᶜ (  βᶜ _ _ _
      ~◾ β _ _
      ~◾ (≡~ (Tm-∘ₛ _ _ t ⁻¹)
      ~◾         Tmₛ~t ((≡~ₛ (assₛ _ _ _)
             ~ₛ◾ ~∘ₛ~ (~ₛrefl _) (∙ , π₁β _ _)
-            ~ₛ◾ ≡~ₛ ((λ x → close _ ∘ₛ (∙ , x)) & Tm-ₛ∘ₑ σ (wk{A}) hopenΔ ⁻¹)
-            ~ₛ◾ ≡~ₛ (assₛ (close Δ) (∙ , hopenΔ) (σ ₛ∘ₑ wk) ⁻¹)
+            ~ₛ◾ ≡~ₛ ((λ x → close _ ∘ₛ (∙ , x)) & Tm-ₛ∘ₑ σ (wk{A}) openΔ ⁻¹)
+            ~ₛ◾ ≡~ₛ (assₛ (close Δ) (∙ , openΔ) (σ ₛ∘ₑ wk) ⁻¹)
             ~ₛ◾ ≡~ₛ (assₛₛₑ _ _ _ ⁻¹)
             ~ₛ◾ ~ₛ∘ₑ
                   (    ~∘ₛ~ oc (~ₛrefl σ)
@@ -66,11 +66,41 @@ Tmₛ-lam⁺ {Γ}{Δ}{A}{B} σ t with open' Γ | open' Δ | close-open{Γ} | clo
                    ~ₛ◾ ~∘ₛ~ (~ₛrefl _) (co ~ₛ⁻¹))
                   wk
             ~ₛ◾ ≡~ₛ (assₛₛₑ σ _ wk)
-            ~ₛ◾ ≡~ₛ ((σ ∘ₛ_) & assₛₛₑ (close Γ) (∙ , hopenΓ) (wk{A}))
+            ~ₛ◾ ≡~ₛ ((σ ∘ₛ_) & assₛₛₑ (close Γ) (∙ , openΓ) (wk{A}))
             ~ₛ◾ ~∘ₛ~ (~ₛrefl _) (~∘ₛ~ (~ₛrefl _) (∙ , π₁β _ _ ~⁻¹))
             ~ₛ◾ ≡~ₛ ((σ ∘ₛ_) & assₛ _ _ _ ⁻¹)
             ~ₛ◾ ≡~ₛ (assₛ _ _ _ ⁻¹))
         , (π₂β _ _ ~◾ π₂β _ _ ~⁻¹)) t
      ~◾ ≡~ (Tm-∘ₛ _ _ t))
      ~◾ β _ _ ~⁻¹
-     ~◾ β⁺ _ _ _ ~⁻¹)
+     ~◾ βᶜ _ _ _ ~⁻¹)
+
+β⁺ : ∀ {Γ A B}(t : Tm (Γ ▶ A) B)(u : Tm Γ A) → app⁺ (lam⁺ t) u ~ Tmₛ (idₛ , u) t
+β⁺ {Γ} {A} {B} t u with open' Γ | close-open{Γ}
+... | ∙ , openΓ | co =
+     βᶜ _ _ _
+  ~◾ β _ _
+  ~◾ ≡~ (Tm-∘ₛ _ _ t ⁻¹)
+  ~◾ Tmₛ~t
+       ((≡~ₛ (assₛ _ _ _)
+          ~ₛ◾ ~∘ₛ~ (~ₛrefl _) (∙ , π₁β _ _)
+          ~ₛ◾ co) , π₂β _ _)
+       t
+
+η⁺ : ∀ {Γ A B}(t : Tm Γ (A ⇒⁺ B)) → t ~ lam⁺ (app⁺ (Tmₑ wk t) (var vz))
+η⁺ {Γ}{A}{B} t with open' Γ | close-open{Γ}
+... | ∙ , openΓ | co =
+  ηᶜ (app⁺
+        (     (≡~ (⌜Tmₑ⌝ wk t)
+           ~◾ Tmₛ~t
+                     (≡~ₛ ((_ₛ∘ₑ wk) & ⌜idₑ⌝)
+                 ~ₛ◾ ~ₛ∘ₑ (co ~ₛ⁻¹) wk
+                 ~ₛ◾ ≡~ₛ (assₛₛₑ _ _ _)
+                 ~ₛ◾ ~∘ₛ~ (~ₛrefl _) (∙ , π₁β _ _ ~⁻¹)
+                 ~ₛ◾ ≡~ₛ (assₛ _ _ _ ⁻¹)
+                 ~ₛ◾ ≡~ₛ (idlₑₛ _ ⁻¹))
+               t
+           ~◾ ≡~ (Tm-ₑ∘ₛ _ _ t))
+           ~◾ ≡~ (Tm-∘ₛ _ _ (Tmₑ wk t)))
+        (π₂β _ _ ~⁻¹)
+      ~◾ β _ _ ~⁻¹ ~◾ βᶜ _ _ _ ~⁻¹)
