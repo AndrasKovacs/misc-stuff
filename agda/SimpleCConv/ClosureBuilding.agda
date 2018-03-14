@@ -40,9 +40,6 @@ close-open {Γ ▶ A} with open' Γ | close-open {Γ}
 lam⁺ : ∀ {Γ A B} → Tm (Γ ▶ A) B → Tm Γ (A ⇒⁺ B)
 lam⁺ {Γ} {A} {B} t = pack (head (open' Γ)) (lam (Tmₛ (close (Γ ▶ A)) t))
 
--- Tmₑ-lam⁺ : ∀ {Γ Δ A B}(σ : OPE Γ Δ)(t : Tm (Δ ▶ A) B) → Tmₑ σ (lam⁺ t) ~ lam⁺ (Tmₑ (keep σ) t)
--- Tmₑ-lam⁺ σ t = {!!}
-
 Tmₛ-lam⁺ : ∀ {Γ Δ A B}(σ : Sub Γ Δ)(t : Tm (Δ ▶ A) B) → Tmₛ σ (lam⁺ t) ~ lam⁺ (Tmₛ (keepₛ σ) t)
 Tmₛ-lam⁺ {Γ}{Δ}{A}{B} σ t with open' Γ | open' Δ | close-open{Γ} | close-open{Δ}
 ... | ∙ , openΓ | ∙ , openΔ | co | oc
@@ -104,3 +101,12 @@ Tmₛ-lam⁺ {Γ}{Δ}{A}{B} σ t with open' Γ | open' Δ | close-open{Γ} | clo
            ~◾ ≡~ (Tm-∘ₛ _ _ (Tmₑ wk t)))
         (π₂β _ _ ~⁻¹)
       ~◾ β _ _ ~⁻¹ ~◾ βᶜ _ _ _ ~⁻¹)
+
+lam⁺~ : ∀ {Γ A B}{t t' : Tm (Γ ▶ A) B} → t ~ t' → lam⁺ t ~ lam⁺ t'
+lam⁺~ p = pack ~refl (lam (Tmₛσ~ _ p))
+
+Tmₑ-lam⁺ :
+  ∀ {Γ Δ A B}(σ : OPE Γ Δ)(t : Tm (Δ ▶ A) B) → Tmₑ σ (lam⁺ t) ~ lam⁺ (Tmₑ (keep σ) t)
+Tmₑ-lam⁺ σ t = ≡~ (⌜Tmₑ⌝ σ (lam⁺ t))
+           ~◾ Tmₛ-lam⁺ ⌜ σ ⌝ᵒᵖᵉ t
+           ~◾ lam⁺~ (≡~ (⌜Tmₑ⌝ (keep σ) t ⁻¹))

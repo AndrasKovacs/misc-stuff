@@ -155,7 +155,7 @@ Tmₛ σ (app f a)  = app (Tmₛ σ f) (Tmₛ σ a)
 
 idₛ : ∀ {Γ} → Sub Γ Γ
 idₛ {∙}     = ∙
-idₛ {Γ ▶ A} = (idₛ {Γ} ₛ∘ₑ drop idₑ) , var vz
+idₛ {Γ ▶ A} = keepₛ idₛ
 
 _∘ₛ_ : ∀ {Γ Δ Σ} → Sub Δ Σ → Sub Γ Δ → Sub Γ Σ
 ∙       ∘ₛ δ = ∙
