@@ -33,7 +33,7 @@ case_of_ : ∀ {a b} {A : Set a} {B : Set b} → A → (A → B) → B
 case x of f = case x return _ of f
 
 _◾_ : ∀{i}{A : Set i}{x y z : A} → x ≡ y → y ≡ z → x ≡ z
-refl ◾ refl = refl
+refl ◾ p = p
 infixr 4 _◾_
 
 _⁻¹ : ∀{i}{A : Set i}{x y : A} → x ≡ y → y ≡ x

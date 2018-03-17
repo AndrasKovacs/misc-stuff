@@ -81,3 +81,6 @@ Tm≈ (lam t)    σ σ' σ≈ {a}{a'} p =
 
 ≈refl : ∀ {A}{t : Tm ∙ A} → t ≈ t
 ≈refl {A} {t} = coe (_≈_ & Tm-idₛ t ⊗ Tm-idₛ t) (Tm≈ t idₛ idₛ tt)
+
+~≈ : ∀ {A}{t t' : Tm ∙ A} → t ~ t' → t ≈ t'
+~≈ p = p ~◾≈ ≈refl
