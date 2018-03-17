@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K #-}
 
-module ClosureBuilding where
+module Target.ClosureBuilding where
 
 open import Lib
 open import Target.Syntax
