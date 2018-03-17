@@ -6,6 +6,7 @@ module CConv where
 open import Lib
 import Source.Syntax as S
 import Source.LogicalEqv as S
+import Source.StdModel as S
 import Target.Syntax as T
 import Target.LogicalEqv as T
 import ClosureBuilding as T
@@ -116,8 +117,8 @@ Tmₛ⁺ σ (t S., u)   = Tmₛ⁺ σ t T., Tmₛ⁺ σ u
   T.~◾ Tmₛ⁺ (S.idₛ S., t') t T.~⁻¹
 ~⁺ {Γ} {t = t} {t'} (S.η {A} {B} p) =
        T.η⁺ (Tm⁺ t)
-  T.~◾ T.lam⁺~ {t = (T.app⁺ (T.Tmₑ T.wk (Tm⁺ t)) (T.var T.vz))} {T.app⁺ (T.Tmₑ T.wk (Tm⁺ t')) (T.var T.vz)}
-         (T.app⁺ (T.≡~ ((λ x → T.Tmₑ (T.drop x) (Tm⁺ t)) & (idₑ⁺ ⁻¹)) T.~◾ Tmₑ⁺ S.wk t T.~⁻¹) T.~refl T.~◾ ~⁺ p T.~◾ T.app⁺ (Tmₑ⁺ S.wk t' T.~◾ T.≡~ ((λ x → T.Tmₑ (T.drop x) (Tm⁺ t')) & idₑ⁺)) T.~refl)
+  T.~◾ T.lam⁺~ (T.app⁺ (T.≡~ ((λ x → T.Tmₑ (T.drop x) (Tm⁺ t)) & (idₑ⁺ ⁻¹)) T.~◾ Tmₑ⁺ S.wk t T.~⁻¹) T.~refl
+          T.~◾ ~⁺ p T.~◾ T.app⁺ (Tmₑ⁺ S.wk t' T.~◾ T.≡~ ((λ x → T.Tmₑ (T.drop x) (Tm⁺ t')) & idₑ⁺)) T.~refl)
   T.~◾ T.η⁺ (Tm⁺ t') T.~⁻¹
 ~⁺ (S.lam t) = T.lam⁺~ (~⁺ t)
 ~⁺ (S.app t u) = T.app⁺ (~⁺ t) (~⁺ u)
@@ -173,6 +174,9 @@ Tm⁻ (T.app⁺ t u) = S.app (Tm⁻ t) (Tm⁻ u)
 Tm⁻ (T.lam t) = S.lam (S.Tmₑ (S.keep S.εₑ) (Tm⁻ t))
 Tm⁻ (T.app t u) = S.app (Tm⁻ t) (Tm⁻ u)
 
+Tm⁻' : ∀ {A} → T.Tm T.∙ (Ty⁺ A) → S.Tm S.∙ A
+Tm⁻' {A} t = coe (S.Tm S.∙ & Ty⁻⁺ A) (Tm⁻ t)
+
 -- Full abstraction
 --------------------------------------------------------------------------------
 
@@ -203,21 +207,18 @@ _≈◾_ {S.Top}   p q = tt
 _≈◾_ {A S.* B} (p , q) (r , s) = (p ≈◾ r) , (q ≈◾ s)
 _≈◾_ {A S.⇒ B} p q r = p r ≈◾ q T.≈refl
 
+⁻≈ : ∀ {A}(t : T.Tm T.∙ (Ty⁺ A)) → Tm⁻' t ≈ t
+⁻≈ = {!!}
+
 triangle : ∀ {A}{t : S.Tm S.∙ A}{t' t''} → t ≈ t' → t ≈ t'' → t' T.≈ t''
 triangle {S.𝔹} (inl (p , q)) (inl (r , s)) = inl (q , s)
-triangle {S.𝔹} (inl (p , q)) (inr (r , s)) = {!r S.~⁻¹ S.~◾ p!}
-triangle {S.𝔹} (inr (p , q)) (inl (r , s)) = {!!}
+triangle {S.𝔹} (inl (p , q)) (inr (r , s)) = ⊥-elim (S.consistent (p S.~⁻¹ S.~◾ r))
+triangle {S.𝔹} (inr (p , q)) (inl (r , s)) = ⊥-elim (S.consistent (r S.~⁻¹ S.~◾ p))
 triangle {S.𝔹} (inr (p , q)) (inr (r , s)) = inr (q , s)
 triangle {S.Top}   p q = tt
-triangle {A S.* B} p q = {!!}
-triangle {A S.⇒ B} p q = {!!}
+triangle {A S.* B} (p , q) (r , s) = triangle p r , triangle q s
+triangle {A S.⇒ B} p q {a} {a'} r = triangle (p (⁻≈ a)) (q ((⁻≈ a) ≈◾ r))
 
--- infix 6 _⁻¹
--- _⁻ : ∀ {A Γ} → T.Tm (Con⁺ Γ) (Ty⁺ A) → S.Tm Γ A
--- _⁻ = {!!}
-
--- ⁻≈ : ∀ {A}(t : T.Tm T.∙ (Ty⁺ A)) → t ⁻ ≈ t
--- ⁻≈ = {!!}
 
 Tm≈⁺ : ∀ {A}(t : S.Tm S.∙ A) → t ≈ Tm⁺ t
 Tm≈⁺ {A} t = {!!}

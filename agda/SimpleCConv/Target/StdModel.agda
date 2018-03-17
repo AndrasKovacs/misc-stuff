@@ -114,3 +114,6 @@ open import Data.Bool
 ⟦~⟧ true       = refl
 ⟦~⟧ false      = refl
 ⟦~⟧ (if t u v) rewrite ⟦~⟧ t | ⟦~⟧ u | ⟦~⟧ v = refl
+
+consistent : true {∙} ~ false → ⊥
+consistent p = case happly (⟦~⟧ p) tt of λ ()
