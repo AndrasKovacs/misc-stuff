@@ -52,6 +52,9 @@ data Tm Γ : Ty → Set where
 ⇒⁺-inj : ∀ {A B A' B'} → (A ⇒⁺ B) ≡ (A' ⇒⁺ B') → (A ≡ A') × (B ≡ B')
 ⇒⁺-inj refl = refl , refl
 
+*-inj : ∀ {A B A' B'} → (A * B) ≡ (A' * B') → (A ≡ A') × (B ≡ B')
+*-inj refl = refl , refl
+
 
 -- Embedding
 --------------------------------------------------------------------------------
@@ -66,6 +69,14 @@ data OPE : Con → Con → Set where
 idₑ : ∀ {Γ} → OPE Γ Γ
 idₑ {∙}     = ∙
 idₑ {Γ ▶ A} = keep (idₑ {Γ})
+
+εₑ : ∀ {Γ} → OPE Γ ∙
+εₑ {∙}     = ∙
+εₑ {Γ ▶ A} = drop εₑ
+
+εₑη : ∀ {Γ}(σ : OPE Γ ∙) → σ ≡ εₑ
+εₑη ∙        = refl
+εₑη (drop σ) = drop & εₑη σ
 
 wk : ∀ {A Γ} → OPE (Γ ▶ A) Γ
 wk = drop idₑ

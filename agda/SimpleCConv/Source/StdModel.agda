@@ -6,14 +6,20 @@ open import Source.Syntax
 open import Data.Bool
 
 ⟦_⟧Ty : Ty → Set
-⟦ 𝔹     ⟧Ty = Bool
-⟦ A ⇒ B ⟧Ty = ⟦ A ⟧Ty → ⟦ B ⟧Ty
+⟦ Top    ⟧Ty = ⊤
+⟦ A * B  ⟧Ty = ⟦ A ⟧Ty × ⟦ B ⟧Ty
+⟦ 𝔹      ⟧Ty = Bool
+⟦ A ⇒ B  ⟧Ty = ⟦ A ⟧Ty → ⟦ B ⟧Ty
 
 ⟦_⟧Con : Con → Set
 ⟦ ∙     ⟧Con = ⊤
 ⟦ Γ ▶ A ⟧Con = ⟦ Γ ⟧Con × ⟦ A ⟧Ty
 
 ⟦_⟧Tm : ∀ {Γ A} → Tm Γ A → ⟦ Γ ⟧Con → ⟦ A ⟧Ty
+⟦ tt         ⟧Tm γ = tt
+⟦ π₁ t       ⟧Tm γ = ₁ (⟦ t ⟧Tm γ)
+⟦ π₂ t       ⟧Tm γ = ₂ (⟦ t ⟧Tm γ)
+⟦ t , u      ⟧Tm γ = ⟦ t ⟧Tm γ , ⟦ u ⟧Tm γ
 ⟦ var vz     ⟧Tm γ = ₂ γ
 ⟦ var (vs x) ⟧Tm γ = ⟦ var x ⟧Tm (₁ γ)
 ⟦ lam t      ⟧Tm γ = λ α → ⟦ t ⟧Tm (γ , α)
@@ -42,6 +48,10 @@ open import Data.Bool
 ⟦∈ₑ⟧ (keep σ) (vs x) rewrite ⟦∈ₑ⟧ σ x = refl
 
 ⟦Tmₑ⟧ : ∀ {Γ Δ A}(σ : OPE Γ Δ)(t : Tm Δ A) → ⟦ Tmₑ σ t ⟧Tm ≡ ⟦ t ⟧Tm ∘ ⟦ σ ⟧OPE
+⟦Tmₑ⟧ σ tt       = refl
+⟦Tmₑ⟧ σ (π₁ t)     rewrite ⟦Tmₑ⟧ σ t = refl
+⟦Tmₑ⟧ σ (π₂ t)     rewrite ⟦Tmₑ⟧ σ t = refl
+⟦Tmₑ⟧ σ (t , u)    rewrite ⟦Tmₑ⟧ σ t | ⟦Tmₑ⟧ σ u = refl
 ⟦Tmₑ⟧ σ (var x) = ⟦∈ₑ⟧ σ x
 ⟦Tmₑ⟧ σ (lam t) rewrite ⟦Tmₑ⟧ (keep σ) t = refl
 ⟦Tmₑ⟧ σ (app t u) rewrite ⟦Tmₑ⟧ σ t | ⟦Tmₑ⟧ σ u = refl
@@ -58,9 +68,12 @@ open import Data.Bool
 ⟦∈ₛ⟧ (σ , _) (vs x) = ⟦∈ₛ⟧ σ x
 
 ⟦Tmₛ⟧ : ∀ {Γ Δ A}(σ : Sub Γ Δ)(t : Tm Δ A) → ⟦ Tmₛ σ t ⟧Tm ≡ ⟦ t ⟧Tm ∘ ⟦ σ ⟧Sub
+⟦Tmₛ⟧ σ tt = refl
+⟦Tmₛ⟧ σ (π₁ t)     rewrite ⟦Tmₛ⟧ σ t = refl
+⟦Tmₛ⟧ σ (π₂ t)     rewrite ⟦Tmₛ⟧ σ t = refl
+⟦Tmₛ⟧ σ (t , u)    rewrite ⟦Tmₛ⟧ σ t | ⟦Tmₛ⟧ σ u = refl
 ⟦Tmₛ⟧ σ (var x) = ⟦∈ₛ⟧ σ x
-⟦Tmₛ⟧ {Γ} σ (lam {A} t)
-  rewrite ⟦Tmₛ⟧ (keepₛ σ) t | ⟦ₛ∘ₑ⟧ σ (wk{A}) | ⟦idₑ⟧{Γ} = refl
+⟦Tmₛ⟧ {Γ} σ (lam {A} t) rewrite ⟦Tmₛ⟧ (keepₛ σ) t | ⟦ₛ∘ₑ⟧ σ (wk {A}) | ⟦idₑ⟧ {Γ}  = refl
 ⟦Tmₛ⟧ σ (app t u) rewrite ⟦Tmₛ⟧ σ t | ⟦Tmₛ⟧ σ u = refl
 ⟦Tmₛ⟧ σ true = refl
 ⟦Tmₛ⟧ σ false = refl
@@ -71,8 +84,16 @@ open import Data.Bool
 ⟦idₛ⟧ {Γ ▶ A} rewrite ⟦ₛ∘ₑ⟧ (idₛ{Γ}) (wk{A}) | ⟦idₛ⟧ {Γ} | ⟦idₑ⟧{Γ} = refl
 
 ⟦~⟧ : ∀ {Γ A}{t t' : Tm Γ A} → t ~ t' → ⟦ t ⟧Tm ≡ ⟦ t' ⟧Tm
+⟦~⟧ (π₁β t u) = refl
+⟦~⟧ (π₂β t u) = refl
+⟦~⟧ (,η t) = refl
+⟦~⟧ ttη = refl
+⟦~⟧ (π₁ t) rewrite ⟦~⟧ t = refl
+⟦~⟧ (π₂ t) rewrite ⟦~⟧ t = refl
+⟦~⟧ (t , u) rewrite ⟦~⟧ t | ⟦~⟧ u = refl
 ⟦~⟧ {Γ} {B} (β {A} t u) rewrite ⟦Tmₛ⟧ (idₛ , u) t | ⟦idₛ⟧ {Γ} = refl
-⟦~⟧ {Γ} (η {A} {B} t) rewrite ⟦Tmₑ⟧ (wk{A}) t | ⟦idₑ⟧ {Γ} = refl
+⟦~⟧ {Γ} {t = t₁} {t'} (η {A} {B} t) with ⟦~⟧ t
+... | foo rewrite ⟦Tmₑ⟧ (wk{A}) t₁ | ⟦Tmₑ⟧ (wk{A}) t' | ⟦idₑ⟧{Γ} = curry & foo
 ⟦~⟧ (lam p)   rewrite ⟦~⟧ p = refl
 ⟦~⟧ (app t u) rewrite ⟦~⟧ t | ⟦~⟧ u = refl
 ⟦~⟧ ~refl      = refl
