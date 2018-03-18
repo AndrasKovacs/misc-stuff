@@ -63,7 +63,9 @@ apd : ∀{i j}{A : Set i}{B : A → Set j}(f : (x : A) → B x){a₀ a₁ : A}(a
     → coe (B & a₂) (f a₀) ≡ f a₁
 apd f refl = refl
 
-J : {A : Set} {x : A} (P : {y : A} → x ≡ y → Set) → P refl → {y : A} → (w : x ≡ y) → P w
+J :
+  ∀ {α β}{A : Set α} {x : A}(P : ∀ y → x ≡ y → Set β)
+  → P x refl → {y : A} → (w : x ≡ y) → P y w
 J P pr refl = pr
 
 record Σ {i j} (A : Set i) (B : A → Set j) : Set (i ⊔ j) where
