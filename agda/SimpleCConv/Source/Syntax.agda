@@ -505,6 +505,9 @@ Tmₛσ~ σ ~refl = ~refl
 Tmₛσ~ σ (p ~⁻¹) = Tmₛσ~ σ p ~⁻¹
 Tmₛσ~ σ (p ~◾ p₁) = Tmₛσ~ σ p ~◾ Tmₛσ~ σ p₁
 
+Tmₑσ~ : ∀ {Γ Δ A}(σ : OPE Γ Δ){t t' : Tm Δ A}  → t ~ t' → Tmₑ σ t ~ Tmₑ σ t'
+Tmₑσ~ σ p = ≡~ (⌜Tmₑ⌝ σ _) ~◾ Tmₛσ~ ⌜ σ ⌝ᵒᵖᵉ p ~◾ ≡~ (⌜Tmₑ⌝ σ _ ⁻¹)
+
 Tmₛ~~ : ∀ {Γ Δ A}{t t' : Tm Δ A}{σ σ' : Sub Γ Δ} → σ ~ₛ σ' → t ~ t' → Tmₛ σ t ~ Tmₛ σ' t'
 Tmₛ~~ {t = t} {σ' = σ'} p q = Tmₛ~t p t ~◾ Tmₛσ~ σ' q
 
