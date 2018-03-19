@@ -22,6 +22,9 @@ id x = x
 const : ∀ {a b} {A : Set a} {B : Set b} → A → B → A
 const x = λ _ → x
 
+tr : ∀ {i j}{A : Set i}(B : A → Set j){a₀ : A}{a₁ : A}(a₂ : a₀ ≡ a₁) → B a₀ → B a₁
+tr B refl b₀ = b₀
+
 infix 0 case_return_of_ case_of_
 
 case_return_of_ :

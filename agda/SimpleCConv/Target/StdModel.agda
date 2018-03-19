@@ -90,6 +90,10 @@ open import Data.Bool
 ⟦idₛ⟧ {∙}     = refl
 ⟦idₛ⟧ {Γ ▶ A} rewrite ⟦ₛ∘ₑ⟧ (idₛ{Γ}) (wk{A}) | ⟦idₛ⟧ {Γ} | ⟦idₑ⟧{Γ} = refl
 
+⟦∘ₛ⟧ : ∀ {Γ Δ Σ} (σ : Sub Δ Σ)(δ : Sub Γ Δ) → ⟦ σ ∘ₛ δ ⟧Sub ≡ ⟦ σ ⟧Sub ∘ ⟦ δ ⟧Sub
+⟦∘ₛ⟧ ∙       δ = refl
+⟦∘ₛ⟧ (σ , t) δ rewrite ⟦∘ₛ⟧ σ δ | ⟦Tmₛ⟧ δ t = refl
+
 ⟦~⟧ : ∀ {Γ A}{t t' : Tm Γ A} → t ~ t' → ⟦ t ⟧Tm ≡ ⟦ t' ⟧Tm
 ⟦~⟧ (π₁β t u) = refl
 ⟦~⟧ (π₂β t u) = refl
@@ -114,6 +118,10 @@ open import Data.Bool
 ⟦~⟧ true       = refl
 ⟦~⟧ false      = refl
 ⟦~⟧ (if t u v) rewrite ⟦~⟧ t | ⟦~⟧ u | ⟦~⟧ v = refl
+
+⟦~ₛ⟧ : ∀ {Γ Δ}{σ σ' : Sub Γ Δ} → σ ~ₛ σ' → ⟦ σ ⟧Sub ≡ ⟦ σ' ⟧Sub
+⟦~ₛ⟧ ∙       = refl
+⟦~ₛ⟧ (p , t) rewrite ⟦~ₛ⟧ p | ⟦~⟧ t = refl
 
 consistent : true {∙} ~ false → ⊥
 consistent p = case happly (⟦~⟧ p) tt of λ ()
