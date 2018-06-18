@@ -1,0 +1,211 @@
+\documentclass{beamer}
+
+\usetheme{default}
+\useoutertheme{infolines}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{proof}
+\usepackage{tikz-cd}
+\usepackage[utf8]{inputenc}
+\usepackage{color}
+
+\usetheme{Boadilla}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamerfont{itemize/enumerate subbody}{size=\normalsize}
+\setbeamerfont{itemize/enumerate subsubbody}{size=\normalsize}
+
+\input{abbrevs.tex}
+\newcommand{\type}{\mathsf{type}}
+\newcommand{\Cl}{\mathsf{Cl}}
+\newcommand{\pack}{\mathsf{pack}}
+
+\title{Closure Conversion for Dependent Type Theory}
+\subtitle{With Type-Passing Polymorphism\thanks{This work was supported by the European Union, co-financed by the European
+Social Fund (EFOP-3.6.3-VEKOP-16-2017-00002).}}
+\author{András Kovács}
+\institute{Eötvös Loránd University, Budapest}
+\date{TYPES 2018, 20 June 2018}
+
+
+\begin{document}
+
+\frame{\titlepage}
+
+
+\begin{frame}{Advertising}
+
+
+William J. Bowman and Amal Ahmed: \emph{Typed Closure Conversion for the Calculus of Constructions}, PLDI 2018, Philadelphia.
+
+\begin{itemize}
+\item
+Significant overlap with the current talk. I was unaware of the
+preprint until a kind TYPES reviewer pointed it out to me.
+\item
+The basic technical idea (abstract closures) is the same as here (independent validation!).
+\item
+I encourage interested people to read this paper for details.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivation}
+  \begin{itemize}
+  \item
+    Variants of dependent type theory proliferate: quantitative, cubical, guarded, etc.
+  \item
+    We would like to add: \emph{type theory with precise memory layout control.}
+  \item
+    Hopefully eventually complementing the resource usage control of quantitative
+    type theories.
+  \item Benefits:
+    \begin{itemize}
+    \item As front-end language: more control for programmers
+      %% Talk about examples
+    \item As intermediate language: precisely typed, memory-safe transformations,
+          single language for a large universe of runtime objects.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Ingredients of memory layout control}
+
+  We need to make some new distinctions:
+
+  \begin{itemize}
+  \item Types vs. runtime type codes
+  \item Closed functions vs. closures
+  \item Consecutive layout vs. pointers
+  \item Storage location
+  \item Alignment
+  \item (more things)
+  \end{itemize}
+(Also: should we allow internal abstraction over these distinctions?)
+\end{frame}
+
+\begin{frame}{Ingredients of memory layout control}
+
+  We need to make some new distinctions:
+
+  \begin{itemize}
+  \item {\color{red} Types vs. runtime type codes}
+  \item {\color{red} Closed functions vs. closures}
+  \item Consecutive layout vs. pointers
+  \item Storage location
+  \item Alignment
+  \item (more things)
+  \end{itemize}
+(Also: should we allow internal abstraction over these distinctions?)
+\end{frame}
+
+\begin{frame}{Current contribution}
+
+  A small type theory where:
+  \begin{itemize}
+  \item There aren't general dependent functions, only closed functions and closures.
+  \item But general dependent functions remain admissible, through closure conversion.
+  \item Type codes use closures to represent type dependency.
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Type-passing polymorphism}
+
+  Closures in type codes allow efficient memory layout computation at runtime.\\~\\
+  For example: computing the size of a value with $\Sigma$-type. \\~\\
+  See: \emph{Harper \& Morrisett: Compiling Polymorphism Using Intensional Type Analysis}. \\~\\
+  Intensional (synonymously: type-passing) polymorphism generalizes type erasure (e. g. GHC Haskell) and monomorphization (e. g. Rust, C++).e
+  We don't want to \emph{rule out} type-passing polymorphism down the compilation pipeline.
+
+\end{frame}
+
+\begin{frame}{The type theory (1)}
+
+Judgements:
+\begin{gather*}
+  \Gamma \vdash  \hspace{2em}  \Gamma \vdash A\,\type_i \hspace{2em} \Gamma \vdash t : A
+\end{gather*}
+Universes:
+\begin{gather*}
+  \infer{\Gamma \vdash \U_i\,\,\type_{i+1}}{}
+  \hspace{2em}
+  \infer{\Gamma \vdash \El\,A : \type_i}{\Gamma \vdash A : \U_i}
+\end{gather*}
+Closed functions:
+\begin{gather*}
+  \infer{\Gamma \vdash (a : A)\ra B\,\,\type_{\max(i,\,j)}}{\Gamma \vdash A\,\type_i & \Gamma, a : A \vdash B\,\type_j}
+  \hspace{1em}
+  \infer{\Gamma \vdash \lambda a.\,t : (a : A)\ra B}{\boldsymbol{\cdot},\,a : A \vdash t : B}
+\end{gather*}
+\begin{itemize}
+\item Standard application, $\beta$ and $\eta$ for closed functions.
+\item Standard $\Sigma$ types and $\top$ (unit type).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{}
+
+  Closed functions are quite restricted.\\~\\
+  The usual polymorphic identity function isn't possible: $\lambda A.\,\lambda (x : {\color{red}A}).\, x$.\\~\\
+  Instead, we may have $\lambda(A,\,x).\,x : (x : \Sigma(A : U).\,\El\,A) \ra \El\,(\pi_1\,x)$\\~\\
+  Also: a function with type $A \ra B \ra C$ can never return its first argument.
+
+\end{frame}
+
+\begin{frame}{Closures}
+
+\begin{gather*}
+  \infer{\Gamma \vdash \Cl\,(a : A)\,B\,\,\type_{\max(i,\,j)}}{\Gamma \vdash A\,\type_i & \Gamma, a : A \vdash B\,\type_j}
+\end{gather*}
+\begin{gather*}
+\infer{\Gamma \vdash \pack\,E\,env\,\,t : \Cl\,(a : A[e\mapsto env])\,(B[ea \mapsto (env,\,a)])}{\boldsymbol{\cdot} \vdash E : \U_i & \Gamma \vdash env : \El\, E & \boldsymbol{\cdot} \vdash t : (ea : \Sigma(e : \El\,E).A) \ra B}
+\end{gather*}
+\begin{gather*}
+  \infer{\Gamma \vdash t\,u : B[a \mapsto u]}{\Gamma \vdash t : \Cl\,(a : A)\,B & \Gamma \vdash u : A}
+\end{gather*}
+\begin{gather*}
+  \infer{\Gamma \vdash t \equiv u}{\Gamma \vdash t : \Cl\,(a : A)\,B & \Gamma \vdash u : \Cl\,(a : A)\,B & \Gamma,\,a : A \vdash t\,a \equiv u\,a}
+\end{gather*}
+\begin{gather*}
+  (\pack\,E\,env\,\,t)\,u \equiv t\,(env,\,u)
+\end{gather*}
+\end{frame}
+
+\begin{frame}{Type codes}
+
+Universe:
+
+\begin{gather*}
+\infer{\Gamma \vdash \U'_i : \U_{i+1}}{}\hspace{2em} \El\,\U'_i\equiv \U_i
+\end{gather*}
+
+Codes for $Cl$:
+
+\begin{gather*}
+  \infer{\Gamma \vdash \mathsf{Cl'}\,A\,B : \U_{\max(i,\,j)}}
+        {\Gamma \vdash A : \U_i & \Gamma \vdash B : \Cl\,(\El\,A)\,(\U_j)}
+  \hspace{2.5em}
+  \El\,(\mathsf{Cl'}\,A\,B)\equiv \Cl\,(a : \El\,A)\,(\El\,(B\,a))
+\end{gather*}
+\\~\\
+Analogously for $\Sigma$ and closed functions. Dependency is represented by $\Cl$.
+
+\end{frame}
+
+\begin{frame}
+\\~\\
+\\~\\
+Polymorphic identity function with closures:
+  \begin{alignat*}{5}
+    & \mathsf{id} : \Cl(A : \U)(\Cl(x : \El\,A)(\El\,A)) \\
+    & \mathsf{id} :\equiv \pack\,\top'\,\tt\,(\lambda(\_,\,A).\, \pack\,\U'\,A\,(\lambda(A,\,x).\,x))
+\end{alignat*}
+\end{frame}
+
+\begin{frame}{Closure conversion}
+
+General function abstraction (called $\lambda{x}.t$) is admissible.
+
+\end{document}
