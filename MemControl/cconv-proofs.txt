@@ -1,6 +1,4 @@
 
-
-
 ### Source language
 
 
@@ -41,9 +39,9 @@ El (U' i) ≡ U i
 
 Γ ⊢ t : El ((a : A) → B)   Γ ⊢ u : El A
 ───────────────────────────────────────
-    Γ ⊢ t u : El (B[a ⊢> u])
+    Γ ⊢ t u : El (B[a ↦ u])
 
-(λ a. t) u ≡ t[a ⊢> u]
+(λ a. t) u ≡ t[a ↦ u]
 λ a. t a ≡ t
 
 
@@ -70,7 +68,7 @@ Variables
 ────────────────────
 Γ, x : A, Δ ⊢ x : A
 
-Substitutions (omitted: category, psh laws)
+Substitutions (omitted: category, presheaf laws)
 
 Γ ⊢ A type i   Γ ⊢ σ : Δ
 ────────────────────────
@@ -125,28 +123,28 @@ Types
 
 Γ ⊢ t : (a : A) → B   Γ ⊢ u : A
 ───────────────────────────────
-   Γ ⊢ t u : B[a ⊢> u]
+   Γ ⊢ t u : B[a ↦ u]
 
-(λ a. t) u ≡ t[a ⊢> u]
+(λ a. t) u ≡ t[a ↦ u]
 t ≡ (λ a. t a)     -- possible only if ∙ ⊢ t : (a : A) → B
 
 -- Σ types
 
 -- We only use Σ to store closed environment types, so we make type formation closed
--- This makes context quoting simpler, since Σ codes only need to store primitive
+-- This makes context quoting more efficient, since Σ codes only need to store primitive
 -- functions for second field types as opposed to closures.
 
 ∙ ⊢ A type i   ∙, a : A ⊢ B type j
 ───────────────────────────────────
   Γ ⊢ (a : A, B) type (max i j)
 
-∙ ⊢ A type i   ∙, a : A ⊢ B type j   Γ ⊢ t : A   Γ ⊢ u : B[a ⊢> t]
+∙ ⊢ A type i   ∙, a : A ⊢ B type j   Γ ⊢ t : A   Γ ⊢ u : B[a ↦ t]
 ──────────────────────────────────────────────────────────────────
                   Γ ⊢ (t, u) : (t : A, B)
 
         Γ ⊢ t : (a : A, B)
 ──────────────────────────────────────
-Γ ⊢ π₁ t : A   Γ ⊢ π₂ t : B[a ⊢> π₁ t]
+Γ ⊢ π₁ t : A   Γ ⊢ π₂ t : B[a ↦ π₁ t]
 
 π₁ (t, u) ≡ t
 π₂ (t, u) ≡ u
@@ -160,11 +158,11 @@ t ≡ (π₁ t, π₂ t)
 
 ∙ ⊢ E : U i   Γ ⊢ env : El E   ∙ ⊢ t : (ea : (e : El E, A)) → B
 ───────────────────────────────────────────────────────────────
-  Γ ⊢ pack E env t : Cl (a : A[e ⊢> env]) (B[ea ⊢> (env, a)])
+  Γ ⊢ pack E env t : Cl (a : A[e ↦ env]) (B[ea ↦ (env, a)])
 
 Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : A
 ────────────────────────────────
-      Γ ⊢ t u : B[a ⊢> u]
+      Γ ⊢ t u : B[a ↦ u]
 
 -- closure β:
 (pack E env t) u ≡ t (env, u)
@@ -204,7 +202,6 @@ El (A ,' B) ≡ (a : El A, El (B a))
      Γ ⊢ Cl' A B : U (max i j)
 
 El (Cl' A B) ≡ Cl (a : El A) (El (B a))
-
 
 
 ### Admissibility of function space in target TT
@@ -522,33 +519,63 @@ Proof:
   in each case, by case discrimination on Δ, B, or u,
   then using induction hypotheses.
 
-### Standard MLTT model of target theory
 
-TODO
+### Standard type-theoretic model of target theory (proof of consistency)
 
-only interesting case: Cl
+induction motives (note: we have Set i, Σ, ⊤, (x : A) → B in metatheory)
 
-    Γ ⊢ A type i   Γ, a : A ⊢ B type j
-───────────────────────────────────────────
-(Cl (a : A) B)ᴹ γ = (a : Aᴹ γ) → Bᴹ (γ , a)
+       Γ ⊢
+──────────────────
+Γᴹ ∈ Set (level Γ)
+
+ Γ ⊢ A type i
+───────────────
+Aᴹ ∈ Γᴹ → Set i
+
+     Γ ⊢ t : A
+────────────────────
+tᴹ : (γ : Γᴹ) → Aᴹ γ
+
+ Γ ⊢ σ : Δ
+───────────
+σᴹ : Γᴹ → Δᴹ
 
 
-∙ ⊢ E : U i   Γ ⊢ env : El E   ∙ ⊢ t : (ea : (e : El E, A)) → B
-───────────────────────────────────────────────────────────────
-   hyp:
-     tᴹ tt : (ea : (e : Eᴹ tt, Aᴹ (tt, e))) → Bᴹ(tt, ea)
+only interesting cases: pack, app (other cases are just the standard model)
 
-   goal :
-     (a : (A[e ⊢> env])ᴹ γ) →  (B[ea ⊢> (env, a)])ᴹ (γ, a)
+Cl:
 
-   (pack E env t)ᴹ γ = (λ (a : Aᴹ γ). tᴹ tt (envᴹ γ, a))
-     -- Well-typed, universe also OK
+      Γ ⊢ A type i   Γ, a : A ⊢ B type j
+  ───────────────────────────────────────────
+  (Cl (a : A) B)ᴹ γ = (a : Aᴹ γ) → Bᴹ (γ , a)
 
-Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : A
-────────────────────────────────
-(t uᴹ) γ = tᴹ γ (uᴹ γ)
 
-((pack E env t) u ≡ t (env, u))ᴹ:
+pack:
+
+  ∙ ⊢ E : U i   Γ ⊢ env : El E   ∙ ⊢ t : (ea : (e : El E, A)) → B
+  ───────────────────────────────────────────────────────────────
+     hyp:
+       tᴹ tt : (ea : (e : Eᴹ tt, Aᴹ (tt, e))) → Bᴹ(tt, ea)
+
+     goal :
+       (a : (A[e ↦ env])ᴹ γ) →  (B[ea ↦ (env, a)])ᴹ (γ, a)
+
+     (pack E env t)ᴹ γ := (λ (a : Aᴹ γ). tᴹ tt (envᴹ γ, a))
+       -- OK
+
+app:
+
+  Γ ⊢ t : Cl (a : A) B   Γ ⊢ u : A
+  ────────────────────────────────
+  (t uᴹ) γ = tᴹ γ (uᴹ γ)
+
+β:
+
+  ((pack E env t)ᴹ γ) (uᴹ γ) ≡ t (env, u))ᴹ:
   ((pack E env t)ᴹ γ) (uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))   -- implicit weakening of t to ∙
   (λ a. tᴹ tt (envᴹ γ, a)) (uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))
-   tᴹ tt (envᴹ γ, uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))
+  tᴹ tt (envᴹ γ, uᴹ γ) ≡ tᴹ tt (envᴹ γ, uᴹ γ))
+  OK
+
+η:
+  holds by η in metatheory

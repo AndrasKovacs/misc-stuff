@@ -80,8 +80,3 @@ Vec-elim :
   → ∀ {n} as → Vec* {n} as
 Vec-elim Vec* nil* cons* nil         = nil*
 Vec-elim Vec* nil* cons* (cons a as) = cons* a (Vec-elim Vec* nil* cons* as)
-
-
-
-
-

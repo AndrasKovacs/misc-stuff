@@ -20,6 +20,20 @@
 \newcommand{\type}{\mathsf{type}}
 \newcommand{\Cl}{\mathsf{Cl}}
 \newcommand{\pack}{\mathsf{pack}}
+\newcommand{\level}{\mathsf{level}}
+\newcommand{\open}{\mathsf{open}}
+\newcommand{\close}{\mathsf{close}}
+
+%% \AtBeginSection[]{
+%%   \begin{frame}
+%%   \vfill
+%%   \centering
+%%   \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
+%%     \usebeamerfont{title}\insertsectionhead\par%
+%%   \end{beamercolorbox}
+%%   \vfill
+%%   \end{frame}
+%% }
 
 \title{Closure Conversion for Dependent Type Theory}
 \subtitle{With Type-Passing Polymorphism\thanks{This work was supported by the European Union, co-financed by the European
@@ -57,15 +71,15 @@ I encourage interested people to read this paper for details.
     Variants of dependent type theory proliferate: quantitative, cubical, guarded, etc.
   \item
     We would like to add: \emph{type theory with precise memory layout control.}
+    \begin{itemize} \item Basic example: $\Sigma$ interpreted as (dependent) sequential memory layout.
+    \end{itemize}
   \item
     Hopefully eventually complementing the resource usage control of quantitative
     type theories.
   \item Benefits:
     \begin{itemize}
-    \item As front-end language: more control for programmers
-      %% Talk about examples
-    \item As intermediate language: precisely typed, memory-safe transformations,
-          single language for a large universe of runtime objects.
+    \item As front-end language: more control for programmers.
+    \item As intermediate language: well-typed transformations, general handling of memory layout.
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -78,11 +92,11 @@ I encourage interested people to read this paper for details.
   \item Types vs. runtime type codes
   \item Closed functions vs. closures
   \item Consecutive layout vs. pointers
-  \item Storage location
+  \item Uniform vs. variable sized data
   \item Alignment
   \item (more things)
   \end{itemize}
-(Also: should we allow internal abstraction over these distinctions?)
+(Also: lots of required further research \& work down the compilation pipeline)
 \end{frame}
 
 \begin{frame}{Ingredients of memory layout control}
@@ -93,11 +107,11 @@ I encourage interested people to read this paper for details.
   \item {\color{red} Types vs. runtime type codes}
   \item {\color{red} Closed functions vs. closures}
   \item Consecutive layout vs. pointers
-  \item Storage location
+  \item Uniform vs. variable sized data
   \item Alignment
   \item (more things)
   \end{itemize}
-(Also: should we allow internal abstraction over these distinctions?)
+(Also: lots of required further research \& work down the compilation pipeline)
 \end{frame}
 
 \begin{frame}{Current contribution}
@@ -106,18 +120,28 @@ I encourage interested people to read this paper for details.
   \begin{itemize}
   \item There aren't general dependent functions, only closed functions and closures.
   \item But general dependent functions remain admissible, through closure conversion.
-  \item Type codes use closures to represent type dependency.
+  \item Type codes also use closures to represent type dependency.
+  \item Consistency follows from a straightforward syntactic translation to closure-free
+        MLTT.
   \end{itemize}
 \end{frame}
 
 
 \begin{frame}{Type-passing polymorphism}
+Why have closures in type codes?
 
-  Closures in type codes allow efficient memory layout computation at runtime.\\~\\
-  For example: computing the size of a value with $\Sigma$-type. \\~\\
-  See: \emph{Harper \& Morrisett: Compiling Polymorphism Using Intensional Type Analysis}. \\~\\
-  Intensional (synonymously: type-passing) polymorphism generalizes type erasure (e. g. GHC Haskell) and monomorphization (e. g. Rust, C++).e
+  \begin{itemize}
+  \item
+  This allows efficient layout computation at runtime.
+  \item
+  For example: computing the size of a value with $\Sigma$-type.
+  \item
+  See: \emph{Harper \& Morrisett: Compiling Polymorphism Using Intensional Type Analysis}.
+  \item
+    Intensional (synonymously: type-passing) polymorphism generalizes type erasure (e. g. GHC Haskell) and monomorphization (e. g. Rust, C++).
+  \item
   We don't want to \emph{rule out} type-passing polymorphism down the compilation pipeline.
+  \end{itemize}
 
 \end{frame}
 
@@ -148,9 +172,8 @@ Closed functions:
 \begin{frame}{}
 
   Closed functions are quite restricted.\\~\\
-  The usual polymorphic identity function isn't possible: $\lambda A.\,\lambda (x : {\color{red}A}).\, x$.\\~\\
-  Instead, we may have $\lambda(A,\,x).\,x : (x : \Sigma(A : U).\,\El\,A) \ra \El\,(\pi_1\,x)$\\~\\
-  Also: a function with type $A \ra B \ra C$ can never return its first argument.
+  The usual polymorphic identity function isn't possible: $\lambda A.\,\lambda (x : {\color{red}\El\,A}).\, x$.\\~\\
+  Instead, we may have $\lambda(A,\,x).\,x : (x : \Sigma(A : U).\,\El\,A) \ra \El\,(\proj_1\,x)$.
 
 \end{frame}
 
@@ -181,16 +204,16 @@ Universe:
 \infer{\Gamma \vdash \U'_i : \U_{i+1}}{}\hspace{2em} \El\,\U'_i\equiv \U_i
 \end{gather*}
 
-Codes for $Cl$:
+Codes for $\Cl$:
 
 \begin{gather*}
   \infer{\Gamma \vdash \mathsf{Cl'}\,A\,B : \U_{\max(i,\,j)}}
         {\Gamma \vdash A : \U_i & \Gamma \vdash B : \Cl\,(\El\,A)\,(\U_j)}
-  \hspace{2.5em}
+  \hspace{1.5em}
   \El\,(\mathsf{Cl'}\,A\,B)\equiv \Cl\,(a : \El\,A)\,(\El\,(B\,a))
 \end{gather*}
 \\~\\
-Analogously for $\Sigma$ and closed functions. Dependency is represented by $\Cl$.
+Analogously for $\Sigma$, $\top$ and closed functions.
 
 \end{frame}
 
@@ -200,12 +223,68 @@ Analogously for $\Sigma$ and closed functions. Dependency is represented by $\Cl
 Polymorphic identity function with closures:
   \begin{alignat*}{5}
     & \mathsf{id} : \Cl(A : \U)(\Cl(x : \El\,A)(\El\,A)) \\
-    & \mathsf{id} :\equiv \pack\,\top'\,\tt\,(\lambda(\_,\,A).\, \pack\,\U'\,A\,(\lambda(A,\,x).\,x))
+    & \mathsf{id} :\equiv \pack\,\top'\,\tt\,(\lambda(\tt,\,A).\, \pack\,\U'\,A\,(\lambda(A,\,x).\,x))
 \end{alignat*}
 \end{frame}
 
 \begin{frame}{Closure conversion}
+To show: general closure abstraction, notated here as $\lambda\{x\}.\,t$, is admissible.
 
-General function abstraction (called $\lambda{x}.t$) is admissible.
+\begin{gather*}
+\infer{\Gamma \vdash \lambda\{a\}.\,t : \Cl\,(a : A)\,B}{\Gamma,\,a : A \vdash t : B}  \hspace{2em}  \lambda\{x\}.\,t\,x\equiv t \hspace{2em} (\lambda\{x\}.\,t)\,u \equiv t[x \mapsto u]
+\end{gather*}
+
+  $\lambda\{x\}.\,t$ is given mutually with a number of operations, which are given by mutual induction on contexts and types.\\~\\
+
+$\Gamma \vdash \sigma : \Delta$ will denote a parallel substitution, $\mathsf{id}$ identity substitution, $\circ$ composition.\\~\\
+
+\end{frame}
+
+\begin{frame}{Induction motive for contexts}
+\begin{gather*}
+  \infer
+      {\begin{array}{l}
+          \level\,\Gamma \in \mathbb{N}\\
+          \boldsymbol{\cdot} \vdash \mathsf{quote}\,\Gamma : \U_{(\level\,\Gamma)}\\
+          \Gamma \vdash \open\,\Gamma : \El\,(\mathsf{quote}\,\Gamma)\\
+          e : \El\,(\mathsf{quote}\,\Gamma) \vdash \close\,\Gamma : \Gamma\\
+          $[e \mapsto \open\,\Gamma\,[ \close\,\Gamma ] ] \equiv \id$\\
+          $\close\,\Gamma\circ[e \mapsto \open\,\Gamma]\equiv \id$
+      \end{array}}
+    {\Gamma \vdash}
+\end{gather*}
+  \begin{itemize}
+    \item
+      $\mathsf{quote}$ converts $\Gamma$ to a code for an iterated left-nested $\Sigma$-type.
+    \item $\open\,\Gamma$ fills such a $\Sigma$ with variables from the context, for example: $\open\,(x : \U, y : \U) \equiv ((tt,\,x),\,y)$.
+    \item $\close\,\Gamma$ is a substitution which converts variables of $\Gamma$ to projections from $e : \mathsf{quote}\,\Gamma$, for example: $(x,\,y)[\close\,(x : \U, y : \U)] \equiv (\proj_2 (\proj_1 e),\, \proj_2 e)$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Induction motive for types, closure building}
+
+Induction motive for types:
+\begin{gather*}
+  \infer
+      {\begin{array}{l}
+          \Gamma \vdash \mathsf{quote}\,A : \U_i\\
+          \Gamma \vdash \El\,(\mathsf{quote}\,A) \equiv A\\
+          $\forall \sigma.\, \mathsf{quote}\,A\,[\sigma]
+            \equiv \mathsf{quote}\,(A\,[\sigma])$
+      \end{array}}
+    {\Gamma \vdash A\,\type_i}
+\end{gather*}
+Closure building:
+\begin{gather*}
+  \infer
+      {\lambda\{a\}.\,t :\equiv \pack\,(\mathsf{quote}\,\Gamma)\,(\open\,\Gamma)\,
+        (\lambda e.\, t\, [\close\,(\Gamma,\,a : A)])}
+      {\Gamma,\, a : A \vdash t : B}
+\end{gather*}
+\end{frame}
+
+\begin{frame}
+\begin{center} {\large Thank you!} \end{center}
+\end{frame}
 
 \end{document}

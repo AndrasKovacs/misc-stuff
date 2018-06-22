@@ -57,7 +57,7 @@ postulate
   regularity : (A : Set) (a : A) → coe (⟨ _ ⟩ A) a ↦ a
 {-# REWRITE regularity #-}
 
---------------------------------------------------------------------------------
+------------------------------------------------------------------------
 
 record Σ (A : Set) (B : A → Set) : Set where
   constructor _,_
@@ -103,6 +103,92 @@ J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ i ∧ j))) refl*
 
 tr : ∀ {A}(P : A → Set){x y : A}(p : x ≡ y) → P x → P y
 tr P p = coe (ap P p)
+
+------------------------------------------------------------
+
+open import Data.Nat
+
+postulate
+  A     : Set
+  left  : A
+  right : A
+  seg   : left ≡ right
+
+  Aind :
+    (Aᴹ : A → Set)(leftᴹ : Aᴹ left)(rightᴹ : Aᴹ right)
+    (segᴹ : tr Aᴹ seg leftᴹ ≡ rightᴹ)
+    → (a : A) → Aᴹ a
+
+postulate
+  leftβ :
+    (Aᴹ : A → Set)(leftᴹ : Aᴹ left)(rightᴹ : Aᴹ right)
+    (segᴹ : tr Aᴹ seg leftᴹ ≡ rightᴹ)
+    → Aind Aᴹ leftᴹ rightᴹ segᴹ left ↦ leftᴹ
+{-# REWRITE leftβ #-}
+
+postulate
+  rightβ :
+    (Aᴹ : A → Set)(leftᴹ : Aᴹ left)(rightᴹ : Aᴹ right)
+    (segᴹ : tr Aᴹ seg leftᴹ ≡ rightᴹ)
+    → Aind Aᴹ leftᴹ rightᴹ segᴹ right ↦ rightᴹ
+{-# REWRITE rightβ #-}
+
+postulate
+  segβ :
+    (Aᴹ : A → Set)(leftᴹ : Aᴹ left)(rightᴹ : Aᴹ right)
+    (segᴹ : tr Aᴹ seg leftᴹ ≡ rightᴹ) (i : I)
+    → Aind Aᴹ leftᴹ rightᴹ segᴹ (seg $ i) ↦
+      tr Aᴹ (⟨ j ⟩ (seg $ i ∨ ~ j)) (segᴹ $ i)
+{-# REWRITE segβ #-}
+
+postulate
+  B    : A → Set
+  con₁ : ℕ → B left
+  con₂ : ℕ → ℕ → B right
+
+  Brec : (Bᴹ : A → Set)
+         (con₁ᴹ : ℕ → Bᴹ left)
+         (con₂ᴹ : ℕ → ℕ → Bᴹ right)
+         → ∀ a (b : B a) → Bᴹ a
+
+  coeB₁ : ∀ (p : left  ≡ left) n → coe (⟨ i ⟩ B (p $ i)) (con₁ n) ↦ con₁ n
+  coeB₂ : ∀ (p : right ≡ right) n m → coe (⟨ i ⟩ B (p $ i)) (con₂ n m) ↦ con₂ n m
+
+  Brec-coe :
+         (Bᴹ : A → Set)
+         (con₁ᴹ : ℕ → Bᴹ left)
+         (con₂ᴹ : ℕ → ℕ → Bᴹ right)
+         (p : I → A)
+         (b₀ : B (p ₀))
+         → Brec Bᴹ con₁ᴹ con₂ᴹ (p ₁) (coe (⟨ i ⟩ B (p i)) b₀) ↦
+           coe (⟨ i ⟩ Bᴹ (p i)) (Brec Bᴹ con₁ᴹ con₂ᴹ (p ₀) b₀)
+         -- Question : what to do here?
+
+         -- → Bind Bᴹ con₁ᴹ con₂ᴹ (p ₁) (coe (ap B (path p)) b₀) ↦
+         --   coe {!!} (Bind Bᴹ con₁ᴹ con₂ᴹ (p ₀) b₀)
+
+  -- Bind : (Bᴹ : ∀ a → B a → Set)
+  --        (con₁ᴹ : ∀ n → Bᴹ left (con₁ n))
+  --        (con₂ᴹ : ∀ n m → Bᴹ right (con₂ n m))
+  --        → ∀ a (b : B a) → Bᴹ a b
+
+  -- coeB₁ : ∀ (p : left  ≡ left) n → coe (⟨ i ⟩ B (p $ i)) (con₁ n) ↦ con₁ n
+  -- coeB₂ : ∀ (p : right ≡ right) n m → coe (⟨ i ⟩ B (p $ i)) (con₂ n m) ↦ con₂ n m
+
+  -- Bind-coe :
+  --        (Bᴹ : ∀ a → B a → Set)
+  --        (con₁ᴹ : ∀ n → Bᴹ left (con₁ n))
+  --        (con₂ᴹ : ∀ n m → Bᴹ right (con₂ n m))
+  --        (p : I → A)
+  --        (b₀ : B (p ₀))
+  --        → Bind Bᴹ con₁ᴹ con₂ᴹ (p ₁) (coe (ap B (path p)) b₀) ↦
+  --          coe {!!} (Bind Bᴹ con₁ᴹ con₂ᴹ (p ₀) b₀)
+
+
+-- Bᴹ    : A → Set
+-- con₁ᴹ : Bᴹ left
+-- con₂ᴹ : ℕ → Bᴹ right
+-- f : B right → ℕ
 
 infixr 5 _◾'_
 _◾'_ : {A : Set}{x y z : A} → x ≡ y → y ≡ z → x ≡ z
@@ -172,40 +258,40 @@ postulate
 -- Univalence
 ------------------------------------------------------------
 
--- -- bi-invertible eqivalence
--- eqv : {A B : Set} → (A → B) → Set
--- eqv {A}{B} f =
---   Σ (B → A) λ g → Σ (B → A) λ h → (∀ x → g (f x) ≡ x) × (∀ x → f (h x) ≡ x)
+-- bi-invertible eqivalence
+eqv : {A B : Set} → (A → B) → Set
+eqv {A}{B} f =
+  Σ (B → A) λ g → Σ (B → A) λ h → (∀ x → g (f x) ≡ x) × (∀ x → f (h x) ≡ x)
 
--- -- todo: copy from HoTT book (must be provable since we have J)
--- eqv-prop : ∀ {A B : Set} (f : A → B)(p q : eqv f) → p ≡ q
--- eqv-prop {A}{B} f (g , h , p , q) (g' , h' , p' , q') = {!!}
+-- todo: copy from HoTT book (must be provable since we have J)
+eqv-prop : ∀ {A B : Set} (f : A → B)(p q : eqv f) → p ≡ q
+eqv-prop {A}{B} f (g , h , p , q) (g' , h' , p' , q') = {!!}
 
--- coe-inv : ∀ {A B}(p : A ≡ B) x → coe p (coe (p ⁻¹) x) ≡ x
--- coe-inv {A}{B} p x = ⟨ i ⟩ coe (⟨ j ⟩ (p $ (i ∨ j))) (coe (⟨ j ⟩ (p $ (i ∨ ~ j))) x)
+coe-inv : ∀ {A B}(p : A ≡ B) x → coe p (coe (p ⁻¹) x) ≡ x
+coe-inv {A}{B} p x = ⟨ i ⟩ coe (⟨ j ⟩ (p $ (i ∨ j))) (coe (⟨ j ⟩ (p $ (i ∨ ~ j))) x)
 
--- coe-inv⁻¹ : ∀ {A B}(p : A ≡ B) x → coe (p ⁻¹) (coe p x) ≡ x
--- coe-inv⁻¹ {A}{B} p x = ⟨ i ⟩ coe (⟨ j ⟩ (p $ (~ i ∧ ~ j))) (coe (⟨ j ⟩ (p $ (~ i ∧ j))) x)
+coe-inv⁻¹ : ∀ {A B}(p : A ≡ B) x → coe (p ⁻¹) (coe p x) ≡ x
+coe-inv⁻¹ {A}{B} p x = ⟨ i ⟩ coe (⟨ j ⟩ (p $ (~ i ∧ ~ j))) (coe (⟨ j ⟩ (p $ (~ i ∧ j))) x)
 
--- idToEqv : ∀ {A B} → A ≡ B → Σ _ (eqv {A}{B})
--- idToEqv {A}{B} p = coe p , coe (p ⁻¹) , coe (p ⁻¹) , coe-inv⁻¹ p , coe-inv p
+idToEqv : ∀ {A B} → A ≡ B → Σ _ (eqv {A}{B})
+idToEqv {A}{B} p = coe p , coe (p ⁻¹) , coe (p ⁻¹) , coe-inv⁻¹ p , coe-inv p
 
--- eqvToId : ∀ {A B} → Σ _ (eqv {A}{B}) → A ≡ B
--- eqvToId (f , g , h , p , q) =
---   iso (f , g , (λ x → ap f (ap g (q x ⁻¹) ◾ p (h x)) ◾ q x) ,
---       (λ x → p x))
+eqvToId : ∀ {A B} → Σ _ (eqv {A}{B}) → A ≡ B
+eqvToId (f , g , h , p , q) =
+  iso (f , g , (λ x → ap f (ap g (q x ⁻¹) ◾ p (h x)) ◾ q x) ,
+      (λ x → p x))
 
--- to : ∀ {A B} p → eqvToId (idToEqv {A}{B} p) ≡ p
--- to {A}{B} p = J (λ B p → eqvToId (idToEqv p) ≡ p) refl p
+to : ∀ {A B} p → eqvToId (idToEqv {A}{B} p) ≡ p
+to {A}{B} p = J (λ B p → eqvToId (idToEqv p) ≡ p) refl p
 
--- from :
---   ∀ {A B}
---     (f : A → B)(g h : B → A)(p : ∀ x → g (f x) ≡ x)(q : ∀ x → f (h x) ≡ x)
---   → idToEqv (eqvToId (f , g , h , p , q)) ≡ (f , g , h , p , q)
--- from {A}{B} f g h p q = ap (_,_ f) (eqv-prop f _ _)
+from :
+  ∀ {A B}
+    (f : A → B)(g h : B → A)(p : ∀ x → g (f x) ≡ x)(q : ∀ x → f (h x) ≡ x)
+  → idToEqv (eqvToId (f , g , h , p , q)) ≡ (f , g , h , p , q)
+from {A}{B} f g h p q = ap (_,_ f) (eqv-prop f _ _)
 
--- univalence : ∀ {A B} → eqv (idToEqv {A}{B})
--- univalence {A}{B} = eqvToId , eqvToId , to , (λ {(f , g , h , p , q) → from f g h p q})
+univalence : ∀ {A B} → eqv (idToEqv {A}{B})
+univalence {A}{B} = eqvToId , eqvToId , to , (λ {(f , g , h , p , q) → from f g h p q})
 
 -- Tests
 --------------------------------------------------------------------------------
@@ -261,8 +347,8 @@ postulate
     (baseᴹ : S¹ᴹ base)
     (loopᴹ : tr S¹ᴹ loop baseᴹ ≡ baseᴹ)
     (i : I)
-    → S¹-ind S¹ᴹ baseᴹ loopᴹ (loop $ i) ↦ tr S¹ᴹ (⟨ j ⟩ (loop $ j ∧ i)) (loopᴹ $ i)
-{-# REWRITE loopβ #-}
+    → S¹-ind S¹ᴹ baseᴹ loopᴹ (loop $ i) ↦ coe {!!} (loopᴹ $ i)
+-- {-# REWRITE loopβ #-}
 
 -- We generally need a ◾ distribution and a coe computation rule for
 -- each eliminator. Here we can skip coe computation because S¹ does
@@ -311,69 +397,69 @@ flipN n = tr mobius (loopN n)
 flipN² : ℕ → (Bool × Bool) → (Bool × Bool)
 flipN² n = tr (λ s → mobius s × mobius s) (loopN n)
 
-test2 : flipN 3 true ≡ false
-test2 = refl
+-- test2 : flipN 3 true ≡ false
+-- test2 = refl
 
-if_then_else_ : {A : Set} → Bool → A → A → A
-if false then t else f = t
-if true  then t else f = f
+-- if_then_else_ : {A : Set} → Bool → A → A → A
+-- if false then t else f = t
+-- if true  then t else f = f
 
-loop≢refl : loop ≡ refl → ⊥
-loop≢refl p = tr (λ q → if (tr mobius q true) then ⊤ else ⊥) p tt
+-- loop≢refl : loop ≡ refl → ⊥
+-- loop≢refl p = tr (λ q → if (tr mobius q true) then ⊤ else ⊥) p tt
 
--- foo : (s : S¹) → s ≡ s
--- foo = S¹-ind (λ s → s ≡ s) refl (⟨ i ⟩ ((⟨ j ⟩ (loop $ i ∨ ~ j)) ◾ (⟨ j ⟩ (loop $ i ∨ j))))
+-- -- -- foo : (s : S¹) → s ≡ s
+-- -- -- foo = S¹-ind (λ s → s ≡ s) refl (⟨ i ⟩ ((⟨ j ⟩ (loop $ i ∨ ~ j)) ◾ (⟨ j ⟩ (loop $ i ∨ j))))
 
 
--- Integers
-------------------------------------------------------------
+-- -- -- Integers
+-- -- ------------------------------------------------------------
 
-postulate
-  ℤ   : Set
-  zz  : ℤ
-  zs  : ℤ → ℤ
-  zp  : ℤ → ℤ
-  zsp : ∀ z → zs (zp z) ≡ z
-  zps : ∀ z → zp (zs z) ≡ z
+-- -- postulate
+-- --   ℤ   : Set
+-- --   zz  : ℤ
+-- --   zs  : ℤ → ℤ
+-- --   zp  : ℤ → ℤ
+-- --   zsp : ∀ z → zs (zp z) ≡ z
+-- --   zps : ∀ z → zp (zs z) ≡ z
 
-  ℤ-ind :
-    (ℤᴹ   : ℤ → Set)
-    (zzᴹ  : ℤᴹ zz)
-    (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
-    (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
-    (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
-    (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
-    (z : ℤ) → ℤᴹ z
+-- --   ℤ-ind :
+-- --     (ℤᴹ   : ℤ → Set)
+-- --     (zzᴹ  : ℤᴹ zz)
+-- --     (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
+-- --     (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
+-- --     (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
+-- --     (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
+-- --     (z : ℤ) → ℤᴹ z
 
-  zzβ :
-    (ℤᴹ   : ℤ → Set)
-    (zzᴹ  : ℤᴹ zz)
-    (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
-    (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
-    (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
-    (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
-    → ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ zz ↦ zzᴹ
+-- --   zzβ :
+-- --     (ℤᴹ   : ℤ → Set)
+-- --     (zzᴹ  : ℤᴹ zz)
+-- --     (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
+-- --     (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
+-- --     (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
+-- --     (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
+-- --     → ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ zz ↦ zzᴹ
 
-  zsβ :
-    (ℤᴹ   : ℤ → Set)
-    (zzᴹ  : ℤᴹ zz)
-    (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
-    (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
-    (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
-    (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
-    → ∀ z
-    → ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ (zs z) ↦ zsᴹ (ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ z)
+-- --   zsβ :
+-- --     (ℤᴹ   : ℤ → Set)
+-- --     (zzᴹ  : ℤᴹ zz)
+-- --     (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
+-- --     (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
+-- --     (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
+-- --     (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
+-- --     → ∀ z
+-- --     → ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ (zs z) ↦ zsᴹ (ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ z)
 
-  zpβ :
-    (ℤᴹ   : ℤ → Set)
-    (zzᴹ  : ℤᴹ zz)
-    (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
-    (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
-    (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
-    (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
-    → ∀ z
-    → ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ (zp z) ↦ zpᴹ (ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ z)
+-- --   zpβ :
+-- --     (ℤᴹ   : ℤ → Set)
+-- --     (zzᴹ  : ℤᴹ zz)
+-- --     (zsᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zs z))
+-- --     (zpᴹ  : ∀ {z} → ℤᴹ z → ℤᴹ (zp z))
+-- --     (zspᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zsp z) (zsᴹ (zpᴹ zᴹ)) ≡ zᴹ)
+-- --     (zpsᴹ : ∀ {z}(zᴹ : ℤᴹ z) → tr ℤᴹ (zps z) (zpᴹ (zsᴹ zᴹ)) ≡ zᴹ)
+-- --     → ∀ z
+-- --     → ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ (zp z) ↦ zpᴹ (ℤ-ind ℤᴹ zzᴹ zsᴹ zpᴹ zspᴹ zpsᴹ z)
 
-{-# REWRITE zsβ zpβ #-}
+-- -- {-# REWRITE zsβ zpβ #-}
 
--- todo
+-- -- -- todo
