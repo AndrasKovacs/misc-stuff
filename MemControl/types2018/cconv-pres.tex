@@ -257,7 +257,7 @@ $\Gamma \vdash \sigma : \Delta$ will denote a parallel substitution, $\mathsf{id
     \item
       $\mathsf{quote}$ converts $\Gamma$ to a code for an iterated left-nested $\Sigma$-type.
     \item $\open\,\Gamma$ fills such a $\Sigma$ with variables from the context, for example: $\open\,(x : \U, y : \U) \equiv ((tt,\,x),\,y)$.
-    \item $\close\,\Gamma$ is a substitution which converts variables of $\Gamma$ to projections from $e : \mathsf{quote}\,\Gamma$, for example: $(x,\,y)[\close\,(x : \U, y : \U)] \equiv (\proj_2 (\proj_1 e),\, \proj_2 e)$.
+    \item $\close\,\Gamma$ is a substitution which converts variables of $\Gamma$ to projections from $e : \El\,(\mathsf{quote}\,\Gamma)$, for example: $(x,\,y)[\close\,(x : \U, y : \U)] \equiv (\proj_2 (\proj_1 e),\, \proj_2 e)$.
   \end{itemize}
 \end{frame}
 
