@@ -29,14 +29,14 @@ data _∈_ (A : Ty) : Con → Set where
 
 data Tm Γ : Ty → Set where
   var   : ∀ {A} → A ∈ Γ → Tm Γ A
-  
+
   lam   : ∀ {A B} → Tm (Γ , A) B → Tm Γ (A ⇒ B)
   app   : ∀ {A B} → Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
-  
+
   π₁    : ∀ {A B} → Tm Γ (A * B) → Tm Γ A
   π₂    : ∀ {A B} → Tm Γ (A * B) → Tm Γ B
   _,_   : ∀ {A B} → Tm Γ A → Tm Γ B → Tm Γ (A * B)
-  
+
   zero  : Tm Γ ℕ
   suc   : Tm Γ ℕ → Tm Γ ℕ
   ℕ-rec : ∀ {R} → Tm Γ ℕ → Tm Γ R → Tm (Γ , ℕ) R → Tm Γ R
@@ -95,7 +95,7 @@ mutual
   lam t   [ σ ]ₙᵣ = lam (t [ keep σ ]ₙᵣ)
   ne  n   [ σ ]ₙᵣ = ne (n [ σ ]ₙₑᵣ)
   zero    [ σ ]ₙᵣ = zero
-  suc n   [ σ ]ₙᵣ = suc (n [ σ ]ₙᵣ)  
+  suc n   [ σ ]ₙᵣ = suc (n [ σ ]ₙᵣ)
 
   _[_]ₙₑᵣ : ∀ {Γ Δ A} → Ne Δ A → Ren Γ Δ → Ne Γ A
   var v       [ σ ]ₙₑᵣ = var (v [ σ ]∈ᵣ)
@@ -103,10 +103,10 @@ mutual
   π₁ p        [ σ ]ₙₑᵣ = π₁ (p [ σ ]ₙₑᵣ)
   π₂ p        [ σ ]ₙₑᵣ = π₂ (p [ σ ]ₙₑᵣ)
   ℕ-rec n z s [ σ ]ₙₑᵣ = ℕ-rec (n [ σ ]ₙₑᵣ) (z [ σ ]ₙᵣ) (s [ keep σ ]ₙᵣ)
-  
+
 -- Normalization
 --------------------------------------------------------------------------------
-  
+
 Tmᴺ : Con → Ty → Set
 Tmᴺ Γ (A ⇒ B) = ∀ {Δ} → Ren Δ Γ → Tmᴺ Δ A → Tmᴺ Δ B
 Tmᴺ Γ ℕ       = Nf Γ ℕ
@@ -162,8 +162,7 @@ Tm↑ᴺ (ℕ-rec n z s) σ with Tm↑ᴺ n σ
 
 idᴺₛ : ∀ {Γ} → Tmsᴺ Γ Γ
 idᴺₛ {∙}     = ∙
-idᴺₛ {Γ , A} = (idᴺₛ ᴺ∘ᵣ drop idᵣ) , uᴺ (var vz) 
+idᴺₛ {Γ , A} = (idᴺₛ ᴺ∘ᵣ drop idᵣ) , uᴺ (var vz)
 
 nf : ∀ {Γ A} → Tm Γ A → Nf Γ A
 nf t = qᴺ (Tm↑ᴺ t idᴺₛ)
-
