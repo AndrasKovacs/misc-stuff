@@ -1,7 +1,7 @@
 {-# OPTIONS --without-K #-}
 
 {- Syntax for 1-HITs with functors and natural transformations (an F-algebra-like style).
-   Based on Agda file by Corlin Fardar:
+   Based on Agda file by Corlin Fardal:
    https://groups.google.com/forum/#!topic/homotopytypetheory/9PGc3RvNJeA -}
 
 open import Relation.Binary.PropositionalEquality renaming (subst to transp; cong to ap)
@@ -26,7 +26,6 @@ data F : Set₁ where
   Sum   : F → F → F
   Prod  : F → F → F
   Exp   : Set → F → F
-  Empty : F
 
 data Tm (f g : F) : F → Set₁ where
   id      : Tm f g g
@@ -41,7 +40,6 @@ data Tm (f g : F) : F → Set₁ where
   inj₁    : ∀ {h i} → Tm f g h → Tm f g (Sum h i)
   inj₂    : ∀ {h i} → Tm f g i → Tm f g (Sum h i)
   case    : ∀ {h i j} → Tm f g (Sum h i) → Tm f (Prod g h) j → Tm f (Prod g i) j → Tm f g j
-  exfalso : ∀ {h} → Tm f g Empty → Tm f g h
 
 -- 1HIT declarations
 Decl : Set₁
@@ -56,7 +54,6 @@ Fᴬ (Const A)  X = A
 Fᴬ (Sum f g)  X = Fᴬ f X ⊎ Fᴬ g X
 Fᴬ (Prod f g) X = Fᴬ f X × Fᴬ g X
 Fᴬ (Exp A f)  X = A → Fᴬ f X
-Fᴬ Empty      X = ⊥
 
 Tmᴬ : ∀ {f g h} → Tm f g h → ∀ {X}(c : Fᴬ f X → X) → Fᴬ g X → Fᴬ h X
 Tmᴬ id           c gx = gx
@@ -72,7 +69,6 @@ Tmᴬ (inj₂ u)     c gx = inj₂ (Tmᴬ u c gx)
 Tmᴬ (case t u v) c gx with Tmᴬ t c gx
 ... | inj₁ x = Tmᴬ u c (gx , x)
 ... | inj₂ x = Tmᴬ v c (gx , x)
-Tmᴬ (exfalso t)  c gx = ⊥-elim (Tmᴬ t c gx)
 
 Alg : Decl → Set₁
 Alg (f , g , t , u) =
@@ -91,7 +87,6 @@ Fᴰ (Sum f g)  Xᴰ (inj₁ fx) = Fᴰ f Xᴰ fx
 Fᴰ (Sum f g)  Xᴰ (inj₂ gx) = Fᴰ g Xᴰ gx
 Fᴰ (Prod f g) Xᴰ fx        = Fᴰ f Xᴰ (₁ fx) × Fᴰ g Xᴰ (₂ fx)
 Fᴰ (Exp A f)  Xᴰ fx        = ∀ x → Fᴰ f Xᴰ (fx x)
-Fᴰ Empty      Xᴰ fx        = ⊥-elim fx
 
 Tmᴰ : ∀ {f g h}(t : Tm f g h)
         {X}(Xᴰ : X → Set)
@@ -111,7 +106,6 @@ Tmᴰ (inj₂ t)     Xᴰ cᴰ gxᴰ = Tmᴰ t Xᴰ cᴰ gxᴰ
 Tmᴰ (case t u v) Xᴰ {c} cᴰ {gx} gxᴰ with Tmᴬ t c gx | Tmᴰ t Xᴰ cᴰ gxᴰ
 ... | inj₁ x | xᴰ = Tmᴰ u Xᴰ cᴰ (gxᴰ , xᴰ)
 ... | inj₂ x | xᴰ = Tmᴰ v Xᴰ cᴰ (gxᴰ , xᴰ)
-Tmᴰ (exfalso t) Xᴰ {c} cᴰ {gx} gxᴰ = ⊥-elim (Tmᴬ t c gx)
 
 Displayed : (Γ : Decl) → Alg Γ → Set₁
 Displayed (f , g , t , u) (X , points , paths) =
@@ -129,7 +123,6 @@ Fˢ (Sum f g)  Xˢ (inj₁ x) = Fˢ f Xˢ x
 Fˢ (Sum f g)  Xˢ (inj₂ x) = Fˢ g Xˢ x
 Fˢ (Prod f g) Xˢ fx       = Fˢ f Xˢ (₁ fx) , Fˢ g Xˢ (₂ fx)
 Fˢ (Exp A f)  Xˢ fx       = λ x → Fˢ f Xˢ (fx x)
-Fˢ Empty      Xˢ fx       = ⊥-elim fx
 
 postulate funext : ∀ {i j} → Extensionality i j
 
@@ -150,7 +143,6 @@ Tmˢ (inj₂ t)     Xˢ cˢ gx = Tmˢ t Xˢ cˢ gx
 Tmˢ (case t u v) Xˢ {c} {cᴰ} cˢ gx rewrite Tmˢ t Xˢ {_}{cᴰ} cˢ gx ⁻¹ with Tmᴬ t c gx
 ... | inj₁ x = Tmˢ u Xˢ cˢ (gx , x)
 ... | inj₂ x = Tmˢ v Xˢ cˢ (gx , x)
-Tmˢ (exfalso t) Xˢ {c} cˢ gx = ⊥-elim (Tmᴬ t c gx)
 
 Section : (Γ : Decl)(A : Alg Γ) → Displayed Γ A → Set
 Section (f , g , t , u)(X , points , paths)(Xᴰ , pointsᴰ , pathsᴰ) =
@@ -175,14 +167,21 @@ module _ (Γ : Decl) where
 -- Decl examples
 --------------------------------------------------------------------------------
 
+
+Zero : F
+Zero = Const ⊥
+
+ZeroElim : ∀ {g h} → Tm g Zero h
+ZeroElim = app (lam ⊥-elim) id
+
 One : F
 One = Const ⊤
 
 Nat : Decl
-Nat = Sum One Id , Empty , exfalso id , exfalso id
+Nat = Sum One Id , Zero , ZeroElim , ZeroElim
 
 List : Set → Decl
-List A = Sum One (Prod (Const A) Id) , Empty , exfalso id , exfalso id
+List A = Sum One (Prod (Const A) Id) , Zero , ZeroElim , ZeroElim
 
 S¹ : Decl
 S¹ = One , One , con id , con id
