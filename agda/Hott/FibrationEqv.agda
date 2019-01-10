@@ -39,7 +39,7 @@ eq = funext λ A → ua (f , g , fg , gf) where
 
   gf : ∀ {A}(x : Σ Set λ E → E → A) → g (f x) ≡ x
   gf {A}(E , proj) =
-    ⟵ Σ-≡ (ua eqvA , funext λ e → ap (λ f → f proj₁ e) (coe-post-∘ eqvA))
+    ⟵ Σ-≡ ((ua eqvA) , funext λ e → ap (λ f → f proj₁ e) (coe-post-∘ eqvA))
     where
       f' : E → ∃ (f (E , proj))
       f' e = proj e , e , refl
@@ -49,4 +49,3 @@ eq = funext λ A → ua (f , g , fg , gf) where
 
       eqvA : ∃ (f (E , proj)) ~ E
       eqvA = (f' , g' , (λ {(_ , _ , refl) → refl}) , (λ _ → refl))
-

@@ -1,0 +1,23 @@
+\frametitle{Quotient induction}
+
+Quotient induction is a powerful tool for formalizing lots of mathematics, including
+\vspace{1em}
+
+\begin{itemize}
+\item Real, ordinal, surreal numbers.
+\item Syntax and semantics of languages, especially those with polymorphic and dependent types.
+
+
+\end{itemize}
+
+\pause
+\vspace{1em}
+No current proof assistant supports quotient inductive types.
+\vspace{1em}
+
+A key motivation of this research is to build theoretical background for future proof assistants.
+\vspace{1em}
+
+(Besides doing pure theory, we're also writing prototype implementations)
+
+

@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --without-K #-}
 
 module Lib where
 
@@ -6,7 +6,6 @@ open import Level public
 open import Relation.Binary.PropositionalEquality public using (_≡_; refl)
 open import Data.Empty public
 
-{-# BUILTIN REWRITE _≡_ #-}
 postulate cheat : ∀ {α}{A : Set α} → A
 
 infix 3 _∋_
@@ -42,7 +41,6 @@ infixr 4 _◾_
 
 ◾refl : ∀ {i}{A : Set i}{x y : A}(p : x ≡ y) → (p ◾ refl) ≡ p
 ◾refl refl = refl
-{-# REWRITE ◾refl #-}
 
 _⁻¹ : ∀{i}{A : Set i}{x y : A} → x ≡ y → y ≡ x
 refl ⁻¹ = refl
@@ -57,15 +55,25 @@ _&_ :
 f & refl = refl
 infixl 9 _&_
 
+∘& : ∀ {i j k}{A : Set i}{B : Set j}{C : Set k}(f : B → C)(g : A → B) {a₀ a₁ : A}
+       (p : a₀ ≡ a₁)
+     → (f & (g & p)) ≡ (f ∘ g) & p
+∘& f g refl = refl
+
 id& : ∀{i}{A : Set i}{a₀ a₁ : A}(p : a₀ ≡ a₁) → id & p ≡ p
 id& refl = refl
-{-# REWRITE id& #-}
+
+⁻¹⁻¹ : ∀ {i}{A : Set i}{x y : A}(p : x ≡ y) → p ⁻¹ ⁻¹ ≡ p
+⁻¹⁻¹ refl = refl
 
 const& :
   ∀ {i j}{A : Set i}{B : Set j}{a₀ a₁ : A}(p : a₀ ≡ a₁){b : B}
   → (λ _ → b) & p ≡ refl
 const& refl = refl
-{-# REWRITE const& #-}
+
+&⁻¹ : ∀{i j}{A : Set i}{B : Set j}(f : A → B){a₀ a₁ : A}(a₂ : a₀ ≡ a₁)
+      → f & a₂ ⁻¹ ≡ f & (a₂ ⁻¹)
+&⁻¹ f refl = refl
 
 coe∘ : ∀ {i}{A B C : Set i}(p : B ≡ C)(q : A ≡ B)(a : A)
        → coe p (coe q a) ≡ coe (q ◾ p) a
@@ -76,6 +84,15 @@ coecoe⁻¹ refl x = refl
 
 coecoe⁻¹' : ∀ {i}{A B : Set i}(p : A ≡ B) x → coe (p ⁻¹) (coe p x) ≡ x
 coecoe⁻¹' refl x = refl
+
+coe→ : ∀ {i}{A B : Set i}(p : A ≡ B) a b → coe p a ≡ b → a ≡ coe (p ⁻¹) b
+coe→ refl a b q = q
+
+coe→⁻¹ : ∀ {i}{A B : Set i}(p : B ≡ A) a b → coe (p ⁻¹) a ≡ b → a ≡ coe p b
+coe→⁻¹ refl a b q = q
+
+coe←⁻¹ : ∀ {i}{A B : Set i}(p : A ≡ B) a b → a ≡ coe (p ⁻¹) b → coe p a ≡ b
+coe←⁻¹ refl a b q = q
 
 tr : ∀ {i j}{A : Set i}(B : A → Set j){a₀ : A}{a₁ : A}(a₂ : a₀ ≡ a₁) → B a₀ → B a₁
 tr B p = coe (B & p)
@@ -90,9 +107,6 @@ tr2 {B = B} C {a₀}{.a₀} refl refl c₀ = c₀
 happly : ∀ {α β}{A : Set α}{B : Set β}{f g : A → B} → f ≡ g → ∀ a → f a ≡ g a
 happly refl a = refl
 
-&⁻¹ : ∀{i j}{A : Set i}{B : Set j}(f : A → B){a₀ a₁ : A}(a₂ : a₀ ≡ a₁)
-      → f & a₂ ⁻¹ ≡ f & (a₂ ⁻¹)
-&⁻¹ f refl = refl
 
 _⊗_ :
   ∀ {α β}{A : Set α}{B : Set β}
