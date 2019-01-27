@@ -6,6 +6,8 @@ open import Data.Unit
 open import Data.Empty
 open import Function
 
+-- some HoTT-inspired combinators
+
 _&_ = cong
 _⁻¹ = sym
 _◾_ = trans
@@ -86,7 +88,6 @@ assₑ σ        (drop δ) (keep ν) = drop & assₑ σ δ ν
 assₑ (drop σ) (keep δ) (keep ν) = drop & assₑ σ δ ν
 assₑ (keep σ) (keep δ) (keep ν) = keep & assₑ σ δ ν
 
--- (A ∈_) : PSh OPE
 ∈ₑ : ∀ {A Γ Δ} → OPE Γ Δ → A ∈ Δ → A ∈ Γ
 ∈ₑ ∙        v      = v
 ∈ₑ (drop σ) v      = vs (∈ₑ σ v)
@@ -104,7 +105,6 @@ assₑ (keep σ) (keep δ) (keep ν) = keep & assₑ σ δ ν
 ∈-∘ₑ (keep σ) (keep δ) vz     = refl
 ∈-∘ₑ (keep σ) (keep δ) (vs v) = vs & ∈-∘ₑ σ δ v
 
--- (Tm _ A) : PSh OPE
 Tmₑ : ∀ {A Γ Δ} → OPE Γ Δ → Tm Δ A → Tm Γ A
 Tmₑ σ (var v)   = var (∈ₑ σ v)
 Tmₑ σ (lam t)   = lam (Tmₑ (keep σ) t)
