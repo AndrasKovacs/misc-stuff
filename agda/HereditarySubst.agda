@@ -1,111 +1,96 @@
 
-module HereditarySubst where
+open import Relation.Binary.PropositionalEquality
+open import Data.Sum
+open import Function
+open import Data.Empty
 
 data Ty : Set where
-  ∙   : Ty
+  ι   : Ty
   _⇒_ : Ty → Ty → Ty
-infixr 5 _⇒_   
+infixr 5 _⇒_
 
 data Con : Set where
-  ε   : Con
-  _,_ : Con → Ty → Con
-infixl 5 _,_
+  ∙   : Con
+  _▶_ : Con → Ty → Con
+infixl 5 _▶_
 
-data _∈_ : Ty → Con → Set where
-  zero : ∀ {Γ σ} → σ ∈ (Γ , σ)
-  suc  : ∀ {Γ σ σ'} → σ ∈ Γ → σ ∈ Γ , σ'
-infixr 4 _∈_ 
+data Var : Con → Ty → Set where
+  zero : ∀ {Γ A} → Var (Γ ▶ A) A
+  suc  : ∀ {Γ A B} → Var Γ A → Var (Γ ▶ B) A
 
-data _⊢_ (Γ : Con) : Ty → Set where
-  var : ∀ {σ} → σ ∈ Γ → Γ ⊢ σ
-  lam : ∀ {σ τ} → Γ , σ ⊢ τ → Γ ⊢ σ ⇒ τ
-  app : ∀ {σ τ} → Γ ⊢ (σ ⇒ τ) → Γ ⊢ σ → Γ ⊢ τ
-infix 3 _⊢_
+data Tm (Γ : Con) : Ty → Set where
+  var : ∀ {A} → Var Γ A → Tm Γ A
+  lam : ∀ {A B} → Tm (Γ ▶ A) B → Tm Γ (A ⇒ B)
+  app : ∀ {A B} → Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
 
-_-_ : ∀ {σ} Γ → σ ∈ Γ → Con
-ε       - ()
-(Γ , σ) - zero  = Γ
-(Γ , σ) - suc x = Γ - x , σ
+_-_ : ∀ {A} Γ → Var Γ A → Con
+∙       - ()
+(Γ ▶ A) - zero  = Γ
+(Γ ▶ A) - suc x = Γ - x ▶ A
 infixl 6 _-_
 
-wkv : ∀ {Γ σ τ} (x : σ ∈ Γ) → τ ∈ Γ - x → τ ∈ Γ
+wkv : ∀ {Γ A B} (x : Var Γ A) → Var (Γ - x) B → Var Γ B
 wkv zero    y       = suc y
 wkv (suc x) zero    = zero
 wkv (suc x) (suc y) = suc (wkv x y)
 
-data EqV {Γ}{σ} : ∀ {τ} → σ ∈ Γ → τ ∈ Γ → Set where
-  same : ∀ {x} → EqV x x
-  diff : ∀ {τ} x (y : τ ∈ Γ - x) → EqV x (wkv x y)
-
-eqv : ∀ {Γ σ τ} (x : σ ∈ Γ)(y : τ ∈ Γ) → EqV x y
-eqv zero zero = same
-eqv zero (suc y) = diff zero y
-eqv (suc x) zero = diff (suc x) zero
-eqv (suc x) (suc y) with eqv x y
-eqv (suc x) (suc .x)         | same      = same
-eqv (suc x) (suc .(wkv x y)) | diff .x y = diff (suc x) (suc y)
-
-mutual 
-  data _⊨_ Γ : Ty → Set where
-    lam : ∀ {σ τ} → Γ , σ ⊨ τ → Γ ⊨ σ ⇒ τ
-    ne  : Ne Γ ∙ → Γ ⊨ ∙
-  infix 3 _⊨_
-
-  data Ne Γ : Ty → Set where
-    _,_ : ∀ {σ τ} → σ ∈ Γ → Γ ⊨* σ , τ → Ne Γ τ 
-
-  data _⊨*_,_ Γ : Ty → Ty → Set where
-    ε   : ∀ {σ} → Γ ⊨* σ , σ 
-    _,_ : ∀ {σ τ ρ} → Γ ⊨ σ → Γ ⊨* τ , ρ → Γ ⊨* σ ⇒ τ , ρ
-  infix 3 _⊨*_,_
+eqv : ∀ {Γ A B} (x : Var Γ A)(y : Var Γ B) → (A ≡ B) ⊎ Var (Γ - x) B
+eqv zero    zero    = inj₁ refl
+eqv zero    (suc y) = inj₂ y
+eqv (suc x) zero    = inj₂ zero
+eqv (suc x) (suc y) = Data.Sum.map id suc (eqv x y)
 
 mutual
-  wkNf : ∀ {Γ σ τ} (x : τ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨ σ
-  wkNf x (lam t)      = lam (wkNf (suc x) t)
-  wkNf x (ne (f , s)) = ne (wkv x f , wkSp x s)
+  data Nf Γ : Ty → Set where
+    lam : ∀ {A B} → Nf (Γ ▶ A) B → Nf Γ (A ⇒ B)
+    ne  : ∀ {A} → Var Γ A → Sp Γ A ι → Nf Γ ι
 
-  wkSp : ∀ {Γ σ τ ρ} (x : τ ∈ Γ) → Γ - x ⊨* σ , ρ → Γ ⊨* σ , ρ
-  wkSp x ε       = ε
-  wkSp x (t , s) = wkNf x t , wkSp x s
-
-appSp : ∀ {Γ σ τ ρ} → Γ ⊨* σ , τ ⇒ ρ → Γ ⊨ τ → Γ ⊨* σ , ρ
-appSp ε       t = t , ε
-appSp (x , s) t = x , appSp s t
-
-open import Relation.Binary.PropositionalEquality
+  data Sp (Γ : Con) : Ty → Ty → Set where
+    []  : ∀ {A}     → Sp Γ A A
+    _∷_ : ∀ {A B C} → Nf Γ A → Sp Γ B C → Sp Γ (A ⇒ B) C
+  infixr 4 _∷_
 
 mutual
-  η : ∀ {Γ σ} → σ ∈ Γ → Γ ⊨ σ
-  η x = η-Ne (x , ε)
+ wkNf : ∀ {Γ A B}(x : Var Γ B) → Nf (Γ - x) A → Nf Γ A
+ wkNf x (lam t)   = lam (wkNf (wkv zero x) t)
+ wkNf x (ne y sp) = ne (wkv x y) (wkSp x sp)
 
-  η-Ne : ∀ {σ Γ} → Ne Γ σ → Γ ⊨ σ
-  η-Ne {∙}     n       = ne n
-  η-Ne {σ ⇒ τ} (x , s) = lam (η-Ne (suc x , appSp (wkSp zero s) (η zero)))
+ wkSp : ∀ {Γ A B C} (x : Var Γ C) → Sp (Γ - x) A B → Sp Γ A B
+ wkSp x []       = []
+ wkSp x (t ∷ sp) = wkNf x t ∷ wkSp x sp
+
+snocSp : ∀ {Γ A B C} → Sp Γ A (B ⇒ C) → Nf Γ B → Sp Γ A C
+snocSp []       u = u ∷ []
+snocSp (t ∷ sp) u = t ∷ snocSp sp u
 
 mutual
-  ⟨_⟶_⟩_ : ∀ {Γ σ τ} → (x : σ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨ τ → Γ - x ⊨ τ
-  ⟨ x ⟶ s ⟩ lam t = lam (⟨ suc x ⟶ wkNf zero s ⟩ t)
-  ⟨ x ⟶ s ⟩ ne (y , sp) with eqv x y
-  ⟨ x ⟶ s ⟩ ne (.x , sp)         | same      = s ◇ ⟨ x ⟶ s ⟩* sp
-  ⟨ x ⟶ s ⟩ ne (.(wkv x y) , sp) | diff .x y = ne (y , ⟨ x ⟶ s ⟩* sp)
-  infix 2 ⟨_⟶_⟩_
+  η : ∀ {Γ A} → Var Γ A → Nf Γ A
+  η x = η' x []
 
-  ⟨_⟶_⟩*_ : ∀ {Γ σ τ ρ}(x : σ ∈ Γ) → Γ - x ⊨ σ → Γ ⊨* τ , ρ → Γ - x ⊨* τ , ρ
-  ⟨ x ⟶ s ⟩* ε        = ε
-  ⟨ x ⟶ s ⟩* (t , sp) = (⟨ x ⟶ s ⟩ t) , ⟨ x ⟶ s ⟩* sp
+  η' : ∀ {Γ A B} → Var Γ A → Sp Γ A B → Nf Γ B
+  η' {B = ι}     x sp = Nf.ne x sp
+  η' {B = A ⇒ B} x sp = lam (η' (wkv zero x) (snocSp (wkSp zero sp) (η zero)))
 
-  _◇_ : ∀ {Γ σ τ} → Γ ⊨ σ → Γ ⊨* σ , τ → Γ ⊨ τ
-  t ◇ ε      = t
-  lam f ◇ s , sp = (⟨ zero ⟶ s ⟩ f) ◇ sp
+mutual
+  Nfₛ : ∀ {Γ A B}(x : Var Γ A) → Nf (Γ - x) A → Nf Γ B → Nf (Γ - x) B
+  Nfₛ x t (lam u)   = lam (Nfₛ (wkv zero x) (wkNf zero t) u)
+  Nfₛ x t (ne y sp) with eqv x y | Spₛ x t sp
+  ... | inj₁ refl  | sp' = appSp t sp'
+  ... | inj₂ y'    | sp' = ne y' sp'
 
+  Spₛ : ∀ {Γ A B C}(x : Var Γ C) → Nf (Γ - x) C → Sp Γ A B → Sp (Γ - x) A B
+  Spₛ x t []       = []
+  Spₛ x t (u ∷ sp) = Nfₛ x t u ∷ Spₛ x t sp
 
-nfapp : ∀ {Γ σ τ} → Γ ⊨ σ ⇒ τ  → Γ ⊨ σ → Γ ⊨ τ
-nfapp (lam t) s = ⟨ zero ⟶ s ⟩ t
+  appSp : ∀ {Γ A B} → Nf Γ A → Sp Γ A B → Nf Γ B
+  appSp t       []       = t
+  appSp (lam t) (u ∷ sp) = appSp (Nfₛ zero u t) sp
 
-infix 3 _◇_
-
-nf : ∀ {Γ σ} → Γ ⊢ σ → Γ ⊨ σ
+nf : ∀ {Γ A} → Tm Γ A → Nf Γ A
 nf (var x)   = η x
 nf (lam t)   = lam (nf t)
-nf (app f x) = nfapp (nf f) (nf x)
+nf (app t u) with nf t | nf u
+... | lam t' | u' = Nfₛ zero u' t'
 
+consistent : Tm ∙ ι → ⊥
+consistent t = case nf t of λ {(ne () _)}
