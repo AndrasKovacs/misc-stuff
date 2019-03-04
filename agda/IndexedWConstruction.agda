@@ -3,10 +3,10 @@
 open import Relation.Binary.PropositionalEquality
 open import Data.Product
 
-data W (S : Set)(P : S → Set) : Set where
-  sup : ∀ s → (P s → W S P) → W S P
-
 module _ (I : Set)(S : Set)(P : S → Set)(out : S → I)(ins : ∀ s → P s → I) where
+
+  data W  : Set where
+    sup : ∀ s → (P s → W) → W
 
   record Wᴬ : Set₁ where
     field
@@ -27,18 +27,18 @@ module _ (I : Set)(S : Set)(P : S → Set)(out : S → I)(ins : ∀ s → P s �
               → W'ˢ _ (sup' γ s f) ≡ sup'ᴰ γᴰ _ f (λ p → W'ˢ (ins s p) (f p))
   open Wˢ
 
-  wf : W S P → I → Set
+  wf : W → I → Set
   wf (sup s f) i = (∀ p → wf (f p) (ins s p)) × (out s ≡ i)
 
   syn : Wᴬ
   syn = record {
-    W'   = λ i → Σ (W S P) (λ w → wf w i);
+    W'   = λ i → Σ W (λ w → wf w i);
     sup' = λ s f → (sup s (λ p → f p .proj₁)) , (λ p → f p .proj₂) , refl
     }
 
   module _ (γᴰ : Wᴰ syn) where
 
-    eval : ∀ i (w : W S P)(p : wf w i) → W'ᴰ γᴰ i (w , p)
+    eval : ∀ i (w : W)(p : wf w i) → W'ᴰ γᴰ i (w , p)
     eval _ (sup s f) (fp , refl) =
       sup'ᴰ γᴰ s (λ p → (f p) , (fp p)) (λ p → eval (ins s p) (f p) (fp p))
 
