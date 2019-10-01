@@ -15,7 +15,7 @@ open import Relation.Nullary
 import Level as L
 
 open import Data.List.Properties using (length-++; ∷-injective)
-open import Data.Nat.Properties.Simple using (+-suc)
+open import Data.Nat.Properties using (+-suc)
 
 data Tree : Set α where
   leaf : Tree
@@ -46,14 +46,14 @@ DisjTrees : Tree → Tree → Set α
 DisjTrees t t' = ∀ {x} → InTree x t → ¬ InTree x t'
 
 NoDupList : List A → Set α
-NoDupList []       = L.Lift ⊤
+NoDupList []       = L.Lift _ ⊤
 NoDupList (x ∷ xs) = ¬ InList x xs × NoDupList xs
 
 -- A tree is nodup if its subtrees are disjoint and nodup and the root
 -- value is not in the subtrees
 NoDupTree : Tree → Set α
-NoDupTree leaf = L.Lift ⊤
-NoDupTree (node x l r) = 
+NoDupTree leaf = L.Lift _ ⊤
+NoDupTree (node x l r) =
   ¬ InTree x l × ¬ InTree x r × NoDupTree l × NoDupTree r × DisjTrees l r
 
 infixr 5 _^++_ _++^_
@@ -69,7 +69,7 @@ listSplit : ∀ {x} xs {ys} → InList x (xs ++ ys) → InList x xs ⊎ InList x
 listSplit []       here      = inj₂ here
 listSplit (_ ∷ _)  here      = inj₁ here
 listSplit []       (there e) = sumMap (λ ()) (λ _ → there e) $ listSplit [] e
-listSplit (_ ∷ xs) (there e) = sumMap there id $ listSplit xs e 
+listSplit (_ ∷ xs) (there e) = sumMap there id $ listSplit xs e
 
 InI⇒InT : ∀ {x} t → InList x (inOrder t) → InTree x t
 InI⇒InT leaf ()
@@ -81,7 +81,7 @@ InI⇒InT (node x l r) e with listSplit (inOrder l) e
 InP⇒InT : ∀ {x} t → InList x (preOrder t) → InTree x t
 InP⇒InT leaf ()
 InP⇒InT (node _ _ _) here      = here
-InP⇒InT (node x l r) (there e) = 
+InP⇒InT (node x l r) (there e) =
   [ left ∘ InP⇒InT l , right ∘ InP⇒InT r ] (listSplit (preOrder l) e)
 
 InT⇒InP : ∀ {x} t → InTree x t → InList x (preOrder t)
@@ -107,7 +107,7 @@ NDSplit (x ∷ xs) {ys} (px , pxs) with NDSplit xs pxs
 NDT⇒NDI : ∀ t → NoDupTree t → NoDupList (inOrder t)
 NDT⇒NDI leaf _ = L.lift tt
 NDT⇒NDI (node x l r) (pxl , pxr , pl , pr , disj) =
-  ND++ _ _ (NDT⇒NDI l pl) (pxr ∘ InI⇒InT r , NDT⇒NDI r pr) disj' 
+  ND++ _ _ (NDT⇒NDI l pl) (pxr ∘ InI⇒InT r , NDT⇒NDI r pr) disj'
   where
   disj' : DisjLists (inOrder l) (x ∷ inOrder r)
   disj' e here       = pxl  (InI⇒InT l e)
@@ -123,14 +123,14 @@ NDT⇒NDP (node _ l r) (pxl , pxr , pl , pr , disj) =
 NDP⇒NDT : ∀ t → NoDupList (preOrder t) → NoDupTree t
 NDP⇒NDT leaf p = L.lift tt
 NDP⇒NDT (node x l r) (px , plr) with NDSplit (preOrder l) plr
-... | pl , pr , disj = 
-  (λ e → px (InT⇒InP l e ++^ preOrder r)) , 
-  (λ e → px (preOrder l ^++ InT⇒InP r e)) , 
-  NDP⇒NDT l pl , 
-  NDP⇒NDT r pr , 
+... | pl , pr , disj =
+  (λ e → px (InT⇒InP l e ++^ preOrder r)) ,
+  (λ e → px (preOrder l ^++ InT⇒InP r e)) ,
+  NDP⇒NDT l pl ,
+  NDP⇒NDT r pr ,
   (λ e e' → disj (InT⇒InP l e) (InT⇒InP r e'))
 
-NDInsert : 
+NDInsert :
   ∀ {x} xs xs' {ys ys'}
   → NoDupList (xs ++ x ∷ ys)
   → NoDupList (xs' ++ x ∷ ys')
@@ -144,56 +144,56 @@ NDInsert (_ ∷ xs) (x ∷ xs') (px , nda) (px' , ndb) p with ∷-injective p
 
 trav-length : ∀ t → length (inOrder t) ≡ length (preOrder t)
 trav-length leaf         = refl
-trav-length (node x l r) rewrite 
-    length-++ (inOrder l)  {x ∷ inOrder r} 
+trav-length (node x l r) rewrite
+    length-++ (inOrder l)  {x ∷ inOrder r}
   | length-++ (preOrder l) {preOrder r}
-  | trav-length l 
-  | trav-length r 
-  | +-suc (length (preOrder l)) (length (preOrder r)) 
+  | trav-length l
+  | trav-length r
+  | +-suc (length (preOrder l)) (length (preOrder r))
   = refl
 
-++-inj : 
-    {xs xs' ys ys' : List A} 
+++-inj :
+    {xs xs' ys ys' : List A}
   → xs ++ ys ≡ xs' ++ ys' → length xs ≡ length xs'
   → xs ≡ xs' × ys ≡ ys'
 ++-inj {[]}    {_ ∷ _}  p1 ()
 ++-inj {_ ∷ _} {[]}     p1 ()
 ++-inj {[]}    {[]}     p1 p2 = refl , p1
 ++-inj {_ ∷ _} {_  ∷ _} p1 p2 with ∷-injective p1
-++-inj {x ∷ _} {.x ∷ _} _  p2 | refl , p1 = 
+++-inj {x ∷ _} {.x ∷ _} _  p2 | refl , p1 =
   productMap (cong (_∷_ x)) id (++-inj p1 (cong pred p2))
 
-travEq : 
-  ∀ t t' 
+travEq :
+  ∀ t t'
   → NoDupTree t
-  → preOrder t ≡ preOrder t' 
+  → preOrder t ≡ preOrder t'
   → inOrder t ≡ inOrder t'
   → t ≡ t'
 travEq leaf         leaf            _ _ _ = refl
 travEq leaf         (node _ _ _)    _ () _
 travEq (node _ _ _) leaf            _ () _
-travEq (node x l r) (node x' l' r') ndt pre ino 
+travEq (node x l r) (node x' l' r') ndt pre ino
 
 -- Equality of root values
   with ∷-injective pre | ndt
-... | px , pre' | pxl , pxr , pl , pr , disj 
+... | px , pre' | pxl , pxr , pl , pr , disj
   rewrite sym px
 
 -- Get "NoDupTree t'" proof
   with NDP⇒NDT (node x l' r') (subst NoDupList pre (NDT⇒NDP _ ndt))
-... | ndt' 
+... | ndt'
 
 -- Equality of inorder subtree traversals
   with NDInsert (inOrder l) (inOrder l') (NDT⇒NDI _ ndt) (NDT⇒NDI _ ndt') ino
-... | eqlI , eqrI 
+... | eqlI , eqrI
 
 -- Equality of preorder subtree traversals
-  with ++-inj {preOrder l}{preOrder l'} pre' 
+  with ++-inj {preOrder l}{preOrder l'} pre'
        (subst₂ _≡_ (trav-length l) (trav-length l') (cong length eqlI))
-... | eqlP , eqrP 
+... | eqlP , eqrP
 
 -- Finish
-  rewrite 
-    travEq l l' pl eqlP eqlI 
-  | travEq r r' pr eqrP eqrI 
+  rewrite
+    travEq l l' pl eqlP eqlI
+  | travEq r r' pr eqrP eqrI
   = refl

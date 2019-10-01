@@ -246,7 +246,7 @@ data Ne Γ where
   var : ∀ {A} → Var Γ A → Ne Γ A
   app : ∀ {A B} (f : Ne Γ (Π A B))(a : Nf Γ A) → Ne Γ (Tyₛ < ⌜ a ⌝ⁿᶠ > B)
 
-data Nf (Γ : Con) where
+data Nf Γ where
   lam  : ∀ {A B} → Nf (Γ ▷ A) B → Nf Γ (Π A B)
   neU  : Ne Γ U → Nf Γ U
   neEl : ∀ {A} → Ne Γ (El A) → Nf Γ (El A)

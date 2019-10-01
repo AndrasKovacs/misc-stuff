@@ -62,5 +62,4 @@ ins-lem x (y ∷ ys) with cmpℕ x y
 
 sort-perm : ∀ xs → Perm xs (sort xs)
 sort-perm []       = refl
-sort-perm (x ∷ xs) = , ins-lem x (sort xs) , sort-perm xs
-
+sort-perm (x ∷ xs) = _ , ins-lem x (sort xs) , sort-perm xs

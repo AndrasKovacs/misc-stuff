@@ -21,19 +21,19 @@
 \newcommand{\Cl}{\mathsf{Cl}}
 \newcommand{\pack}{\mathsf{pack}}
 \newcommand{\level}{\mathsf{level}}
-\newcommand{\open}{\mathsf{open}}
+\renewcommand{\open}{\mathsf{open}}
 \newcommand{\close}{\mathsf{close}}
 
-%% \AtBeginSection[]{
-%%   \begin{frame}
-%%   \vfill
-%%   \centering
-%%   \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
-%%     \usebeamerfont{title}\insertsectionhead\par%
-%%   \end{beamercolorbox}
-%%   \vfill
-%%   \end{frame}
-%% }
+\AtBeginSection[]{
+  \begin{frame}
+  \vfill
+  \centering
+  \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
+    \usebeamerfont{title}\insertsectionhead\par%
+  \end{beamercolorbox}
+  \vfill
+  \end{frame}
+}
 
 \title{Closure Conversion for Dependent Type Theory}
 \subtitle{With Type-Passing Polymorphism\thanks{This work was supported by the European Union, co-financed by the European
@@ -44,8 +44,9 @@ Social Fund (EFOP-3.6.3-VEKOP-16-2017-00002).}}
 
 
 \begin{document}
-
+\logo{\vspace{3em}\includegraphics[width=26em]{efop.jpg}}
 \frame{\titlepage}
+\logo{\vspace{3em}}
 
 
 \begin{frame}{Advertising}
@@ -218,10 +219,10 @@ Analogously for $\Sigma$, $\top$ and closed functions.
 \end{frame}
 
 \begin{frame}
-\\~\\
-\\~\\
+%% \\~\\
+%% \\~\\
 Polymorphic identity function with closures:
-  \begin{alignat*}{5}
+\begin{alignat*}{5}
     & \mathsf{id} : \Cl(A : \U)(\Cl(x : \El\,A)(\El\,A)) \\
     & \mathsf{id} :\equiv \pack\,\top'\,\tt\,(\lambda(\tt,\,A).\, \pack\,\U'\,A\,(\lambda(A,\,x).\,x))
 \end{alignat*}

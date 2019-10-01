@@ -185,7 +185,7 @@ idᴺₛ {Γ , A} = Conᴺₑ wk idᴺₛ , uᴺ (var vz)
 nf : ∀ {Γ A} → Tm Γ A → Nf Γ A
 nf t = qᴺ (Tmᴺ t idᴺₛ)
 
--- Canonicity
+
 ------------------------------------------------------------
 
 open import Relation.Binary.PropositionalEquality
