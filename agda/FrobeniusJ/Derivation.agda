@@ -148,7 +148,7 @@ TPiEq {suc n} {A , Δ} f g = ∀ x → TPiEq {n} (f x) (g x)
 
 --------------------------------------------------------------------------------
 
--- elim + β
+-- eliminator + β rule
 JFrobeniusTy : ℕ → Set₁
 JFrobeniusTy n =
     (A  : Set)
@@ -183,3 +183,18 @@ JFrobenius (suc n) A x B C c =
 
       c' : TPi (C' x refl)
       c' = c (b' x refl)
+
+-- β rule seems to be strict for all concrete n
+--------------------------------------------------------------------------------
+
+strict0 : ∀ A x B C c → JFrobenius 0 A x B C c .₂ ≡ refl
+strict0 A x B C c = refl
+
+strict1 : ∀ A x B C c → JFrobenius 1 A x B C c .₂ ≡ λ _ → refl
+strict1 A x B C c = refl
+
+strict2 : ∀ A x B C c → JFrobenius 2 A x B C c .₂ ≡ λ _ _ → refl
+strict2 A x B C c = refl
+
+strict3 : ∀ A x B C c → JFrobenius 3 A x B C c .₂ ≡ λ _ _ _ → refl
+strict3 A x B C c = refl
