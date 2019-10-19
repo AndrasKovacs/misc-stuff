@@ -141,8 +141,14 @@ TPi : ∀ {n}{Δ : Tel n}(B : TFam Δ) → Set
 TPi {zero}  {Δ}     B = B
 TPi {suc n} {A , Δ} B = ∀ x → TPi (B x)
 
+-- pointwise equality
+TPiEq : ∀ {n}{Δ : Tel n}{B : TFam Δ}(f g : TPi B) → Set
+TPiEq {zero}  {Δ}     f g = f ≡ g
+TPiEq {suc n} {A , Δ} f g = ∀ x → TPiEq {n} (f x) (g x)
+
 --------------------------------------------------------------------------------
 
+-- elim + β
 JFrobeniusTy : ℕ → Set₁
 JFrobeniusTy n =
     (A  : Set)
@@ -150,26 +156,30 @@ JFrobeniusTy n =
     (B  : ∀ y → x ≡ y → Tel n)
     (C  : ∀ y (e : x ≡ y) → TFam (B y e))
     (c  : TPi (C x refl))
-    (y  : A)
-    (e  : x ≡ y)
-  → TPi (C y e)
+  → Σ (∀ y e → TPi (C y e)) λ f → TPiEq {n} (f x refl) c
 
 JFrobenius : ∀ n → JFrobeniusTy n
-JFrobenius zero A x B C c y e = J C e c
-
-JFrobenius (suc n) A x B C c y e b =
-  tr (λ x → TPi (C y e x))
-     (Jinv (λ y e → B y e .₁) e b)
-     (JFrobenius n A x B' C' c' y e)
+JFrobenius zero    A x B C c = (λ y e → J C e c) , refl
+JFrobenius (suc n) A x B C c =
+  (λ y e b →
+    let open M y e b in
+    tr (λ x → TPi (C y e x))
+       (Jinv (λ y e → B y e .₁) e b)
+       (JFrobenius n A x B' C' c' .₁ y e))
+  ,
+  (λ b →
+    let open M x refl b in
+    JFrobenius n A x B' C' c' .₂)
   where
-    b' : ∀ y' e' → B y' e' .₁
-    b' y' e' = J' (λ y e → B y e .₁) e' (J⁻¹ (λ y e → B y e .₁) e b)
+    module M (y : A)(e : x ≡ y)(b : B y e .₁) where
+      b' : ∀ y' e' → B y' e' .₁
+      b' y' e' = J' (λ y e → B y e .₁) e' (J⁻¹ (λ y e → B y e .₁) e b)
 
-    B' : ∀ y' e' → Tel n
-    B' y' e' = B y' e' .₂ (b' y' e')
+      B' : ∀ y' e' → Tel n
+      B' y' e' = B y' e' .₂ (b' y' e')
 
-    C' : ∀ y' e' → TFam (B' y' e')
-    C' y' e' = C y' e' (b' y' e')
+      C' : ∀ y' e' → TFam (B' y' e')
+      C' y' e' = C y' e' (b' y' e')
 
-    c' : TPi (C' x refl)
-    c' = c (b' x refl)
+      c' : TPi (C' x refl)
+      c' = c (b' x refl)
