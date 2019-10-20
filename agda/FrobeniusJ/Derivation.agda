@@ -184,7 +184,7 @@ JFrobenius (suc n) A x B C c =
       c' : TPi (C' x refl)
       c' = c (b' x refl)
 
--- β rule seems to be strict for all concrete n
+-- β rule is strict for all concrete n
 --------------------------------------------------------------------------------
 
 strict0 : ∀ A x B C c → JFrobenius 0 A x B C c .₂ ≡ refl
