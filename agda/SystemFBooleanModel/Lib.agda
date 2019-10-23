@@ -8,6 +8,8 @@ open import Data.Bool public
 open import Data.Unit using (tt; ⊤) public
 open import Data.Product renaming (proj₁ to ₁; proj₂ to ₂) public
 open import Data.Empty public
+open import Relation.Nullary public using (¬_)
+open import Data.Sum public using (inj₁; inj₂; _⊎_)
 
 _&_ = cong;  infixl 9 _&_; {-# DISPLAY _&_ = cong  #-}
 _◾_ = trans; infixr 4 _◾_; {-# DISPLAY _◾_ = trans #-}
