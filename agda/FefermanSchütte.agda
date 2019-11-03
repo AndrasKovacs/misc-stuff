@@ -42,10 +42,10 @@ add : O → O → O
 add a b = Iter b sup1 suc a
 
 mul : O → O → O
-mul a b = Iter b sup1 (flip add a) a
+mul a b = Iter b sup1 (flip add a) 0
 
 exp : O → O → O
-exp a b = Iter b sup1 (flip mul a) a
+exp a b = Iter b sup1 (flip mul a) 1
 
 ω : O
 ω = sup λ i → fromNat i
