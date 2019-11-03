@@ -5,6 +5,7 @@ open import Agda.Builtin.FromNat
 open import Data.Nat
 open import Data.Unit
 open import Function
+open import Data.List
 
 iter : {A : Set} → ℕ → (A → A) → A → A
 iter zero    f = id
@@ -25,52 +26,49 @@ instance
   Numberℕ .Number.Constraint _ = ⊤
   Numberℕ .Number.fromNat    m = m
 
+-- transfinite iteration, given a way for taking supremum of functions
+Iter : {A : Set} → O → ((ℕ → A → A) → (A → A)) → (A → A) → A → A
+Iter zero    s f = id
+Iter (suc a) s f = f ∘ Iter a s f
+Iter (sup a) s f = s (λ i → Iter (a i) s f)
+
+sup1 : (ℕ → O → O) → O → O
+sup1 f a = sup λ i → f i a
+
+sup2 : (ℕ → (O → O) → (O → O)) → (O → O) → O → O
+sup2 f g a = sup (λ i → f i g a)
+
 add : O → O → O
-add a zero    = a
-add a (suc b) = suc (add a b)
-add a (sup b) = sup λ i → add a (b i)
+add a b = Iter b sup1 suc a
 
 mul : O → O → O
-mul a zero    = 0
-mul a (suc b) = add (mul a b) a
-mul a (sup b) = sup λ i → mul a (b i)
+mul a b = Iter b sup1 (flip add a) a
 
 exp : O → O → O
-exp a zero    = 1
-exp a (suc b) = mul (exp a b) a
-exp a (sup b) = sup λ i → exp a (b i)
+exp a b = Iter b sup1 (flip mul a) a
 
 ω : O
 ω = sup λ i → fromNat i
 
--- least fixpoint
-lfix : (O → O) → O
-lfix f = sup λ i → iter i f 0
+-- least fixpoint which is >= an ordinal
+fix≥ : (O → O) → (O → O)
+fix≥ f = sup1 λ i → iter i f
 
--- least fixpoint above given ordinal
-nextfix : (O → O) → O → O
-nextfix f a = sup λ i → iter i f (suc a)
+-- least fixpoint
+fix₀ : (O → O) → O
+fix₀ f = fix≥ f 0
 
 -- enumeration of fixpoints
-fix : (O → O) → O → O
-fix f zero    = lfix f
-fix f (suc a) = nextfix f (fix f a)
-fix f (sup a) = sup λ i → fix f (a i)
+fix : (O → O) → (O → O)
+fix f a = Iter a sup1 (fix≥ f ∘ suc) (fix₀ f)
 
--- pointwise supremum
-sup* : (ℕ → O → O) → O → O
-sup* f a = sup λ i → f i a
-
--- binary Veblen function
+-- Veblen
 φ : O → O → O
-φ zero    = exp ω
-φ (suc a) = fix (φ a)
-φ (sup a) = sup* (φ ∘ a)
--- alternatively: φ (sup a) = fix (sup* (φ ∘ a))
+φ a = Iter a sup2 fix (exp ω)
 
--- Feferman-Schütte ordinal
+-- Feferman-Schütte
 Γ₀ : O
-Γ₀ = lfix λ a → φ a 0
+Γ₀ = fix₀ (flip φ 0)
 
 -- fast-growing hierarchy
 FGH : O → ℕ → ℕ
