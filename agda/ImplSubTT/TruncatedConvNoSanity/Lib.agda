@@ -8,7 +8,7 @@ open import Data.Product public
 open import Data.Empty public
 open import Data.Nat public hiding (_⊔_)
 open import Data.Fin public using (Fin; zero; suc)
-open import Data.Sum public hiding (map)
+open import Data.Sum public hiding (map; map₁; map₂; swap)
 
 infix 3 _∋_
 _∋_ : ∀ {α}(A : Set α) → A → A

@@ -106,9 +106,9 @@ lfpΩ₂ f = fixΩ₂≥ f 0
 Ω = supΩ₁ Ω₁→Ω₂
 
 ψ : Ω₂ → Ω₁
-ψ zero     = ε₀
-ψ (suc a)  = lfpΩ₁ (expΩ₁ (ψ a))
-ψ (supℕ a) = sup (ψ ∘ a)
+ψ zero      = ε₀
+ψ (suc a)   = lfpΩ₁ (expΩ₁ (ψ a))
+ψ (supℕ a)  = sup (ψ ∘ a)
 ψ (supΩ₁ a) = lfpΩ₁ (ψ ∘ a)
 
 Bachmann-Howard : Ω₁
