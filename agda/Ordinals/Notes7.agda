@@ -121,12 +121,25 @@ lfp f = lfpAbove f 0
 enumFixes : (∃ T → ∃ T) → ∃ T → ∃ T
 enumFixes f a = iter a (lfpAbove f ∘ ∃suc) (lfp f)
 
--- enumeration of recursively inaccessible ordinals
-I = enumFixes ω
+--------------------------------------------------------------------------------
 
--- "Veblen function" starting with ω instead of (exp ω₀)
-φ : ∃ T → ∃ T → ∃ T
-φ a = iter2 a enumFixes ω
+Fam1 : Set₂
+Fam1 = Σ Set₁ λ A → A → Set₁
 
--- "Feferman-Schütte"
-Γ₀ = lfp (λ a → φ a 0)
+data T1 (F : Fam1) : Set₁ where
+  zero : T1 F
+  suc  : T1 F → T1 F
+  lim  : (ℕ → T1 F) → T1 F
+  Lim  : ∀ s → (F .₂ s → T1 F) → T1 F
+
+Iᶠ : Fam1
+Iᶠ = (Maybe (Σ Fam λ F → F .₁)) , (maybe (λ fs → Lift _ (fs .₁ .₂ (fs .₂))) (∃ T))
+
+T↑ : ∃ T → T1 Iᶠ
+T↑ (_ , zero)    = zero
+T↑ (_ , suc a)   = suc (T↑ (_ , a))
+T↑ (_ , lim a)   = lim (λ n → T↑ (_ , a n))
+T↑ (F , Lim s a) = Lim (just (F , s)) λ b → T↑ (F , a (lower b))
+
+I : T1 Iᶠ
+I = Lim nothing T↑
