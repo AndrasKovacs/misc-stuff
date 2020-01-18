@@ -90,6 +90,7 @@ mutual
 ∈ₑ (keep σ) vz     = vz
 ∈ₑ (keep σ) (vs x) = vs (∈ₑ σ x)
 
+
 mutual
   Nfₑ : ∀ {Γ Δ A} → OPE Γ Δ → Nf Δ A → Nf Γ A
   Nfₑ σ tt       = tt

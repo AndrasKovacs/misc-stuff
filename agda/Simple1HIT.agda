@@ -1,8 +1,10 @@
 
 {-# OPTIONS --without-K #-}
 
-open import Relation.Binary.PropositionalEquality renaming (subst to transp; cong to ap)
-open import Data.Product renaming (proj₁ to ₁; proj₂ to ₂)
+open import Relation.Binary.PropositionalEquality
+  renaming (subst to transp; cong to ap)
+open import Data.Product
+  renaming (proj₁ to ₁; proj₂ to ₂)
 open import Data.Unit
 
 infixr 4 _◾_; _◾_ = trans

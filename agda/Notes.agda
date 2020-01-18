@@ -1,101 +1,72 @@
 {-# OPTIONS --without-K #-}
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Empty
-open import Data.List
-open import Data.Nat hiding (_≤?_)
-open import Data.Nat.Properties hiding (_≤?_)
-open import Data.Product renaming (proj₁ to ₁; proj₂ to ₂)
-open import Data.Unit using (⊤; tt)
-open import Function
-open import Level renaming (suc to lsuc; zero to lzero)
+open import Data.Nat
 open import Relation.Binary.PropositionalEquality
-  renaming (subst to tr; sym to infix 6 _⁻¹; trans to infixr 5 _◾_; cong to ap; cong₂ to ap2)
-open import Relation.Nullary
-open import Relation.Nullary.Decidable
 
-_≤?_ : ∀ n m → Dec (n ≤ m)
-zero  ≤? m     = yes z≤n
-suc n ≤? zero  = no (λ ())
-suc n ≤? suc m = map′ s≤s ≤-pred (n ≤? m)
+instance  -- we do this to get automatic ≤ proofs in examples
+  z≤n' : ∀ {n} → zero  ≤ n
+  z≤n' = z≤n
+  s≤s' : ∀ {m n} {{m≤n : m ≤ n}} → suc m ≤ suc n
+  s≤s' {{p}} = s≤s p
 
-isPartition' : ℕ → List ℕ → Set
-isPartition' hi []       = hi > 0
-isPartition' hi (x ∷ xs) = hi ≥ x × isPartition' x xs
+-- Partition is slightly generalized to allow lists ending with 0 A similarly
+-- generalized dual function is easy to work with, and it behaves the same as
+-- the old dual on non-0-ending lists.
 
-isPartition : List ℕ → Set
-isPartition []       = ⊤
-isPartition (x ∷ xs) = isPartition' x xs
+data Partition (hi : ℕ) : ℕ → Set where
+  nil  : Partition hi 0
+  cons : ∀ {l} x {{_ : x ≤ hi}} → Partition x l → Partition hi (suc l)
 
-countGE : ℕ → List ℕ → ℕ
-countGE k [] = 0
-countGE k (x ∷ xs) with k ≤? x
-... | yes _ = suc (countGE k xs)
-... | no  _ = countGE k xs
+zeros : ∀ hi l → Partition hi l
+zeros hi zero    = nil
+zeros hi (suc l) = cons 0 {{z≤n}} (zeros _ l)
 
-dual : List ℕ → List ℕ
-dual []       = []
-dual (x ∷ xs) = applyUpTo (λ k → countGE (suc k) (x ∷ xs)) x
+zipsuc : ∀ {l x hi} → x ≤ hi → Partition l x → Partition (suc l) hi
+zipsuc z≤n     nil         = zeros _ _
+zipsuc (s≤s p) (cons x xs) = cons (suc x) (zipsuc p xs)
 
-countGE-antitone : ∀ x xs → countGE (suc x) xs ≤ countGE x xs
-countGE-antitone x []       = z≤n
-countGE-antitone x (y ∷ ys) with x ≤? y | suc x ≤? y
-... | yes p | yes q = s≤s (countGE-antitone x ys)
-... | yes p | no ¬q = ≤-trans (countGE-antitone x ys) (n≤1+n _)
-... | no ¬p | yes q = ⊥-elim (¬p (case q of λ {(s≤s q) → ≤-step q}))
-... | no ¬p | no ¬q = countGE-antitone x ys
+-- The basic idea is that "dual" can be viewed as the transposition
+-- of a special matrix. For normal Agda matrices, transposition would be:
 
-+-suc-ext : ∀ n → (λ x → n + suc x) ≡ (λ x → suc (n + x))
-+-suc-ext zero    = refl
-+-suc-ext (suc n) = ap (λ f x → suc (f x)) (+-suc-ext n)
+--   tr []         = replicate []
+--   tr (xs ∷ xss) = zipWith _∷_ xs (tr xss)
 
-lem1 : ∀ n x xs
-       → isPartition' (countGE n (n + x ∷ xs))
-                      (applyUpTo (λ k → countGE (suc (n + k)) (n + x ∷ xs)) x)
-lem1 n x xs with x | n ≤? (n + x)
-... | x'      | no ¬p = ⊥-elim (¬p (≤-stepsʳ x' ≤-refl))
-... | zero    | yes p = s≤s z≤n
-... | suc x'  | yes p rewrite +-suc n x' | +-identity .₂ n with lem1 (suc n) x' xs
-... | hyp with suc n ≤? suc (n + x')
-... | no ¬q = ⊥-elim (¬q (s≤s (m≤m+n _ _)))
-... | yes q =
-    s≤s (countGE-antitone n xs)
-  , tr (λ f → isPartition'
-                (suc (countGE (suc n) xs))
-                (applyUpTo (λ k → countGE (suc (f k)) (suc (n + x') ∷ xs)) x'))
-       (+-suc-ext n ⁻¹)
-       hyp
+-- (which is exactly "traverse id" over the zippy Vec Applicative)
 
-lem2 : ∀ x xs → isPartition (applyUpTo (λ k → countGE (suc k) (x ∷ xs)) x)
-lem2 zero          xs = tt
-lem2 (suc zero)    xs = s≤s z≤n
-lem2 (suc (suc x)) xs = s≤s (countGE-antitone 1 xs) , lem1 2 x xs
+-- We may view (Partition hi l) as a decreasing ragged Bool matrix with
+-- dimensions hi and l.
 
-dual-is-part : ∀ xs → isPartition (dual xs)
-dual-is-part []       = tt
-dual-is-part (x ∷ xs) = lem2 x xs
+dual : ∀ {hi l} → Partition hi l → Partition l hi
+dual {hi} nil          = zeros 0 hi
+dual (cons x {{p}} xs) = zipsuc p (dual xs)
 
-lem3 :
-  ∀ n x → countGE 1 (applyUpTo (λ x₁ → countGE (suc n + x₁) (n + x ∷ [])) x) ≡ x
-lem3 n zero = refl
-lem3 n (suc x) rewrite +-suc n x | +-identity .₂ n with suc n ≤? suc (n + x)
-... | no ¬q = ⊥-elim (¬q (s≤s (m≤m+n _ _)))
-... | yes p = ap suc (tr (λ f → countGE 1
-      (applyUpTo (λ x₁ → countGE (suc (f x₁)) (suc n + x ∷ [])) x)
-      ≡ x) (+-suc-ext n ⁻¹) (lem3 (suc n) x))
+dual-zeros : ∀ hi l → dual (zeros hi l) ≡ zeros l hi
+dual-zeros hi zero = refl
+dual-zeros hi (suc l) rewrite dual-zeros 0 l = refl
 
-lem6 : ∀ xs → ¬ isPartition' 0 xs
-lem6 (.0 ∷ xs) (z≤n , ps) = lem6 xs ps
+dual-zipsuc :
+  ∀ {hi l} {x} (p : x ≤ hi) (xs : Partition l x) →
+    dual (zipsuc p xs) ≡ cons x {{p}} (dual xs)
+dual-zipsuc {hi} {l} z≤n nil = dual-zeros (suc l) hi
+dual-zipsuc (s≤s p) (cons x xs) rewrite dual-zipsuc p xs = refl
 
-lem5 : ∀ x xs → isPartition' x xs
-              → dual (applyUpTo (λ k → countGE (suc k) (x ∷ xs)) x) ≡ x ∷ xs
-lem5 zero    xs p = ⊥-elim (lem6 xs p)
-lem5 (suc x) xs p = ap2 _∷_ (ap suc {!!}) {!!}
+dual-involutive : ∀ {hi l}(xs : Partition hi l) → dual (dual xs) ≡ xs
+dual-involutive {hi} nil with dual (zeros 0 hi)
+... | nil = refl
+dual-involutive (cons x {{p}} xs)
+  rewrite dual-zipsuc p (dual xs) | dual-involutive xs = refl
 
-lem4 : ∀ x → dual (dual (suc x ∷ [])) ≡ (suc x ∷ [])
-lem4 zero = refl
-lem4 (suc x) = ap ((_∷ []) ∘ suc ∘ suc) (lem3 2 x)
+-- examples
+------------------------------------------------------------
 
-duality : ∀ xs → isPartition xs → dual (dual xs) ≡ xs
-duality [] p = refl
-duality (x ∷ xs) p = lem5 x xs p
+ex1 : Partition 3 3
+ex1 = cons 3 (cons 2 (cons 2 nil))
+
+p1 : dual (dual ex1) ≡ ex1
+p1 = refl
+
+ex2 : Partition 5 4
+ex2 = cons 4 (cons 4 (cons 3 (cons 0 nil)))
+
+p2 : dual (dual ex2) ≡ ex2
+p2 = refl
