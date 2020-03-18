@@ -1,7 +1,7 @@
-
 {-# OPTIONS --type-in-type --rewriting #-}
 
--- The simplest cubical type theory I could think of which has funext, J, and computation rule for J
+-- toy cubical type theory with rewrite rules
+-- which demonstrates computational funext
 
 postulate _↦_ : {A : Set} → A → A → Set
 {-# BUILTIN REWRITE _↦_ #-}
@@ -11,43 +11,39 @@ postulate
   I   : Set
   ₀ ₁ : I
   _∧_ : I → I → I
+  ₀∧  : ∀ i → ₀ ∧ i ↦ ₀
+  ∧₀  : ∀ i → i ∧ ₀ ↦ ₀
+  ₁∧  : ∀ i → ₁ ∧ i ↦ i
+  ∧₁  : ∀ i → i ∧ ₁ ↦ i
+{-# REWRITE  ₀∧ ∧₀ ₁∧ ∧₁ #-}
 
-infix 3 _≡_
-data _≡_ {A : Set} : A → A → Set where
-  path : (f : I → A) → f ₀ ≡ f ₁
+infixl 4 _∧_
 
-syntax path (λ i → t) = ⟨ i ⟩ t
+module _ {A : Set} where
+  postulate
+    _≡_   : A → A → Set
+    path  : (f : I → A) → f ₀ ≡ f ₁
+    _$_   : ∀ {x y} → x ≡ y → I → A
+    $-₀   : ∀ {x y}(p : x ≡ y) → p $ ₀ ↦ x
+    $-₁   : ∀ {x y}(p : x ≡ y) → p $ ₁ ↦ y
+    pathβ : ∀ p i → path p $ i ↦ p i
+  {-# REWRITE $-₀ $-₁ pathβ #-}
 
-_$_ : ∀ {A}{x y : A} → x ≡ y → I → A
-path f $ i = f i
-infixl 8 _$_
-{-# DISPLAY path f = f #-}
+  postulate
+    pathη : ∀ {x y}{p : x ≡ y} → path (λ i → p $ i) ↦ p
+  {-# REWRITE pathη #-}
 
-refl : ∀ {A}{a : A} → a ≡ a
-refl {_}{a} = ⟨ _ ⟩ a
-
-postulate
-  $-₀ : ∀ {A}{x y : A}(p : x ≡ y) → p $ ₀ ↦ x
-  $-₁ : ∀ {A}{x y : A}(p : x ≡ y) → p $ ₁ ↦ y
-{-# REWRITE $-₀ #-}
-{-# REWRITE $-₁ #-}
-
-postulate
-  ₀∧     : ∀ i → ₀ ∧ i ↦ ₀
-  ∧₀     : ∀ i → i ∧ ₀ ↦ ₀
-  ₁∧     : ∀ i → ₁ ∧ i ↦ i
-  ∧₁     : ∀ i → i ∧ ₁ ↦ i
-  path-η : ∀ (A : Set) (S T : A) (Q : S ≡ T) → ⟨ i ⟩ (Q $ i) ↦ Q
-{-#  REWRITE ₀∧      #-}
-{-#  REWRITE ∧₀      #-}
-{-#  REWRITE ₁∧      #-}
-{-#  REWRITE ∧₁      #-}
-{-#  REWRITE path-η  #-}
+  infixl 8 _$_
+  infix 3 _≡_
+  syntax path (λ i → t) = ⟨ i ⟩ t
 
 postulate
   coe        : {A B : Set} → A ≡ B → A → B
   regularity : (A : Set) → coe (⟨ _ ⟩ A) ↦ (λ a → a)
 {-# REWRITE regularity #-}
+
+refl : ∀ {A}{a : A} → a ≡ a
+refl {_}{a} = ⟨ _ ⟩ a
 
 --------------------------------------------------------------------------------
 
@@ -58,8 +54,8 @@ infixr 4 _◾_
 _◾_ : ∀ {A}{a b c : A} → a ≡ b → b ≡ c → a ≡ c
 _◾_ {a = a} {b} {c} p q = coe (ap (a ≡_) q) p
 
-transport : ∀ {A}(P : A → Set){a b : A} → a ≡ b → P a → P b
-transport P p = coe (ap P p)
+tr : ∀ {A}(P : A → Set){a b : A} → a ≡ b → P a → P b
+tr P p = coe (ap P p)
 
 ext : ∀ {A}{B : A → Set}{f g : ∀ a → B a} → (∀ a → f a ≡ g a) → f ≡ g
 ext p = ⟨ i ⟩ (λ a → p a $ i)
@@ -67,20 +63,15 @@ ext p = ⟨ i ⟩ (λ a → p a $ i)
 J : ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) → P a refl → ∀ {a'} (p : a ≡ a') → P a' p
 J P refl* p = coe (⟨ i ⟩ P (p $ i) (⟨ j ⟩ (p $ (i ∧ j)))) refl*
 
-coe-refl : ∀ {A a} → coe (⟨ i ⟩ A) a ≡ a
-coe-refl {A}{a} = refl
-
--- coe (λ i → A) a ≡ a
-
--- J-refl :
---   ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) refl* → J P refl* refl ≡ refl*
--- J-refl {A}{a} P refl* = refl
+J-refl :
+  ∀ {A}{a : A}(P : ∀ a' → a ≡ a' → Set) refl* → J P refl* refl ≡ refl*
+J-refl {A}{a} P refl* = refl
 
 infix 5 _⁻¹
 _⁻¹ : ∀ {A}{x y : A} → x ≡ y → y ≡ x
-_⁻¹ {A}{x}{y} p = transport (_≡ x) p refl
+_⁻¹ {A}{x}{y} p = tr (_≡ x) p refl
 
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 open import Data.Nat
 
