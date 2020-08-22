@@ -1,6 +1,8 @@
 {-# OPTIONS --without-K #-}
 
--- strong normalization for STLC, based on "Proofs and Types" chapter 6.
+-- strong normalization for STLC, based on "Proofs and Types" chapter 6
+--   by Jean-Yves Girard
+-- checked with Agda 2.6.0.1
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Product

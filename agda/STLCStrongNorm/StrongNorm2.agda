@@ -2,6 +2,7 @@
 
 -- strong normalization for STLC, adapted from
 --   https://www.ps.uni-saarland.de/~schaefer/thesis/html/semantics.f.strongnorm.html
+-- checked with Agda 2.6.0.1
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Product
@@ -307,10 +308,10 @@ data SN {Γ A} (t : Tm Γ A) : Set where
 
 -- SN annotated all the way down with a predicate on terms
 data SN* {A} (P : ∀ {Γ} → Tm Γ A → Set) {Γ}(t : Tm Γ A) : Set where
-  PI : P t → (∀ {t'} → t ~> t' → SN* P t') → SN* P t
+  sn* : P t → (∀ {t'} → t ~> t' → SN* P t') → SN* P t
 
-P-SN : ∀ {Γ A}{P : ∀ {Γ} → Tm Γ A → Set}{t : Tm Γ A} → SN* P t → SN t
-P-SN (PI p q) = sn (λ st → P-SN (q st))
+SN*-SN : ∀ {Γ A}{P : ∀ {Γ} → Tm Γ A → Set}{t : Tm Γ A} → SN* P t → SN t
+SN*-SN (sn* p q) = sn (λ st → SN*-SN (q st))
 
 
 Tmᴾ : ∀ {A Γ} → Tm Γ A → Set
@@ -332,22 +333,22 @@ Tmᴾₑ σ {var _} tᴾ = tt
 Tmᴾₑ σ {app _ _} tᴾ = tt
 
 P~> : ∀ {Γ A}{t t' : Tm Γ A} → t ~> t' → P t → P t'
-P~> st (PI p q) = q st
+P~> st (sn* p q) = q st
 
 Pₑ : ∀ {Γ Δ A}(σ : OPE Γ Δ){t : Tm Δ A} → P t → P (Tmₑ σ t)
-Pₑ σ (PI p q) =
-  PI (Tmᴾₑ σ p) λ st → case Tmₑ~> st of λ {(t'' , st' , refl) → Pₑ σ (q st')}
+Pₑ σ (sn* p q) =
+  sn* (Tmᴾₑ σ p) λ st → case Tmₑ~> st of λ {(t'' , st' , refl) → Pₑ σ (q st')}
 
 P-lam : ∀ {Γ A B}{t : Tm (Γ , A) B} → Tmᴾ (lam t) → P t → P (lam t)
-P-lam lamtᴾ (PI p q) =
-  PI lamtᴾ (λ {(lam st) → P-lam (λ σ uᴾ → P~> (~>ₛ _ st) (lamtᴾ σ uᴾ) ) (q st)})
+P-lam lamtᴾ (sn* p q) =
+  sn* lamtᴾ (λ {(lam st) → P-lam (λ σ uᴾ → P~> (~>ₛ _ st) (lamtᴾ σ uᴾ) ) (q st)})
 
 P-app : ∀ {Γ A B}{t : Tm Γ (A ⇒ B)}{u : Tm Γ A} → P t → P u → P (app t u)
 P-app =
   ind-help
     (λ t u → P (app t u))
-    (λ { {t} {u} (PI tp tq) uᴾ f g →
-      PI tt (λ {(β t t')  → coe ((λ x → P (Tmₛ (x , u) t)) & (idrₑₛ _ ⁻¹ ◾ idlₑₛ _))
+    (λ { {t} {u} (sn* tp tq) uᴾ f g →
+      sn* tt (λ {(β t t')  → coe ((λ x → P (Tmₛ (x , u) t)) & (idrₑₛ _ ⁻¹ ◾ idlₑₛ _))
                                 (tp idₑ uᴾ) ;
                 (app₁ st) → f st ;
                 (app₂ st) → g st})})
@@ -358,10 +359,10 @@ P-app =
                  → (∀ {u'} → u ~> u' → R t u')
                 → R t u)
              → ∀ {t u} → P t → P u → R t u
-    ind-help R f (PI tp tq) (PI up uq) =
-      f (PI tp tq) (PI up uq)
-        (λ st → ind-help R f (tq st) (PI up uq))
-        (λ st → ind-help R f (PI tp tq) (uq st))
+    ind-help R f (sn* tp tq) (sn* up uq) =
+      f (sn* tp tq) (sn* up uq)
+        (λ st → ind-help R f (tq st) (sn* up uq))
+        (λ st → ind-help R f (sn* tp tq) (uq st))
 
 data Subᴾ {Γ} : ∀ {Δ} → Sub Γ Δ → Set where
   ∙   : Subᴾ ∙
@@ -382,12 +383,12 @@ fth (lam t) {Δ}{σ} σᴾ =
                        ◾ (σ ∘ₛ_) & idlₑₛ (idₛ ₛ∘ₑ δ) ⁻¹)
                        ◾ assₛₑₛ σ wk (idₛ ₛ∘ₑ δ , u) ⁻¹) ◾ Tm-∘ₛ _ _ t))
               (fth t (Subᴾₑ δ σᴾ , uᴾ)))
-        (fth t (Subᴾₑ wk σᴾ , PI tt (λ ())))
+        (fth t (Subᴾₑ wk σᴾ , sn* tt (λ ())))
 fth (app t u) σᴾ = P-app (fth t σᴾ) (fth u σᴾ)
 
 idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
 idₛᴾ {∙}     = ∙
-idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , PI tt (λ ())
+idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , sn* tt (λ ())
 
 strongNorm : ∀ {Γ A}(t : Tm Γ A) → SN t
-strongNorm t = coe (SN & Tm-idₛ t) (P-SN (fth t idₛᴾ))
+strongNorm t = coe (SN & Tm-idₛ t) (SN*-SN (fth t idₛᴾ))
