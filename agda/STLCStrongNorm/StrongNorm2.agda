@@ -1,6 +1,7 @@
 {-# OPTIONS --without-K #-}
 
--- strong normalization for STLC, based on "Proofs and Types" chapter 6.
+-- strong normalization for STLC, adapted from
+--   https://www.ps.uni-saarland.de/~schaefer/thesis/html/semantics.f.strongnorm.html
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Product
@@ -8,22 +9,16 @@ open import Data.Unit
 open import Data.Empty
 open import Function
 
--- some HoTT-inspired combinators
-
-_&_ = cong
-_⁻¹ = sym
-_◾_ = trans
+_&_ = cong; infixl 9 _&_
+_⁻¹ = sym; infix 6 _⁻¹
+_◾_ = trans; infixr 4 _◾_
 
 coe : {A B : Set} → A ≡ B → A → B
 coe refl a = a
 
+infixl 8 _⊗_
 _⊗_ : ∀ {A B : Set}{f g : A → B}{a a'} → f ≡ g → a ≡ a' → f a ≡ g a'
 refl ⊗ refl = refl
-
-infix 6 _⁻¹
-infixr 4 _◾_
-infixl 9 _&_
-infixl 8 _⊗_
 
 -- Syntax
 --------------------------------------------------------------------------------
@@ -48,16 +43,14 @@ data Tm Γ : Ty → Set where
   lam : ∀ {A B} → Tm (Γ , A) B → Tm Γ (A ⇒ B)
   app : ∀ {A B} → Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
 
--- Embedding
+-- Order-preserving embedding
 --------------------------------------------------------------------------------
 
--- Order-preserving embedding
 data OPE : Con → Con → Set where
   ∙    : OPE ∙ ∙
   drop : ∀ {A Γ Δ} → OPE Γ Δ → OPE (Γ , A) Δ
   keep : ∀ {A Γ Δ} → OPE Γ Δ → OPE (Γ , A) (Δ , A)
 
--- OPE is a category
 idₑ : ∀ {Γ} → OPE Γ Γ
 idₑ {∙}     = ∙
 idₑ {Γ , A} = keep (idₑ {Γ})
@@ -122,7 +115,7 @@ Tm-∘ₑ σ δ (var v)   = var & ∈-∘ₑ σ δ v
 Tm-∘ₑ σ δ (lam t)   = lam & Tm-∘ₑ (keep σ) (keep δ) t
 Tm-∘ₑ σ δ (app f a) = app & Tm-∘ₑ σ δ f ⊗ Tm-∘ₑ σ δ a
 
--- Theory of substitution & embedding
+-- Substitution
 --------------------------------------------------------------------------------
 
 infixr 6 _ₑ∘ₛ_ _ₛ∘ₑ_ _∘ₛ_
@@ -145,11 +138,6 @@ dropₛ σ = σ ₛ∘ₑ wk
 
 keepₛ : ∀ {A Γ Δ} → Sub Γ Δ → Sub (Γ , A) (Δ , A)
 keepₛ σ = dropₛ σ , var vz
-
-⌜_⌝ᵒᵖᵉ : ∀ {Γ Δ} → OPE Γ Δ → Sub Γ Δ
-⌜ ∙      ⌝ᵒᵖᵉ = ∙
-⌜ drop σ ⌝ᵒᵖᵉ = dropₛ ⌜ σ ⌝ᵒᵖᵉ
-⌜ keep σ ⌝ᵒᵖᵉ = keepₛ ⌜ σ ⌝ᵒᵖᵉ
 
 ∈ₛ : ∀ {A Γ Δ} → Sub Γ Δ → A ∈ Δ → Tm Γ A
 ∈ₛ (σ , t) vz     = t
@@ -185,23 +173,14 @@ idlₑₛ : ∀ {Γ Δ}(σ : Sub Γ Δ) → idₑ ₑ∘ₛ σ ≡ σ
 idlₑₛ ∙       = refl
 idlₑₛ (σ , t) = (_, t) & idlₑₛ σ
 
-idlₛₑ : ∀ {Γ Δ}(σ : OPE Γ Δ) → idₛ ₛ∘ₑ σ ≡ ⌜ σ ⌝ᵒᵖᵉ
-idlₛₑ ∙        = refl
-idlₛₑ (drop σ) =
-      ((idₛ ₛ∘ₑ_) ∘ drop) & idrₑ σ ⁻¹
-    ◾ assₛₑₑ idₛ σ wk ⁻¹
-    ◾ dropₛ & idlₛₑ σ
-idlₛₑ (keep σ) =
-  (_, var vz) &
-      (assₛₑₑ idₛ wk (keep σ)
-    ◾ ((idₛ ₛ∘ₑ_) ∘ drop) & (idlₑ σ ◾ idrₑ σ ⁻¹)
-    ◾ assₛₑₑ idₛ σ wk ⁻¹
-    ◾ (_ₛ∘ₑ wk) & idlₛₑ σ )
-
-idrₑₛ : ∀ {Γ Δ}(σ : OPE Γ Δ) → σ ₑ∘ₛ idₛ ≡ ⌜ σ ⌝ᵒᵖᵉ
+idrₑₛ : ∀ {Γ Δ}(σ : OPE Γ Δ) → σ ₑ∘ₛ idₛ ≡ idₛ ₛ∘ₑ σ
 idrₑₛ ∙        = refl
-idrₑₛ (drop σ) = assₑₛₑ σ idₛ wk ⁻¹ ◾ dropₛ & idrₑₛ σ
-idrₑₛ (keep σ) = (_, var vz) & (assₑₛₑ σ idₛ wk ⁻¹ ◾ (_ₛ∘ₑ wk) & idrₑₛ σ)
+idrₑₛ (drop σ) =
+  assₑₛₑ σ idₛ wk ⁻¹ ◾ dropₛ & idrₑₛ σ ◾ assₛₑₑ idₛ σ wk ◾ (idₛ ₛ∘ₑ_) & (drop & idrₑ σ)
+idrₑₛ (keep σ) =
+  (_, var vz) & (assₑₛₑ σ idₛ wk ⁻¹ ◾ (_ₛ∘ₑ wk) & idrₑₛ σ
+  ◾ assₛₑₑ idₛ σ wk ◾ (idₛ ₛ∘ₑ_) & (drop & (idrₑ σ ◾ idlₑ σ ⁻¹))
+  ◾ assₛₑₑ idₛ wk (keep σ) ⁻¹)
 
 ∈-ₑ∘ₛ : ∀ {A Γ Δ Σ}(σ : OPE Δ Σ)(δ : Sub Γ Δ)(v : A ∈ Σ) → ∈ₛ (σ ₑ∘ₛ δ) v ≡ ∈ₛ δ (∈ₑ σ v)
 ∈-ₑ∘ₛ ∙        δ       v      = refl
@@ -296,17 +275,6 @@ infix 3 _~>_
 ~>ₛ σ (app₁ step) = app₁ (~>ₛ σ step)
 ~>ₛ σ (app₂ step) = app₂ (~>ₛ σ step)
 
-~>ₑ : ∀ {Γ Δ A}{t t' : Tm Γ A}(σ : OPE Δ Γ) → t ~> t' → Tmₑ σ t ~> Tmₑ σ t'
-~>ₑ σ (β t t')    =
-  coe ((app (lam (Tmₑ (keep σ) t)) (Tmₑ σ t') ~>_)
-      & (Tm-ₑ∘ₛ (keep σ) (idₛ , Tmₑ σ t') t ⁻¹
-      ◾ (λ x → Tmₛ (x , Tmₑ σ t') t) & (idrₑₛ σ ◾ idlₛₑ σ ⁻¹)
-      ◾ Tm-ₛ∘ₑ (idₛ , t') σ t))
-  (β (Tmₑ (keep σ) t) (Tmₑ σ t'))
-~>ₑ σ (lam step)  = lam (~>ₑ (keep σ) step)
-~>ₑ σ (app₁ step) = app₁ (~>ₑ σ step)
-~>ₑ σ (app₂ step) = app₂ (~>ₑ σ step)
-
 Tmₑ~> :
   ∀ {Γ Δ A}{t : Tm Γ A}{σ : OPE Δ Γ}{t'}
   → Tmₑ σ t ~> t' → ∃ λ t'' → (t ~> t'') × (Tmₑ σ t'' ≡ t')
@@ -319,7 +287,7 @@ Tmₑ~> {t = app (var v) a} (app₂ step) with Tmₑ~> step
 Tmₑ~> {t = app (lam f) a} {σ} (β _ _) =
   Tmₛ (idₛ , a) f , β _ _ ,
       Tm-ₛ∘ₑ (idₛ , a) σ f ⁻¹
-    ◾ (λ x →  Tmₛ (x , Tmₑ σ a) f) & (idlₛₑ σ ◾ idrₑₛ σ ⁻¹)
+    ◾ (λ x →  Tmₛ (x , Tmₑ σ a) f) & (idrₑₛ σ ⁻¹)
     ◾ Tm-ₑ∘ₛ (keep σ) (idₛ , Tmₑ σ a) f
 Tmₑ~> {t = app (lam f) a}     (app₁ (lam step)) with Tmₑ~> step
 ... | t'' , (p , refl) = app (lam t'') a , app₁ (lam p) , refl
@@ -330,118 +298,96 @@ Tmₑ~> {t = app (app f a) a'}  (app₁ step) with Tmₑ~> step
 Tmₑ~> {t = app (app f a) a''} (app₂ step) with Tmₑ~> step
 ... | t'' , (p , refl) = app (app f a) t'' , app₂ p , refl
 
--- Strong normalization/neutrality definition
+-- Strong normalization
 --------------------------------------------------------------------------------
 
+-- strong normalization predicate
 data SN {Γ A} (t : Tm Γ A) : Set where
   sn : (∀ {t'} → t ~> t' → SN t') → SN t
 
-SNₑ→ : ∀ {Γ Δ A}{t : Tm Γ A}(σ : OPE Δ Γ) → SN t → SN (Tmₑ σ t)
-SNₑ→ σ (sn s) = sn λ {t'} step →
-  let (t'' , (p , q)) = Tmₑ~> step in coe (SN & q) (SNₑ→ σ (s p))
+-- SN annotated all the way down with a predicate on terms
+data SN* {A} (P : ∀ {Γ} → Tm Γ A → Set) {Γ}(t : Tm Γ A) : Set where
+  PI : P t → (∀ {t'} → t ~> t' → SN* P t') → SN* P t
 
-SNₑ← : ∀ {Γ Δ A}{t : Tm Γ A}(σ : OPE Δ Γ) → SN (Tmₑ σ t) → SN t
-SNₑ← σ (sn s) = sn λ step → SNₑ← σ (s (~>ₑ σ step))
+P-SN : ∀ {Γ A}{P : ∀ {Γ} → Tm Γ A → Set}{t : Tm Γ A} → SN* P t → SN t
+P-SN (PI p q) = sn (λ st → P-SN (q st))
 
-SN-app₁ : ∀ {Γ A B}{f : Tm Γ (A ⇒ B)}{a} → SN (app f a) → SN f
-SN-app₁ (sn s) = sn λ f~>f' → SN-app₁ (s (app₁ f~>f'))
 
-neu : ∀ {Γ A} → Tm Γ A → Set
-neu (lam _)   = ⊥
-neu _         = ⊤
+Tmᴾ : ∀ {A Γ} → Tm Γ A → Set
+Tmᴾ {Γ = Γ} (lam t) =
+  ∀ {Δ}(σ : OPE Δ Γ){u} → SN* Tmᴾ u → SN* Tmᴾ (Tmₛ (idₛ ₛ∘ₑ σ , u) t)
+Tmᴾ _ = ⊤
 
-neuₑ : ∀ {Γ Δ A}(σ : OPE Δ Γ)(t : Tm Γ A) → neu t → neu (Tmₑ σ t)
-neuₑ σ (lam t)   nt = nt
-neuₑ σ (var v)   nt = tt
-neuₑ σ (app f a) nt = tt
+-- the actual induction predicate used in the "fundamental theorem"
+P : ∀ {A Γ} → Tm Γ A → Set
+P = SN* Tmᴾ
 
--- The actual proof, by Kripke logical predicate
---------------------------------------------------------------------------------
+Tmᴾₑ : ∀ {Γ Δ A}(σ : OPE Γ Δ){t : Tm Δ A} → Tmᴾ t → Tmᴾ (Tmₑ σ t)
+Tmᴾₑ σ {lam t} tᴾ =
+  λ δ {u} uᴾ → coe (P & ((λ x → Tmₛ (x , u) t) &
+                   ((assₛₑₑ idₛ σ δ ⁻¹ ◾ (_ₛ∘ₑ δ) & idrₑₛ σ ⁻¹) ◾ assₑₛₑ σ idₛ δ)
+                     ◾ Tm-ₑ∘ₛ _ _ t))
+                   (tᴾ (σ ∘ₑ δ) uᴾ)
+Tmᴾₑ σ {var _} tᴾ = tt
+Tmᴾₑ σ {app _ _} tᴾ = tt
 
-Tmᴾ : ∀ {Γ A} → Tm Γ A → Set
-Tmᴾ {Γ}{ι}     t = SN t
-Tmᴾ {Γ}{A ⇒ B} t = ∀ {Δ}(σ : OPE Δ Γ){a} → Tmᴾ a → Tmᴾ (app (Tmₑ σ t) a)
+P~> : ∀ {Γ A}{t t' : Tm Γ A} → t ~> t' → P t → P t'
+P~> st (PI p q) = q st
+
+Pₑ : ∀ {Γ Δ A}(σ : OPE Γ Δ){t : Tm Δ A} → P t → P (Tmₑ σ t)
+Pₑ σ (PI p q) =
+  PI (Tmᴾₑ σ p) λ st → case Tmₑ~> st of λ {(t'' , st' , refl) → Pₑ σ (q st')}
+
+P-lam : ∀ {Γ A B}{t : Tm (Γ , A) B} → Tmᴾ (lam t) → P t → P (lam t)
+P-lam lamtᴾ (PI p q) =
+  PI lamtᴾ (λ {(lam st) → P-lam (λ σ uᴾ → P~> (~>ₛ _ st) (lamtᴾ σ uᴾ) ) (q st)})
+
+P-app : ∀ {Γ A B}{t : Tm Γ (A ⇒ B)}{u : Tm Γ A} → P t → P u → P (app t u)
+P-app =
+  ind-help
+    (λ t u → P (app t u))
+    (λ { {t} {u} (PI tp tq) uᴾ f g →
+      PI tt (λ {(β t t')  → coe ((λ x → P (Tmₛ (x , u) t)) & (idrₑₛ _ ⁻¹ ◾ idlₑₛ _))
+                                (tp idₑ uᴾ) ;
+                (app₁ st) → f st ;
+                (app₂ st) → g st})})
+  where
+    ind-help : ∀ {Γ A B}(R : Tm Γ A → Tm Γ B → Set)
+             → (∀ {t u} → P t → P u
+                 → (∀ {t'} → t ~> t' → R t' u)
+                 → (∀ {u'} → u ~> u' → R t u')
+                → R t u)
+             → ∀ {t u} → P t → P u → R t u
+    ind-help R f (PI tp tq) (PI up uq) =
+      f (PI tp tq) (PI up uq)
+        (λ st → ind-help R f (tq st) (PI up uq))
+        (λ st → ind-help R f (PI tp tq) (uq st))
 
 data Subᴾ {Γ} : ∀ {Δ} → Sub Γ Δ → Set where
   ∙   : Subᴾ ∙
-  _,_ : ∀ {A Δ}{σ : Sub Γ Δ}{t : Tm Γ A}(σᴾ : Subᴾ σ)(tᴾ : Tmᴾ t) → Subᴾ (σ , t)
-
-Tmᴾₑ : ∀ {Γ Δ A}{t : Tm Γ A}(σ : OPE Δ Γ) → Tmᴾ t → Tmᴾ (Tmₑ σ t)
-Tmᴾₑ {A = ι}        σ tᴾ = SNₑ→ σ tᴾ
-Tmᴾₑ {A = A ⇒ B}{t} σ tᴾ δ aᴾ rewrite Tm-∘ₑ σ δ t ⁻¹ = tᴾ (σ ∘ₑ δ) aᴾ
+  _,_ : ∀ {A Δ}{σ : Sub Γ Δ}{t : Tm Γ A}(σᴾ : Subᴾ σ)(tᴾ : P t) → Subᴾ (σ , t)
 
 Subᴾₑ : ∀ {Γ Δ Σ}{σ : Sub Δ Σ}(δ : OPE Γ Δ) → Subᴾ σ → Subᴾ (σ ₛ∘ₑ δ)
 Subᴾₑ σ ∙        = ∙
-Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Tmᴾₑ σ tᴾ
+Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Pₑ σ tᴾ
 
-~>ᴾ : ∀ {Γ A}{t t' : Tm Γ A} → t ~> t' → Tmᴾ t → Tmᴾ t'
-~>ᴾ {A = ι}     t~>t' (sn tˢⁿ) = tˢⁿ t~>t'
-~>ᴾ {A = A ⇒ B} t~>t' tᴾ       = λ σ aᴾ → ~>ᴾ (app₁ (~>ₑ σ t~>t')) (tᴾ σ aᴾ)
-
-mutual
-  -- quote
-  qᴾ : ∀ {Γ A}{t : Tm Γ A} → Tmᴾ t → SN t
-  qᴾ {A = ι}     tᴾ = tᴾ
-  qᴾ {A = A ⇒ B} tᴾ = SNₑ← wk $ SN-app₁ (qᴾ $ tᴾ wk (uᴾ (var vz) (λ ())))
-
-  -- unquote
-  uᴾ : ∀ {Γ A}(t : Tm Γ A){nt : neu t} → (∀ {t'} → t ~> t' → Tmᴾ t') → Tmᴾ t
-  uᴾ {Γ} {A = ι} t      f     = sn f
-  uᴾ {Γ} {A ⇒ B} t {nt} f {Δ} σ {a} aᴾ =
-    uᴾ (app (Tmₑ σ t) a) (go (Tmₑ σ t) (neuₑ σ t nt) f' a aᴾ (qᴾ aᴾ))
-    where
-      f' : ∀ {t'} → Tmₑ σ t ~> t' → Tmᴾ t'
-      f' step δ aᴾ with Tmₑ~> step
-      ... | t'' , step' , refl rewrite Tm-∘ₑ σ δ t'' ⁻¹ = f step' (σ ∘ₑ δ) aᴾ
-
-      go :
-        ∀ {Γ A B}(t : Tm Γ (A ⇒ B)) → neu t → (∀ {t'} → t ~> t' → Tmᴾ t')
-        → ∀ a → Tmᴾ a → SN a → ∀ {t'} → app t a ~> t' → Tmᴾ t'
-      go _ () _ _ _ _ (β _ _)
-      go t nt f a aᴾ sna (app₁ {f' = f'} step) =
-        coe ((λ x → Tmᴾ (app x a)) & Tm-idₑ f') (f step idₑ aᴾ)
-      go t nt f a aᴾ (sn aˢⁿ) (app₂ {a' = a'} step) =
-        uᴾ (app t a') (go t nt f a' (~>ᴾ step aᴾ) (aˢⁿ step))
-
-fundThm-∈ : ∀ {Γ A}(v : A ∈ Γ) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (∈ₛ σ v)
-fundThm-∈ vz     (σᴾ , tᴾ) = tᴾ
-fundThm-∈ (vs v) (σᴾ , tᴾ) = fundThm-∈ v σᴾ
-
-fundThm-lam :
-  ∀ {Γ A B}
-    (t : Tm (Γ , A) B)
-  → SN t
-  → (∀ {a} → Tmᴾ a → Tmᴾ (Tmₛ (idₛ , a) t))
-  → ∀ a → SN a → Tmᴾ a → Tmᴾ (app (lam t) a)
-fundThm-lam {Γ} t (sn tˢⁿ) hyp a (sn aˢⁿ) aᴾ = uᴾ (app (lam t) a)
-  λ {(β _ _) → hyp aᴾ;
-     (app₁ (lam {t' = t'} t~>t')) →
-       fundThm-lam t' (tˢⁿ t~>t') (λ aᴾ → ~>ᴾ (~>ₛ _ t~>t') (hyp aᴾ)) a (sn aˢⁿ) aᴾ;
-     (app₂ a~>a') →
-       fundThm-lam t (sn tˢⁿ) hyp _ (aˢⁿ a~>a') (~>ᴾ a~>a' aᴾ)}
-
-fundThm : ∀ {Γ A}(t : Tm Γ A) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → Tmᴾ (Tmₛ σ t)
-fundThm (var v) σᴾ = fundThm-∈ v σᴾ
-fundThm (lam {A} t) {σ = σ} σᴾ δ {a} aᴾ
-  rewrite Tm-ₛ∘ₑ (keepₛ σ) (keep δ) t ⁻¹ | assₛₑₑ σ (wk {A}) (keep δ) | idlₑ δ
-  = fundThm-lam
-      (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
-      (qᴾ (fundThm t (Subᴾₑ (drop δ) σᴾ , uᴾ (var vz) (λ ()))))
-      (λ aᴾ → coe (Tmᴾ & sub-sub-lem) (fundThm t (Subᴾₑ δ σᴾ , aᴾ)))
-      a (qᴾ aᴾ) aᴾ
-  where
-    sub-sub-lem : ∀ {a} → Tmₛ (σ ₛ∘ₑ δ , a) t ≡ Tmₛ (idₛ , a) (Tmₛ (σ ₛ∘ₑ drop δ , var vz) t)
-    sub-sub-lem {a} =
-        (λ x → Tmₛ (x , a) t) &
-          (idrₛ (σ ₛ∘ₑ δ) ⁻¹ ◾ assₛₑₛ σ δ idₛ ◾ assₛₑₛ σ (drop δ) (idₛ , a) ⁻¹)
-      ◾ Tm-∘ₛ (σ ₛ∘ₑ drop δ , var vz) (idₛ , a) t
-fundThm (app f a) {σ = σ} σᴾ
-  rewrite Tm-idₑ (Tmₛ σ f) ⁻¹
-  = fundThm f σᴾ idₑ (fundThm a σᴾ)
+-- "fundamental theorem"
+fth : ∀ {Γ A}(t : Tm Γ A) → ∀ {Δ}{σ : Sub Δ Γ} → Subᴾ σ → P (Tmₛ σ t)
+fth (var vz) (σᴾ , tᴾ) = tᴾ
+fth (var (vs x)) (σᴾ , tᴾ) = fth (var x) σᴾ
+fth (lam t) {Δ}{σ} σᴾ =
+  P-lam (λ δ {u} uᴾ →
+          coe (P & ((λ x → Tmₛ (x , u) t)&
+                       ((((_ₛ∘ₑ δ) & (idrₛ σ ⁻¹) ◾ assₛₛₑ σ idₛ δ)
+                       ◾ (σ ∘ₛ_) & idlₑₛ (idₛ ₛ∘ₑ δ) ⁻¹)
+                       ◾ assₛₑₛ σ wk (idₛ ₛ∘ₑ δ , u) ⁻¹) ◾ Tm-∘ₛ _ _ t))
+              (fth t (Subᴾₑ δ σᴾ , uᴾ)))
+        (fth t (Subᴾₑ wk σᴾ , PI tt (λ ())))
+fth (app t u) σᴾ = P-app (fth t σᴾ) (fth u σᴾ)
 
 idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
 idₛᴾ {∙}     = ∙
-idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , uᴾ (var vz) (λ ())
+idₛᴾ {Γ , A} = Subᴾₑ wk idₛᴾ , PI tt (λ ())
 
 strongNorm : ∀ {Γ A}(t : Tm Γ A) → SN t
-strongNorm t = qᴾ (coe (Tmᴾ & Tm-idₛ t) (fundThm t idₛᴾ))
+strongNorm t = coe (SN & Tm-idₛ t) (P-SN (fth t idₛᴾ))
