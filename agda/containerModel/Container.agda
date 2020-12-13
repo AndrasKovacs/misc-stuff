@@ -14,26 +14,6 @@ import Axiom.Extensionality.Propositional as Axiom
 
 --------------------------------------------------------------------------------
 
--- Goal : give model which refutes funext
---   Pierre-Marie : - exceptional type theory (Tarski univ only, no "Coquand universe")
---                     (λ (x : ⊤). tt)  /=  (λ (x : ⊤). x)
---
---                  - Dialectica : (counting number of usages of variables)
-
--- Container (polynomial) model
--- idea: f : A → B
---        ⟦f⟧₀ : ⟦A⟧ → ⟦B⟧
---        ⟦f⟧₁ : ⟦B⟧' → ⟦A⟧'
-
--- app only acts on forwards component
-
--- Mike Shulman: linear logic for constructive mathematics (Chu construction)
---    ⟦A -∘ B⟧ : (Prf A → Prf B) × (Refute B → Refute A)
-
-
-
---------------------------------------------------------------------------------
-
 coe : ∀ {i}{A B : Set i} → A ≡ B → A → B
 coe refl x = x
 
@@ -74,8 +54,6 @@ record Con : Set₁ where
     R : P → Set             -- R : "refutation"
 open Con
 
--- Fam model : Σ(A : Set) × (A → Set)
-
 record Sub (Γ Δ : Con) : Set where
   constructor sub
   field
@@ -83,17 +61,10 @@ record Sub (Γ Δ : Con) : Set where
     R : ∀ {γ} → R Δ (P γ) → R Γ γ      -- reverse direction
 open Sub
 
--- (Shape : Set) × (Position : Shape → Set)
-
--- ⟦S, P⟧ : Set → Set
--- ⟦S, P⟧ X = Σ (s : S) × (P s → X)
-
--- ⟦_⟧ : Σ(S : Set)×((S → Set)ᵒᵖ) → (Set → Set)
-
 -- CwF of containers: Σ(S : Set) × ((S → Set)ᵒᵖ)
--- we can't reverse dependent morphisms
---   simply typed CwF (democratic)    Tm Γ A  --->  Tm A Γ
---
+-- we can't reverse dependent morphisms!
+-- the fibered part is only simply typed (democratic) CwF
+--   Tm Γ A  --->  Tm A Γ
 
 record Ty (Γ : Con) : Set₁ where
   constructor ty
@@ -146,8 +117,6 @@ abstract
 id : ∀ {Γ} → Sub Γ Γ
 id {Γ} = sub (λ γ → γ) (λ γ* → γ*)
 
--- cofunctor
-
 infixr 5 _∘_
 _∘_ : ∀ {Γ Δ Σ} → Sub Δ Σ → Sub Γ Δ → Sub Γ Σ
 sub q₀ r₀ ∘ sub q₁ r₁ = sub (λ γ → q₀ (q₁ γ)) (λ σ* → r₁ (r₀ σ*))
@@ -174,9 +143,6 @@ _[_]T {Γ} {Δ} A σ = ty (λ γ → P A (P σ γ)) (R A)
 infix 6 _[_]t
 _[_]t : ∀ {Γ Δ A}(t : Tm Δ A)(σ : Sub Γ Δ) → Tm Γ (A [ σ ]T)
 _[_]t t σ = tm (λ γ → P t (P σ γ)) (λ α* → R σ (R t α*))
-
--- bi-intuitionistic logic (co-exponetional type + usual exponentional)
--- co-intuitionistic logic (only co-exponentional)
 
 infixl 3 _▶_
 _▶_ : (Γ : Con) → Ty Γ → Con
@@ -222,7 +188,6 @@ _,ₛ_ σ t = sub (λ γ → (P σ γ) , (P t γ)) (⊎-elim _ (R σ) (R t))
 -- t : Tm Γ (Π A B)      -- P component contains also a backward function
 -- app t : Tm (Γ ▶ A) B  -- P component only contains a forward
 
-
 Π : ∀ {Γ}(A : Ty Γ) → Ty (Γ ▶ A) → Ty Γ
 P (Π {Γ} A B) γ =
   ∃ λ (f : (α : P A γ) → P B (γ , α)) →
@@ -264,9 +229,6 @@ R (lam {Γ} {A} {B} t) {γ} (α , β , p) =
 Πη : ∀ {Γ A B t} → lam {Γ}{A}{B} (app t) ≡ t
 Πη = {!!}
 
--- P ⟦A -∘ B⟧ : (P A → P B) × (R B → R A)
--- P ⟦!A -∘ B⟧ : P A → P B
-
 --------------------------------------------------------------------------------
 
 Bot : ∀ {Γ} → Ty Γ
@@ -299,8 +261,6 @@ Elc {Γ} {A} = refl
 
 Eq : ∀ {Γ A} → Tm Γ A → Tm Γ A → Ty Γ
 Eq {Γ}{A} t u = ty (λ γ → P t γ ≡ P u γ) (λ _ → ⊥)
-
---
 
 Refl : ∀ {Γ A}(t : Tm Γ A) → Tm Γ (Eq t t)
 Refl t = tm (λ _ → refl) ⊥-elim
